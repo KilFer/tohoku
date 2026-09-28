@@ -16,18 +16,22 @@ La raíz es la nota **`Home › Viajes › Ideas de Japón`**, marcada a mano un
 
 ## Nota Lugar (hija de "Mapa de lugares")
 
-- **Atributos gestionados:** `#geolocation="lat,lng"`, `#googlePlaceId`, `#googleMaps`, `#ciudad`, `#region`, `#categoria`, `#nombreLocal`, `#fuentes`, `#iconClass`, `#jrTipo=lugar`, `~template=Lugar`.
+- **Atributos gestionados:** `#jrItem="<bookmark_id>:<clave>"` (identidad estable del elemento, p. ej. `b1:lugar:0`; primer atributo que se escribe, para poder retomar una creación cortada a medias sin duplicar), `#geolocation="lat,lng"`, `#googlePlaceId`, `#googleMaps`, `#ciudad`, `#region`, `#categoria`, `#nombreLocal`, `#fuentes`, `#iconClass`, `#jrTipo=lugar`, `~template=Lugar`.
 - **Atributos tuyos (nunca se tocan):** `#visitado`, `#prioridad` y cualquier otro que añadas.
 - **Cuerpo:** Resumen · Qué hacer / comer · Consejos prácticos · enlace a Google Maps · Fuentes · **Mis notas**.
 
 ## Nota Cosa (hija de su categoría en "Comprar y comer")
 
-- **Atributos:** `#jrTipo=cosa`, `#jrNombreNorm` (nombre normalizado, clave de deduplicación), `#categoria`, `#fuentes`, `#iconClass`, `~template=Cosa`, `~dondeComprar` → notas Lugar cuando la fuente recomienda un local concreto.
+- **Atributos:** `#jrItem="<bookmark_id>:<clave>"` (identidad estable del elemento), `#jrTipo=cosa`, `#jrNombreNorm` (nombre normalizado, clave de deduplicación), `#categoria`, `#fuentes`, `#iconClass`, `~template=Cosa`, `~dondeComprar` → notas Lugar cuando la fuente recomienda un local concreto.
 - **Cuerpo:** Resumen · Dónde conseguirlo · Consejos · Fuentes · **Mis notas**.
 
 ## Nota Otro (hija de "Cultura y curiosidades")
 
-Título + contenido + fuentes. Sin deduplicación.
+Título + contenido + fuentes. Sin deduplicación. Lleva `#jrItem="<bookmark_id>:<clave>"` como el resto de notas gestionadas.
+
+## Nota de extracción fallida (en "Bandeja de revisión")
+
+Lleva `#jrItem="<bookmark_id>:fallo"` y `#jrTipo=fallo`. Cuerpo: enlace, error, descripción y transcripción.
 
 ## Datos estructurados
 

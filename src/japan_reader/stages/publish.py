@@ -8,6 +8,7 @@ from japan_reader.clients.openrouter import OpenRouterClient
 from japan_reader.clients.trilium import TNote, TriliumClient
 from japan_reader.config import Settings
 from japan_reader.context import JobContext
+from japan_reader.errors import ApiError
 from japan_reader.models import (
     Extraction,
     ExtractResult,
@@ -106,13 +107,19 @@ class PublishStage:
 
     def _publish_item(self, item: PlannedItem, ctx: JobContext, layout: Layout) -> PublishedNote:
         if item.kind == ItemKind.FALLO:
-            note_id = self._create_failure(ctx, layout)
+            note_id = self._create_failure(ctx, layout, item.key)
         else:
             data = self._build_data(item, ctx)
             if item.action == "merge" and item.existing_note_id:
-                note_id = self._merge(item.existing_note_id, data)
+                try:
+                    note_id = self._merge(item.existing_note_id, data)
+                except ApiError as exc:
+                    if exc.status != 404:
+                        raise
+                    log.warning("nota %s de fusión no existe (borrada); se crea una nueva", item.existing_note_id)
+                    note_id = self._create(data, layout, ctx.job.bookmark_id, item.key)
             else:
-                note_id = self._create(data, layout)
+                note_id = self._create(data, layout, ctx.job.bookmark_id, item.key)
         if item.review_reasons:
             self._send_to_review(note_id, item.review_reasons, layout)
         return PublishedNote(key=item.key, note_id=note_id, action=item.action, review_reasons=item.review_reasons)
@@ -149,19 +156,31 @@ class PublishStage:
         otro = extraction.otros[item.index]
         return OtroData(titulo=otro.titulo, contenido=otro.contenido, fuentes=[entry(otro.contenido[:200])])
 
-    def _create(self, data: NoteData, layout: Layout) -> str:
+    def _create(self, data: NoteData, layout: Layout, bookmark_id: str, key: str) -> str:
+        """Crea (o retoma, tras un fallo a medias) la nota de `data`. Idempotente vía `#jrItem`."""
         if isinstance(data, LugarData):
             parent, template = layout.mapa, layout.plantilla_lugar
         elif isinstance(data, CosaData):
             parent, template = layout.categorias[data.categoria], layout.plantilla_cosa
         else:
             parent, template = layout.cultura, None
-        note = self._t.create_note(parent, note_title(data), "text", compose_content(render_generated(data), None))
-        for name, value in labels_for(data).items():
-            self._t.add_label(note.note_id, name, value)
-        if template:
+        item_id = f"{bookmark_id}:{key}"
+        found = self._t.search(f'#jrItem="{item_id}"', ancestor=layout.root)
+        if found:
+            note = found[0]
+        else:
+            created = self._t.create_note(parent, note_title(data), "text", "")
+            self._t.add_label(created.note_id, "jrItem", item_id)
+            note = self._t.get_note(created.note_id)
+        self._t.set_content(note.note_id, compose_content(render_generated(data), None))
+        upsert_labels(self._t, note, labels_for(data))
+        if template and template not in note.relations("template"):
             self._t.add_relation(note.note_id, "template", template)
-        self._t.create_attachment(note.note_id, DATA_ATTACHMENT_TITLE, "application/json", dump_data(data))
+        attachment = next((a for a in self._t.list_attachments(note.note_id) if a.title == DATA_ATTACHMENT_TITLE), None)
+        if attachment is None:
+            self._t.create_attachment(note.note_id, DATA_ATTACHMENT_TITLE, "application/json", dump_data(data))
+        else:
+            self._t.set_attachment_content(attachment.attachment_id, dump_data(data))
         return note.note_id
 
     def _merge(self, note_id: str, new: NoteData) -> str:
@@ -178,12 +197,14 @@ class PublishStage:
                 data.place = new.place
             if isinstance(data, CosaData) and isinstance(new, CosaData):
                 data.donde = _unique(data.donde + new.donde)
-        self._t.set_content(note_id, compose_content(render_generated(data), self._t.get_content(note_id)))
-        upsert_labels(self._t, note, labels_for(data))
+        # El adjunto se escribe primero: si el reintento se corta después, ya se ve la fuente
+        # como incorporada y no se vuelve a llamar al LLM de pago.
         if attachment is None:
             self._t.create_attachment(note_id, DATA_ATTACHMENT_TITLE, "application/json", dump_data(data))
         else:
             self._t.set_attachment_content(attachment.attachment_id, dump_data(data))
+        self._t.set_content(note_id, compose_content(render_generated(data), self._t.get_content(note_id)))
+        upsert_labels(self._t, note, labels_for(data))
         return note_id
 
     def _merge_text(self, data: NoteData, new: NoteData) -> None:
@@ -208,17 +229,22 @@ class PublishStage:
         if isinstance(data, LugarData):
             data.que_hacer = merged.que_hacer
 
-    def _create_failure(self, ctx: JobContext, layout: Layout) -> str:
+    def _create_failure(self, ctx: JobContext, layout: Layout, key: str) -> str:
         fetch = ctx.result("fetch", FetchResult)
         transcript = ctx.result("transcribe", Transcript)
         extract = ctx.result("extract", ExtractResult)
         meta = fetch.meta
-        note = self._t.create_note(
-            layout.revision, f"Extracción fallida: {meta.title or meta.url}", "text",
-            render_failure(meta, transcript.text, extract.error or ""),
-        )
-        self._t.add_label(note.note_id, "jrTipo", "fallo")
-        return note.note_id
+        item_id = f"{ctx.job.bookmark_id}:{key}"
+        found = self._t.search(f'#jrItem="{item_id}"', ancestor=layout.root)
+        if found:
+            note_id = found[0].note_id
+        else:
+            note = self._t.create_note(layout.revision, f"Extracción fallida: {meta.title or meta.url}", "text", "")
+            self._t.add_label(note.note_id, "jrItem", item_id)
+            self._t.add_label(note.note_id, "jrTipo", "fallo")
+            note_id = note.note_id
+        self._t.set_content(note_id, render_failure(meta, transcript.text, extract.error or ""))
+        return note_id
 
     def _send_to_review(self, note_id: str, reasons: list[str], layout: Layout) -> None:
         note = self._t.get_note(note_id)

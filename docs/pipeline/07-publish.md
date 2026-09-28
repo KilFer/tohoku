@@ -14,7 +14,7 @@
 **Extracción fallida:** nota en la Bandeja con caption, transcripción, error y enlace.
 **Cosa con local concreto:** relación `~dondeComprar` hacia la nota Lugar del local.
 
-**Idempotencia:** cada elemento publicado se registra en `state.db` (`published`). Si el job se reintenta, los elementos ya publicados no se repiten. Reprocesar la misma fuente no duplica la entrada de "Fuentes" ni llama al LLM.
+**Idempotencia:** cada elemento publicado se registra en `state.db` (`published`). Si el job se reintenta, los elementos ya publicados no se repiten. Reprocesar la misma fuente no duplica la entrada de "Fuentes" ni llama al LLM. Además, al crear una nota (`create` o cuando la nota de fusión ha sido borrada), lo primero que se escribe tras `create-note` es la etiqueta `#jrItem="<bookmark_id>:<clave>"`; si la etapa se corta a medias (p. ej. un timeout al crear el adjunto), el reintento busca esa etiqueta bajo la raíz y retoma la misma nota en vez de crear otra, completando de forma idempotente etiquetas, `~template` y el adjunto `japan-reader.json`. En la fusión, el adjunto se escribe antes que el contenido y las etiquetas, así un reintento ve la fuente ya incorporada y no repite la llamada al LLM. Si la nota de fusión ya no existe (404), se crea una nueva en su lugar.
 
 **Fallos:** errores de Trilium → reintento; presupuesto de OpenRouter agotado → espera al día siguiente.
 **Cómo probarla:** `uv run pytest tests/unit/test_publish.py`. Contra Trilium real: `uv run pytest -m integration -k trilium`.

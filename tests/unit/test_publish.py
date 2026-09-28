@@ -5,6 +5,7 @@ import pytest
 
 from builders import make_cosa, make_ctx, make_extraction, make_fetch, make_geo, make_job, make_lugar, make_meta
 from fakes import FakeLLM, FakeTrilium
+from japan_reader.errors import ApiError, TransientError
 from japan_reader.models import (
     ExtractResult,
     GeocodeResult,
@@ -172,3 +173,68 @@ def test_synthetic_summary_note_and_alias(env):
     items = [_item(), _item(index=1, action="alias", alias_of="lugar:0")]
     result = _stage(env).run(_ctx(env, "b2", make_extraction(lugares=[make_lugar(), make_lugar("伏見")]), GEO, items))
     assert len(result.notes) == 1
+
+
+class _FlakyAttachmentTrilium(FakeTrilium):
+    """Falla la primera vez que se intenta crear el adjunto `japan-reader.json`."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._attachment_failed = False
+
+    def create_attachment(self, owner_id, title, mime, content, role="file"):
+        if not self._attachment_failed:
+            self._attachment_failed = True
+            raise TransientError("timeout creando el adjunto")
+        return super().create_attachment(owner_id, title, mime, content, role)
+
+
+class _MissingNoteTrilium(FakeTrilium):
+    """`get_note` devuelve 404 para una nota que el usuario borró."""
+
+    def get_note(self, note_id):
+        if note_id == "gone":
+            raise ApiError("trilium", 404, "not found")
+        return super().get_note(note_id)
+
+
+def test_create_is_crash_safe_and_resumes_without_duplicating(tmp_path, settings):
+    trilium = _FlakyAttachmentTrilium()
+    viajes = trilium.add_note("root", "Viajes")
+    trilium.add_note(viajes, "Ideas de Japón", labels={"jrRoot": ""})
+    layout = init_layout(trilium)
+    state = StateStore(tmp_path / "state.db")
+    stage = PublishStage(trilium, lambda: layout, FakeLLM([]), settings, DailyQuota(state, "openrouter_usd", 10), state)
+    env = SimpleNamespace(tmp=tmp_path)
+    ctx = _ctx(env, "b1", make_extraction(lugares=[make_lugar()]), GEO, [_item()])
+
+    with pytest.raises(TransientError):
+        stage.run(ctx)
+
+    result = stage.run(ctx)
+
+    children = trilium.children(layout.mapa)
+    assert len(children) == 1
+    note_id = children[0]
+    assert result.notes[0].note_id == note_id
+    assert [a.title for a in trilium.list_attachments(note_id)] == ["japan-reader.json"]
+    labels = trilium.labels(note_id)
+    assert labels["googlePlaceId"] == "P1"
+    assert labels["jrItem"] == "b1:lugar:0"
+
+
+def test_merge_target_deleted_falls_back_to_create(tmp_path, settings):
+    trilium = _MissingNoteTrilium()
+    viajes = trilium.add_note("root", "Viajes")
+    trilium.add_note(viajes, "Ideas de Japón", labels={"jrRoot": ""})
+    layout = init_layout(trilium)
+    state = StateStore(tmp_path / "state.db")
+    stage = PublishStage(trilium, lambda: layout, FakeLLM([]), settings, DailyQuota(state, "openrouter_usd", 10), state)
+    env = SimpleNamespace(tmp=tmp_path)
+
+    result = stage.run(_ctx(env, "b1", make_extraction(lugares=[make_lugar()]), GEO, [_item(action="merge", existing="gone")]))
+
+    note_id = result.notes[0].note_id
+    assert note_id != "gone"
+    assert trilium.get_note(note_id).parent_note_ids == [layout.mapa]
+    assert trilium.labels(note_id)["jrItem"] == "b1:lugar:0"
