@@ -9,10 +9,19 @@ from japan_reader.clients.openrouter import OpenRouterClient, image_part
 from japan_reader.errors import ApiError, ConfigError
 
 HOST = "openrouter.ai"
+MODELS = {"data": [
+    {"id": "vision/model", "architecture": {"input_modalities": ["text", "image"]},
+     "supported_parameters": ["response_format", "temperature"]},
+    # Modelo de razonamiento real (openai/gpt-6-luna): no admite temperature.
+    {"id": "reasoning/model", "architecture": {"input_modalities": ["text", "image"]},
+     "supported_parameters": ["max_tokens", "reasoning", "response_format", "structured_outputs"]},
+]}
+CHAT_OK = {"choices": [{"message": {"content": "{}"}}], "usage": {"cost": 0.0}}
 
 
 @respx.mock
 def test_chat_json_sends_schema_and_returns_cost():
+    respx.get(host=HOST, path="/api/v1/models").mock(return_value=httpx.Response(200, json=MODELS))
     route = respx.post(host=HOST, path="/api/v1/chat/completions").mock(
         return_value=httpx.Response(200, json={"choices": [{"message": {"content": '{"a": 1}'}}], "usage": {"cost": 0.0123}})
     )
@@ -27,7 +36,33 @@ def test_chat_json_sends_schema_and_returns_cost():
     assert body["response_format"]["json_schema"]["name"] == "extraction"
     assert body["provider"] == {"require_parameters": True}
     assert body["usage"] == {"include": True}
+    assert body["temperature"] == 0.2
     assert route.calls[0].request.headers["Authorization"] == "Bearer key"
+
+
+@respx.mock
+def test_temperature_omitted_when_model_does_not_support_it():
+    """Con require_parameters, enviar un parámetro no admitido deja la petición sin proveedor (404)."""
+    models = respx.get(host=HOST, path="/api/v1/models").mock(return_value=httpx.Response(200, json=MODELS))
+    route = respx.post(host=HOST, path="/api/v1/chat/completions").mock(return_value=httpx.Response(200, json=CHAT_OK))
+    client = OpenRouterClient("key")
+
+    client.chat_json("reasoning/model", [{"role": "user", "content": "a"}], {"type": "object"}, "x")
+    client.chat_json("reasoning/model", [{"role": "user", "content": "b"}], {"type": "object"}, "x")
+
+    for call in route.calls:
+        assert "temperature" not in json.loads(call.request.content)
+    assert models.call_count == 1  # la ficha de modelos se consulta una vez y se cachea
+
+
+@respx.mock
+def test_unknown_model_keeps_temperature():
+    respx.get(host=HOST, path="/api/v1/models").mock(return_value=httpx.Response(200, json=MODELS))
+    route = respx.post(host=HOST, path="/api/v1/chat/completions").mock(return_value=httpx.Response(200, json=CHAT_OK))
+
+    OpenRouterClient("key").chat_json("other/model", [{"role": "user", "content": "a"}], {"type": "object"}, "x")
+
+    assert json.loads(route.calls[0].request.content)["temperature"] == 0.2
 
 
 @respx.mock
@@ -71,6 +106,7 @@ def test_model_info():
 @respx.mock
 def test_chat_json_model_errors_are_config_errors(status, body):
     """Final review 4: modelo inexistente o sin proveedores → ConfigError (pausa y aviso), no jr:error."""
+    respx.get(host=HOST, path="/api/v1/models").mock(return_value=httpx.Response(200, json=MODELS))
     respx.post(host=HOST, path="/api/v1/chat/completions").mock(return_value=httpx.Response(status, json=body))
     with pytest.raises(ConfigError, match="modelo"):
         OpenRouterClient("key").chat_json("vision/model", [], {}, "x")
@@ -82,6 +118,7 @@ def test_chat_json_model_errors_are_config_errors(status, body):
 )
 @respx.mock
 def test_other_4xx_stay_api_errors(message):
+    respx.get(host=HOST, path="/api/v1/models").mock(return_value=httpx.Response(200, json=MODELS))
     respx.post(host=HOST, path="/api/v1/chat/completions").mock(
         return_value=httpx.Response(400, json={"error": {"message": message, "code": 400}})
     )

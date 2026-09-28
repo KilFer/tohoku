@@ -9,7 +9,7 @@
 
 **Configuración:** `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` (multimodal), `OPENROUTER_TEXT_MODEL` (opcional), `OPENROUTER_DAILY_BUDGET_USD`.
 
-**Modelo:** `OPENROUTER_MODEL` (multimodal; al arrancar se comprueba que ambos modelos existen y admiten `response_format`/`structured_outputs`) si hay imágenes; `OPENROUTER_TEXT_MODEL` (o el mismo) si no las hay. Petición con `response_format=json_schema`, `provider.require_parameters=true` y `usage.include=true` para conocer el coste real.
+**Modelo:** `OPENROUTER_MODEL` (multimodal; al arrancar se comprueba que ambos modelos existen y admiten `response_format`/`structured_outputs`) si hay imágenes; `OPENROUTER_TEXT_MODEL` (o el mismo) si no las hay. Petición con `response_format=json_schema`, `provider.require_parameters=true` y `usage.include=true` para conocer el coste real. `temperature=0.2` solo se envía si el modelo la admite según su ficha en `GET /models` (los modelos de razonamiento no la admiten y, con `require_parameters`, OpenRouter devolvería 404).
 
 **Prompt:** `src/japan_reader/prompts/extract.md` (versionado con el código). Pide leer el texto de las imágenes y contrastarlo con el audio.
 

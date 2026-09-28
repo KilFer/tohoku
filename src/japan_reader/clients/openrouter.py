@@ -5,7 +5,7 @@ import httpx
 from pydantic import BaseModel
 
 from japan_reader.clients.http import send
-from japan_reader.errors import ApiError, ConfigError, TransientError
+from japan_reader.errors import ApiError, ConfigError, JapanReaderError, TransientError
 
 BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -40,12 +40,22 @@ class OpenRouterClient:
     def __init__(self, api_key: str, http: httpx.Client | None = None) -> None:
         self._http = http or httpx.Client(timeout=180)
         self._headers = {"Authorization": f"Bearer {api_key}", "X-Title": "japan-reader"}
+        self._params_cache: dict[str, list[str] | None] = {}
+
+    def _supported_params(self, model: str) -> list[str] | None:
+        """`supported_parameters` del modelo, cacheado; None si no se conoce (modelo o catálogo no disponibles)."""
+        if model not in self._params_cache:
+            try:
+                info = self.model_info(model)
+            except JapanReaderError:
+                return None  # sin catálogo no se cachea: se reintenta en la siguiente llamada
+            self._params_cache[model] = (info or {}).get("supported_parameters") if info else None
+        return self._params_cache[model]
 
     def chat_json(self, model: str, messages: list[dict], schema: dict, schema_name: str) -> ChatResult:
         body = {
             "model": model,
             "messages": messages,
-            "temperature": 0.2,
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {"name": schema_name, "strict": False, "schema": schema},
@@ -53,6 +63,12 @@ class OpenRouterClient:
             "provider": {"require_parameters": True},
             "usage": {"include": True},
         }
+        # Con require_parameters, un parámetro que el modelo no admite (p. ej. temperature en modelos
+        # de razonamiento) deja la petición sin proveedor (404). Solo se envía si consta como admitido
+        # o si no se conoce la ficha del modelo.
+        params = self._supported_params(model)
+        if params is None or "temperature" in params:
+            body["temperature"] = 0.2
         try:
             data = send(self._http, "POST", f"{BASE_URL}/chat/completions", self.SERVICE, headers=self._headers, json=body).json()
         except ApiError as exc:
