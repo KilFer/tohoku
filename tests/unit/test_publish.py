@@ -238,3 +238,22 @@ def test_merge_target_deleted_falls_back_to_create(tmp_path, settings):
     assert note_id != "gone"
     assert trilium.get_note(note_id).parent_note_ids == [layout.mapa]
     assert trilium.labels(note_id)["jrItem"] == "b1:lugar:0"
+
+
+def test_recreating_after_state_reset_reuses_jritem_note_via_merge(env):
+    """Review Focus (fix round 2): reprocesar tras `clear_stages_from` no debe borrar "Mis notas"."""
+    extraction = make_extraction(lugares=[make_lugar()])
+    note_id = _stage(env).run(_ctx(env, "b1", extraction, GEO, [_item()])).notes[0].note_id
+    content = env.trilium.get_content(note_id)
+    env.trilium.set_content(note_id, content.replace("<h2>Mis notas</h2><p></p>", "<h2><strong>Mis notas</strong></h2><p>Reservar el martes</p>"))
+    env.state.clear_stages_from("b1", "publish", ["publish"])
+    llm = FakeLLM([])
+
+    result = _stage(env, llm).run(_ctx(env, "b1", extraction, GEO, [_item()]))
+
+    assert result.notes[0].note_id == note_id
+    assert len(env.trilium.children(env.layout.mapa)) == 1
+    content = env.trilium.get_content(note_id)
+    assert "Reservar el martes" in content
+    assert env.trilium.labels(note_id)["fuentes"] == "1"
+    assert llm.calls == []

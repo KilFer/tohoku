@@ -168,19 +168,23 @@ class PublishStage:
         found = self._t.search(f'#jrItem="{item_id}"', ancestor=layout.root)
         if found:
             note = found[0]
+            if any(a.title == DATA_ATTACHMENT_TITLE for a in self._t.list_attachments(note.note_id)):
+                # La nota ya estaba completa (de una ejecución anterior): se trata como una
+                # fusión para no perder "Mis notas" ni duplicar la fuente ni volver a crearla.
+                return self._merge(note.note_id, data)
+            # Retomamos una creación cortada a medias: no hay adjunto todavía, pero puede
+            # haber contenido ya escrito (y hasta ediciones del usuario bajo "Mis notas").
+            existing_content = self._t.get_content(note.note_id)
         else:
             created = self._t.create_note(parent, note_title(data), "text", "")
             self._t.add_label(created.note_id, "jrItem", item_id)
             note = self._t.get_note(created.note_id)
-        self._t.set_content(note.note_id, compose_content(render_generated(data), None))
+            existing_content = None
+        self._t.set_content(note.note_id, compose_content(render_generated(data), existing_content))
         upsert_labels(self._t, note, labels_for(data))
         if template and template not in note.relations("template"):
             self._t.add_relation(note.note_id, "template", template)
-        attachment = next((a for a in self._t.list_attachments(note.note_id) if a.title == DATA_ATTACHMENT_TITLE), None)
-        if attachment is None:
-            self._t.create_attachment(note.note_id, DATA_ATTACHMENT_TITLE, "application/json", dump_data(data))
-        else:
-            self._t.set_attachment_content(attachment.attachment_id, dump_data(data))
+        self._t.create_attachment(note.note_id, DATA_ATTACHMENT_TITLE, "application/json", dump_data(data))
         return note.note_id
 
     def _merge(self, note_id: str, new: NoteData) -> str:
@@ -237,7 +241,9 @@ class PublishStage:
         item_id = f"{ctx.job.bookmark_id}:{key}"
         found = self._t.search(f'#jrItem="{item_id}"', ancestor=layout.root)
         if found:
-            note_id = found[0].note_id
+            note = found[0]
+            upsert_labels(self._t, note, {"jrTipo": "fallo"})
+            note_id = note.note_id
         else:
             note = self._t.create_note(layout.revision, f"Extracción fallida: {meta.title or meta.url}", "text", "")
             self._t.add_label(note.note_id, "jrItem", item_id)
