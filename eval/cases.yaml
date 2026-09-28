@@ -1,0 +1,12 @@
+# Casos de evaluación del LLM. Rellenar con 10-15 enlaces REALES guardados por Fernando.
+# Incluir: Reels con el lugar solo escrito en pantalla, carruseles con texto en las imágenes,
+# posts de una sola imagen, algún Short sin relación con Japón y alguno de "cosas" (souvenirs, cadenas).
+#
+# Formato de cada caso:
+# - id: ramen-shibuya
+#   url: https://www.instagram.com/reel/XXXXXXXX/
+#   expect:
+#     japan: true
+#     lugares: ["Ichiran Shibuya"]
+#     cosas: []
+[]

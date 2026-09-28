@@ -6,9 +6,12 @@ from pydantic import ValidationError
 
 from japan_reader.config import Settings
 from japan_reader.errors import ConfigError
+from japan_reader.evaluation import EvalRunner, format_table, load_cases
 from japan_reader.instagram_export import filter_collection, format_import_report, import_items, parse_export
 from japan_reader.log import setup_logging
 from japan_reader.service import REPROCESS_FROM, format_status, reprocess
+from japan_reader.stages.extract import ExtractStage
+from japan_reader.stages.fetch import FetchStage
 from japan_reader.trilium_layout import init_layout
 from japan_reader.wiring import App, build_app
 
@@ -89,3 +92,20 @@ def import_instagram(
         items = filter_collection(items, collection)
     report = import_items(items, loaded.karakeep, loaded.settings.karakeep_list_id, dry_run)
     typer.echo(format_import_report(report, dry_run))
+
+
+@app.command("eval")
+def eval_cmd(
+    cases: Annotated[Path, typer.Option(help="Fichero YAML de casos")] = Path("eval/cases.yaml"),
+    model: Annotated[str | None, typer.Option(help="Modelo de OpenRouter a evaluar (por defecto OPENROUTER_MODEL)")] = None,
+    keyframes: Annotated[bool, typer.Option("--keyframes/--no-keyframes", help="Enviar fotogramas clave de los vídeos")] = True,
+) -> None:
+    """Compara modelos y el uso de fotogramas con casos reales (el coste cuenta en el presupuesto diario)."""
+    loaded = _load()
+    updates: dict = {"reel_keyframes_enabled": True}
+    if model:
+        updates |= {"openrouter_model": model, "openrouter_text_model": model}
+    settings = loaded.settings.model_copy(update=updates)
+    runner = EvalRunner(FetchStage(settings, loaded.ytdlp, loaded.gallery, loaded.karakeep), loaded.transcribe, Path("eval/.cache"))
+    scores = runner.run(load_cases(cases), ExtractStage(settings, loaded.llm, loaded.llm_budget), settings.thresholds, keyframes)
+    typer.echo(format_table(scores, settings.openrouter_model, keyframes))
