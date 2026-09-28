@@ -1,6 +1,7 @@
 import os
 
 import pytest
+from pydantic import ValidationError
 
 from japan_reader.clients.karakeep import KarakeepClient
 from japan_reader.clients.trilium import TriliumClient
@@ -23,7 +24,10 @@ def _env(name: str) -> str:
 
 @pytest.fixture
 def live() -> Settings:
-    return Settings()
+    try:
+        return Settings()
+    except ValidationError as exc:
+        pytest.skip(f".env incompleto para pruebas de integración: {exc.error_count()} campos")
 
 
 def test_trilium_test_tree_and_geomap(live):
