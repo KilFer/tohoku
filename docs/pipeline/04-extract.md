@@ -5,6 +5,10 @@
 **Entrada:** metadatos, caption, hashtags, transcripción, imágenes del post y fotogramas clave.
 **Salida:** `ExtractResult {extraction | None, error, cost_usd}`. Esquema `Extraction` (spec §5.4, más `que_hacer` en cada lugar).
 
+**Dependencias:** OpenRouter (API compatible con OpenAI, `POST /api/v1/chat/completions`), resultados de `fetch` y `transcribe`, contador diario `openrouter_usd` en `state.db`.
+
+**Configuración:** `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` (multimodal), `OPENROUTER_TEXT_MODEL` (opcional), `OPENROUTER_DAILY_BUDGET_USD`.
+
 **Modelo:** `OPENROUTER_MODEL` (multimodal; se comprueba al arrancar) si hay imágenes; `OPENROUTER_TEXT_MODEL` (o el mismo) si no las hay. Petición con `response_format=json_schema`, `provider.require_parameters=true` y `usage.include=true` para conocer el coste real.
 
 **Prompt:** `src/japan_reader/prompts/extract.md` (versionado con el código). Pide leer el texto de las imágenes y contrastarlo con el audio.
