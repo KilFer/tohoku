@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -5,6 +6,7 @@ from pydantic import ValidationError
 
 from japan_reader.config import Settings
 from japan_reader.errors import ConfigError
+from japan_reader.instagram_export import filter_collection, format_import_report, import_items, parse_export
 from japan_reader.log import setup_logging
 from japan_reader.service import REPROCESS_FROM, format_status, reprocess
 from japan_reader.trilium_layout import init_layout
@@ -72,3 +74,18 @@ def reprocess_cmd(
         typer.echo(str(exc))
         raise typer.Exit(1) from exc
     typer.echo(f"{job.bookmark_id} en cola desde '{from_stage}'; se procesará en el próximo ciclo.")
+
+
+@app.command("import-instagram")
+def import_instagram(
+    path: Path,
+    collection: Annotated[str | None, typer.Option(help="Importar solo esta colección (p. ej. 'Japón')")] = None,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Solo contar, sin crear nada")] = False,
+) -> None:
+    """Importa a la lista de Karakeep los enlaces de la exportación de Instagram."""
+    loaded = _load()
+    items = parse_export(path)
+    if collection:
+        items = filter_collection(items, collection)
+    report = import_items(items, loaded.karakeep, loaded.settings.karakeep_list_id, dry_run)
+    typer.echo(format_import_report(report, dry_run))
