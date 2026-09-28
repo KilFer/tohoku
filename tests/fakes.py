@@ -1,7 +1,12 @@
+import itertools
+import re
 from pathlib import Path
 
 from japan_reader.clients.karakeep import Bookmark
 from japan_reader.clients.openrouter import ChatResult
+from japan_reader.clients.trilium import TAttachment, TAttr, TNote
+
+_CONDITION = re.compile(r'#([\w:]+)(?:=(?:"([^"]*)"|(\S+)))?')
 
 
 class FakeKarakeep:
@@ -67,3 +72,112 @@ class FakeLLM:
 
     def model_supports_images(self, model: str) -> bool:
         return self.images
+
+
+class FakeTrilium:
+    """Trilium en memoria. Soporta búsquedas `#etiqueta` y `#etiqueta=valor` combinadas (AND)."""
+
+    def __init__(self) -> None:
+        self._ids = itertools.count(1)
+        self.notes: dict[str, dict] = {"root": {"title": "root", "type": "text", "content": "", "parents": []}}
+        self.attrs: dict[str, dict] = {}
+        self.attachments: dict[str, dict] = {}
+
+    def _new_id(self, prefix: str) -> str:
+        return f"{prefix}{next(self._ids)}"
+
+    # --- utilidades de test ---
+    def add_note(self, parent: str, title: str, labels: dict | None = None, type: str = "text", content: str = "") -> str:
+        note_id = self._new_id("n")
+        self.notes[note_id] = {"title": title, "type": type, "content": content, "parents": [parent]}
+        for name, value in (labels or {}).items():
+            self.add_label(note_id, name, value)
+        return note_id
+
+    def labels(self, note_id: str) -> dict[str, str]:
+        return {a["name"]: a["value"] for a in self.attrs.values() if a["note"] == note_id and a["type"] == "label"}
+
+    def children(self, parent: str) -> list[str]:
+        return [nid for nid, n in self.notes.items() if parent in n["parents"]]
+
+    # --- interfaz de TriliumClient ---
+    def app_info(self) -> dict:
+        return {"appVersion": "fake"}
+
+    def get_note(self, note_id: str) -> TNote:
+        note = self.notes[note_id]
+        attributes = [
+            TAttr(attributeId=aid, type=a["type"], name=a["name"], value=a["value"])
+            for aid, a in self.attrs.items() if a["note"] == note_id
+        ]
+        return TNote(
+            noteId=note_id, title=note["title"], type=note["type"], attributes=attributes,
+            parentNoteIds=list(note["parents"]), parentBranchIds=[f"{p}_{note_id}" for p in note["parents"]],
+        )
+
+    def create_note(self, parent_id: str, title: str, type: str = "text", content: str = "") -> TNote:
+        return self.get_note(self.add_note(parent_id, title, type=type, content=content))
+
+    def get_content(self, note_id: str) -> str:
+        return self.notes[note_id]["content"]
+
+    def set_content(self, note_id: str, content: str) -> None:
+        self.notes[note_id]["content"] = content
+
+    def add_label(self, note_id: str, name: str, value: str = "") -> str:
+        attr_id = self._new_id("a")
+        self.attrs[attr_id] = {"note": note_id, "type": "label", "name": name, "value": value}
+        return attr_id
+
+    def add_relation(self, note_id: str, name: str, target_id: str) -> str:
+        attr_id = self._new_id("a")
+        self.attrs[attr_id] = {"note": note_id, "type": "relation", "name": name, "value": target_id}
+        return attr_id
+
+    def update_attribute(self, attribute_id: str, value: str) -> None:
+        self.attrs[attribute_id]["value"] = value
+
+    def delete_attribute(self, attribute_id: str) -> None:
+        del self.attrs[attribute_id]
+
+    def clone(self, note_id: str, parent_id: str) -> str:
+        self.notes[note_id]["parents"].append(parent_id)
+        return f"{parent_id}_{note_id}"
+
+    def create_attachment(self, owner_id: str, title: str, mime: str, content: str, role: str = "file") -> str:
+        attachment_id = self._new_id("x")
+        self.attachments[attachment_id] = {"owner": owner_id, "title": title, "mime": mime, "role": role, "content": content}
+        return attachment_id
+
+    def list_attachments(self, note_id: str) -> list[TAttachment]:
+        return [
+            TAttachment(attachmentId=aid, title=a["title"], mime=a["mime"], role=a["role"])
+            for aid, a in self.attachments.items() if a["owner"] == note_id
+        ]
+
+    def get_attachment_content(self, attachment_id: str) -> str:
+        return self.attachments[attachment_id]["content"]
+
+    def set_attachment_content(self, attachment_id: str, content: str) -> None:
+        self.attachments[attachment_id]["content"] = content
+
+    def search(self, query: str, ancestor: str | None = None, ancestor_depth: str | None = None, limit: int | None = None) -> list[TNote]:
+        conditions = [(m.group(1), m.group(2) if m.group(2) is not None else m.group(3)) for m in _CONDITION.finditer(query)]
+        found = []
+        for note_id in self.notes:
+            if note_id == "root" or (ancestor and not self._under(note_id, ancestor, ancestor_depth)):
+                continue
+            labels = [(a["name"], a["value"]) for a in self.attrs.values() if a["note"] == note_id and a["type"] == "label"]
+            if all(any(n == name and (value is None or v == value) for n, v in labels) for name, value in conditions):
+                found.append(self.get_note(note_id))
+        return found[:limit] if limit else found
+
+    def _under(self, note_id: str, ancestor: str, depth: str | None) -> bool:
+        frontier, level = {note_id}, 0
+        while frontier:
+            level += 1
+            parents = {p for n in frontier for p in self.notes[n]["parents"]}
+            if ancestor in parents and (depth is None or depth == f"eq{level}"):
+                return True
+            frontier = parents
+        return False
