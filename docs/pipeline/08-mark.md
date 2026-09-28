@@ -5,6 +5,7 @@
 **Entrada:** `bookmark_id` y el resultado (`Outcome`) calculado por `publish`, o `error`.
 **Salida:** `MarkResult {tag, archived}`.
 **Dependencias:** Karakeep (`GET /bookmarks/{id}`, `POST/DELETE /bookmarks/{id}/tags`, `PATCH /bookmarks/{id}`).
+**Configuración:** `KARAKEEP_URL`, `KARAKEEP_API_KEY`. La etapa no tiene ajustes propios; las etiquetas son fijas (ver tabla).
 
 | Resultado | Etiqueta | Archivar |
 |---|---|---|
