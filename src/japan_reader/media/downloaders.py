@@ -20,6 +20,9 @@ _PERMANENT_MARKERS = (
     "private", "unavailable", "removed", "not available", "login required", "log in",
     "does not exist", "copyright", "sign in to confirm", "404",
 )
+# Límites de ritmo (sobre todo de Instagram): transitorios aunque el mensaje de yt-dlp incluya
+# marcadores permanentes ("Requested content is not available, rate-limit reached or login required").
+_RATE_LIMIT_MARKERS = ("rate-limit", "rate limit", "too many requests", "please wait")
 _HASHTAG = re.compile(r"#(\w+)")
 # HTTP 5xx / 429 son fallos transitorios del servidor aunque su frase de motivo
 # (p. ej. "503 Service Unavailable") contenga una palabra de la lista de
@@ -27,6 +30,10 @@ _HASHTAG = re.compile(r"#(\w+)")
 # Cubre tanto el formato de yt-dlp ("HTTP Error 503: ...") como el de gallery-dl
 # ("HttpError: '503 Service Unavailable' for '<url>'").
 _HTTP_STATUS = re.compile(r"http\s*error[:\s]*'?(\d{3})")
+
+
+class TooLongError(PermanentError):
+    """El vídeo supera MAX_VIDEO_DURATION_MIN: no tiene sentido buscar otra copia."""
 
 
 class DownloadedMedia(BaseModel):
@@ -38,6 +45,8 @@ class DownloadedMedia(BaseModel):
 
 def classify_download_error(message: str) -> type[JapanReaderError]:
     lowered = message.lower()
+    if any(marker in lowered for marker in _RATE_LIMIT_MARKERS):
+        return TransientError
     match = _HTTP_STATUS.search(lowered)
     if match and (int(match.group(1)) >= 500 or int(match.group(1)) == 429):
         return TransientError
@@ -117,7 +126,7 @@ class YtDlpDownloader:
                 info = ydl.extract_info(url, download=False)
                 duration = info.get("duration")
                 if duration and duration > self._max_duration:
-                    raise PermanentError(f"demasiado largo ({duration:.0f} s > {self._max_duration} s)")
+                    raise TooLongError(f"demasiado largo ({duration:.0f} s > {self._max_duration} s)")
                 ydl.process_ie_result(info, download=True)
         except DownloadError as exc:
             raise classify_download_error(str(exc))(f"yt-dlp: {exc}") from exc

@@ -29,6 +29,7 @@ Si el coste de visión es alto: `REEL_KEYFRAMES_ENABLED=false`.
 
 ## Cookies de Instagram
 Cuando aparezcan `jr:error` con "login required": exporta las cookies de instagram.com (formato Netscape) desde un navegador con una **cuenta secundaria** a `secrets/instagram_cookies.txt`, pon `INSTAGRAM_COOKIES_FILE=/secrets/instagram_cookies.txt` en `.env`, `docker compose up -d` y reprocesa los fallidos con `reprocess <id> --from fetch`. El servicio trabaja con una copia: el fichero original no se modifica.
+Para no disparar los límites de ritmo de Instagram, entre dos descargas de Instagram pasan al menos `INSTAGRAM_MIN_INTERVAL_SECONDS` (20 s por defecto). Un "rate-limit reached" no marca `jr:error`: se reintenta con espera.
 
 ## Importar el historial de Instagram
 1. Instagram → Centro de cuentas → Tu información y permisos → Descargar tu información → solo "Guardado", formato **JSON**.
@@ -38,7 +39,7 @@ Cuando aparezcan `jr:error` con "login required": exporta las cookies de instagr
 Nota: si un enlace ya estaba en Karakeep con otra forma de URL (p. ej. con `?igsh=`), puede crearse un segundo bookmark; la nota de Trilium no se duplica.
 
 ## Avisos (ntfy)
-Llegan avisos por: error definitivo de un enlace, error de configuración (el servicio se pausa hasta que se corrija), límite diario alcanzado. Con `NTFY_DAILY_SUMMARY=true`, resumen a partir de las 21:00.
+Llegan avisos por: error definitivo de un enlace, error de configuración (el servicio se pausa hasta que se corrija), límite diario alcanzado (en cuanto se alcanza, la pasada se detiene y el resto de enlaces siguen pendientes hasta la siguiente). Con `NTFY_DAILY_SUMMARY=true`, resumen a partir de las 21:00.
 
 ## Costes y cuotas
 - Google Cloud Console → APIs → Places API (New) → Cuotas: limita "SearchTextRequest per day" a ~200 como red de seguridad.

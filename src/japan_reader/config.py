@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -47,6 +48,7 @@ class Settings(BaseSettings):
     max_video_duration_min: int = 15
 
     instagram_cookies_file: Path | None = None
+    instagram_min_interval_seconds: int = 20
 
     ntfy_url: str | None = None
     ntfy_topic: str | None = None
@@ -60,6 +62,14 @@ class Settings(BaseSettings):
     japan_review_confidence: float = 0.7
     item_review_confidence: float = 0.7
     cosa_duplicate_similarity: float = 0.85
+
+    @field_validator("instagram_cookies_file", mode="before")
+    @classmethod
+    def _empty_path_is_none(cls, value: object) -> object:
+        """`INSTAGRAM_COOKIES_FILE=` (vacío) significa "sin cookies", no `Path('.')`."""
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     @property
     def text_model(self) -> str:

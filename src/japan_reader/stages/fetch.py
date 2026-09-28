@@ -1,5 +1,7 @@
 import logging
 import shutil
+import time
+from collections.abc import Callable
 from pathlib import Path
 
 from japan_reader.clients.karakeep import KarakeepClient
@@ -7,7 +9,7 @@ from japan_reader.config import Settings
 from japan_reader.context import JobContext
 from japan_reader.errors import JapanReaderError, PermanentError
 from japan_reader.media.audio import extract_audio
-from japan_reader.media.downloaders import DownloadedMedia, GalleryDlDownloader, YtDlpDownloader
+from japan_reader.media.downloaders import DownloadedMedia, GalleryDlDownloader, TooLongError, YtDlpDownloader
 from japan_reader.media.images import resize_image
 from japan_reader.media.keyframes import extract_keyframes
 from japan_reader.models import ContentType, FetchResult, SourceMeta
@@ -31,6 +33,8 @@ class FetchStage:
         karakeep: KarakeepClient,
         keyframer=extract_keyframes,
         audio_extractor=extract_audio,
+        sleep: Callable[[float], None] = time.sleep,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._settings = settings
         self._ytdlp = ytdlp
@@ -38,28 +42,19 @@ class FetchStage:
         self._karakeep = karakeep
         self._keyframer = keyframer
         self._audio = audio_extractor
+        self._sleep = sleep
+        self._clock = clock
+        self._last_instagram: float | None = None
 
     def run(self, ctx: JobContext) -> FetchResult:
         for sub in ("raw", "images", "frames", "audio"):
             shutil.rmtree(ctx.workdir / sub, ignore_errors=True)
         raw = ctx.workdir / "raw"
-        media = self._download(ctx.job, raw)
-        s = self._settings
-
-        images = [
-            resize_image(path, ctx.workdir / "images" / f"{i:02}.jpg", s.image_max_side)
-            for i, path in enumerate(media.images[: s.post_images_max])
-        ]
-        audio: list[Path] = []
-        frames: list[Path] = []
-        for i, video in enumerate(media.videos):
-            track = self._audio(video, ctx.workdir / "audio" / f"{i:02}.wav")
-            if track:
-                audio.append(track)
-            if s.reel_keyframes_enabled:
-                for j, frame in enumerate(self._keyframer(video, raw / f"frames{i:02}", s.keyframes_max)):
-                    frames.append(resize_image(frame, ctx.workdir / "frames" / f"{i:02}_{j:02}.jpg", s.image_max_side))
-        shutil.rmtree(raw, ignore_errors=True)
+        try:
+            media, images, audio, frames = self._fetch(ctx, raw)
+        finally:
+            # `raw/` puede contener la copia de las cookies de Instagram: se borra siempre.
+            shutil.rmtree(raw, ignore_errors=True)
 
         def rel(path: Path) -> str:
             return str(path.relative_to(ctx.workdir))
@@ -76,21 +71,54 @@ class FetchStage:
             keyframes=[rel(p) for p in frames],
         )
 
+    def _fetch(self, ctx: JobContext, raw: Path) -> tuple[DownloadedMedia, list[Path], list[Path], list[Path]]:
+        media = self._download(ctx.job, raw)
+        s = self._settings
+        images = [
+            resize_image(path, ctx.workdir / "images" / f"{i:02}.jpg", s.image_max_side)
+            for i, path in enumerate(media.images[: s.post_images_max])
+        ]
+        audio: list[Path] = []
+        frames: list[Path] = []
+        for i, video in enumerate(media.videos):
+            track = self._audio(video, ctx.workdir / "audio" / f"{i:02}.wav")
+            if track:
+                audio.append(track)
+            if s.reel_keyframes_enabled:
+                for j, frame in enumerate(self._keyframer(video, raw / f"frames{i:02}", s.keyframes_max)):
+                    frames.append(resize_image(frame, ctx.workdir / "frames" / f"{i:02}_{j:02}.jpg", s.image_max_side))
+        return media, images, audio, frames
+
+    def _wait_for_instagram(self) -> None:
+        """Deja al menos INSTAGRAM_MIN_INTERVAL_SECONDS entre descargas de Instagram (límites de ritmo)."""
+        if self._last_instagram is None:
+            return
+        wait = self._settings.instagram_min_interval_seconds - (self._clock() - self._last_instagram)
+        if wait > 0:
+            log.info("espero %.0f s antes de la siguiente descarga de Instagram", wait)
+            self._sleep(wait)
+
     def _download(self, job: Job, raw: Path) -> DownloadedMedia:
         if job.platform is None or job.hint is None:
             raise PermanentError("fuente no soportada")
+        instagram = job.platform == Platform.INSTAGRAM
+        if instagram:
+            self._wait_for_instagram()
         try:
             if job.hint == ContentHint.VIDEO:
                 return self._ytdlp.download(job.url, job.platform, raw)
             return self._gallery.download(job.url, raw)
         except PermanentError as exc:
-            if job.platform != Platform.INSTAGRAM:
+            if not instagram or isinstance(exc, TooLongError):
                 raise
             fallback = self._from_karakeep(job, raw)
             if fallback is None:
                 raise
             log.warning("bookmark=%s descarga fallida (%s); uso los medios archivados por Karakeep", job.bookmark_id, exc)
             return fallback
+        finally:
+            if instagram:
+                self._last_instagram = self._clock()
 
     def _from_karakeep(self, job: Job, raw: Path) -> DownloadedMedia | None:
         try:

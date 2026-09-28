@@ -9,6 +9,7 @@ from yt_dlp.utils import DownloadError
 from japan_reader.errors import ConfigError, PermanentError, TransientError
 from japan_reader.media.downloaders import (
     GalleryDlDownloader,
+    TooLongError,
     YtDlpDownloader,
     classify_download_error,
     prepare_cookies,
@@ -67,7 +68,12 @@ INFO = {
     [
         ("ERROR: Private video", PermanentError),
         ("ERROR: This video is unavailable", PermanentError),
-        ("Requested content is not available, rate-limit reached or login required", PermanentError),
+        # Final review 3: los límites de ritmo de Instagram son transitorios aunque el mensaje
+        # contenga también marcadores permanentes ("not available", "login required").
+        ("Requested content is not available, rate-limit reached or login required", TransientError),
+        ("HTTP Error 429: Too Many Requests", TransientError),
+        ("Please wait a few minutes before you try again.", TransientError),
+        ("rate limit exceeded", TransientError),
         ("HTTP Error 404: Not Found", PermanentError),
         ("Read timed out", TransientError),
         ("HTTP Error 503: Service Unavailable", TransientError),
@@ -95,7 +101,7 @@ def test_ytdlp_download_returns_video_meta_and_subtitles(tmp_path):
 
 
 def test_ytdlp_rejects_long_videos(tmp_path):
-    with pytest.raises(PermanentError, match="demasiado largo"):
+    with pytest.raises(TooLongError, match="demasiado largo"):
         YtDlpDownloader(None, 900, ydl_factory=ydl_factory(INFO | {"duration": 3600})).download(
             "https://youtu.be/x", Platform.YOUTUBE, tmp_path / "raw"
         )

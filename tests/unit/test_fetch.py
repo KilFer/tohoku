@@ -6,7 +6,7 @@ from fakes import FakeKarakeep
 from helpers import make_image, make_video
 from japan_reader.clients.karakeep import Bookmark
 from japan_reader.errors import PermanentError, TransientError
-from japan_reader.media.downloaders import DownloadedMedia
+from japan_reader.media.downloaders import DownloadedMedia, TooLongError
 from japan_reader.models import ContentType, SourceMeta
 from japan_reader.sources import ContentHint, Platform
 from japan_reader.stages.fetch import FetchStage
@@ -101,3 +101,68 @@ def test_job_without_platform_is_permanent_error(tmp_path, settings):
     job = make_job(url="https://tiktok.com/x", platform=None, hint=None)
     with pytest.raises(PermanentError, match="no soportada"):
         FetchStage(settings, StubVideo(), StubPost(), FakeKarakeep()).run(make_ctx(tmp_path, job=job))
+
+
+def test_raw_dir_is_removed_even_when_download_fails(tmp_path, settings):
+    """Final review minor a: `raw/` puede contener la copia de las cookies."""
+
+    class Failing:
+        def download(self, url, platform, dest):
+            dest.mkdir(parents=True, exist_ok=True)
+            (dest / "cookies.txt").write_text("secreto")
+            raise PermanentError("Private video")
+
+    ctx = make_ctx(tmp_path)
+    with pytest.raises(PermanentError):
+        FetchStage(settings, Failing(), StubPost(), FakeKarakeep()).run(ctx)
+    assert not (ctx.workdir / "raw").exists()
+
+
+def test_too_long_video_does_not_use_karakeep_fallback(tmp_path, settings):
+    karakeep = FakeKarakeep([Bookmark(id="b1", url=IG_REEL.url, video_asset_id="a1")])
+    karakeep.assets["a1"] = b"x"
+    error = TooLongError("demasiado largo (1200 s > 900 s)")
+    with pytest.raises(PermanentError, match="demasiado largo"):
+        FetchStage(settings, StubVideo(error), StubPost(), karakeep).run(make_ctx(tmp_path, job=IG_REEL))
+
+
+class FakeClock:
+    def __init__(self):
+        self.now = 1000.0
+        self.sleeps = []
+
+    def clock(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def test_instagram_downloads_are_spaced(tmp_path, settings):
+    """Final review 3: descargas de Instagram separadas al menos INSTAGRAM_MIN_INTERVAL_SECONDS."""
+    s = settings.model_copy(update={"instagram_min_interval_seconds": 20, "reel_keyframes_enabled": False})
+    fake = FakeClock()
+    stage = FetchStage(s, StubVideo(), StubPost(count=1), FakeKarakeep(), sleep=fake.sleep, clock=fake.clock)
+
+    stage.run(make_ctx(tmp_path / "1", job=IG_POST))
+    assert fake.sleeps == []
+    fake.now += 5
+    stage.run(make_ctx(tmp_path / "2", job=IG_REEL))
+    assert fake.sleeps == [15]
+    stage.run(make_ctx(tmp_path / "3"))  # YouTube: sin espera
+    assert fake.sleeps == [15]
+    fake.now += 30
+    stage.run(make_ctx(tmp_path / "4", job=IG_POST))
+    assert fake.sleeps == [15]
+
+
+def test_failed_instagram_download_also_counts_for_spacing(tmp_path, settings):
+    fake = FakeClock()
+    karakeep = FakeKarakeep([Bookmark(id="b1", url=IG_REEL.url)])
+    stage = FetchStage(settings, StubVideo(TransientError("timeout")), StubPost(count=1), karakeep, sleep=fake.sleep, clock=fake.clock)
+    with pytest.raises(TransientError):
+        stage.run(make_ctx(tmp_path / "1", job=IG_REEL))
+    with pytest.raises(TransientError):
+        stage.run(make_ctx(tmp_path / "2", job=IG_REEL))
+    assert fake.sleeps == [20]

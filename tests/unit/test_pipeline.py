@@ -171,3 +171,16 @@ def test_failing_to_mark_error_still_finishes_job(tmp_path, state):
     pipeline, *_ = _pipeline(tmp_path, state, PermanentError("borrado"), mark=FakeMark(TransientError("karakeep caído")))
     pipeline.run_due()
     assert state.get_job("b1").status == JobStatus.ERROR
+
+
+def test_quota_exceeded_stops_the_pass(tmp_path, state):
+    """Final review 3: tras un QuotaExceeded no se procesan más jobs en esta pasada."""
+    _add(state, "b1")
+    _add(state, "b2")
+    pipeline, fetch, publish, mark, notifier = _pipeline(tmp_path, state, fetch_error=QuotaExceeded("presupuesto agotado"))
+
+    pipeline.run_due()
+
+    assert fetch.calls == 1
+    assert state.get_job("b2").status == JobStatus.PENDING and state.get_job("b2").attempts == 0
+    assert state.get_job("b2").last_error is None

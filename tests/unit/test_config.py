@@ -53,3 +53,22 @@ def test_missing_required_setting_fails(monkeypatch):
 
     with pytest.raises(ValidationError):
         Settings(_env_file=None)
+
+
+def test_instagram_settings(monkeypatch):
+    _set_required(monkeypatch)
+    s = Settings(_env_file=None)
+    assert s.instagram_min_interval_seconds == 20
+    assert s.instagram_cookies_file is None
+
+    monkeypatch.setenv("INSTAGRAM_MIN_INTERVAL_SECONDS", "45")
+    monkeypatch.setenv("INSTAGRAM_COOKIES_FILE", "")
+    s = Settings(_env_file=None)
+    assert s.instagram_min_interval_seconds == 45
+    assert s.instagram_cookies_file is None
+
+    monkeypatch.setenv("INSTAGRAM_COOKIES_FILE", "  ")
+    assert Settings(_env_file=None).instagram_cookies_file is None
+
+    monkeypatch.setenv("INSTAGRAM_COOKIES_FILE", "/secrets/cookies.txt")
+    assert str(Settings(_env_file=None).instagram_cookies_file) == "/secrets/cookies.txt"

@@ -52,15 +52,20 @@ class Pipeline:
         self._clock = clock
 
     def run_due(self) -> int:
-        jobs = self._state.due_jobs()
-        for job in jobs:
-            self.run_job(job)
-        return len(jobs)
+        """Procesa los jobs pendientes. Si uno agota una cuota diaria, los demás esperan a la próxima pasada."""
+        processed = 0
+        for job in self._state.due_jobs():
+            processed += 1
+            if not self.run_job(job):
+                log.info("cuota diaria agotada: se detiene la pasada")
+                break
+        return processed
 
-    def run_job(self, job: Job) -> None:
+    def run_job(self, job: Job) -> bool:
+        """Ejecuta un job. Devuelve False si terminó por cuota agotada (QuotaExceeded)."""
         if job.platform is None:
             self.mark_failed(job.bookmark_id, "fuente no soportada")
-            return
+            return True
         ctx = JobContext(job=job, workdir=self._data_dir / "jobs" / job.bookmark_id)
         try:
             ctx.workdir.mkdir(parents=True, exist_ok=True)
@@ -80,6 +85,7 @@ class Pipeline:
         except QuotaExceeded as exc:
             self._state.schedule_retry(job.bookmark_id, self._tomorrow(), str(exc), count_attempt=False)
             self.notify_once(f"quota:{exc}", "japan-reader: límite diario alcanzado", f"{exc}. Se reanuda mañana.")
+            return False
         except PermanentError as exc:
             self.mark_failed(job.bookmark_id, str(exc))
         except Exception as exc:
@@ -89,6 +95,7 @@ class Pipeline:
                 self.mark_failed(job.bookmark_id, f"agotados los reintentos: {exc}")
             else:
                 self._state.schedule_retry(job.bookmark_id, self._clock() + BACKOFF[attempt - 1], str(exc))
+        return True
 
     def mark_failed(self, bookmark_id: str, reason: str) -> None:
         job = self._state.get_job(bookmark_id)

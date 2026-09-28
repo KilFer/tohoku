@@ -18,7 +18,7 @@
 4. Varios válidos con nombres distintos, o solo resultados en Japón pero en otra ciudad → se usa el primero y va a revisión (`geocodificacion-ambigua`).
 5. Nada en Japón → sin coordenadas y a revisión (`geocodificacion-fallida`).
 
-**Cuota:** contador diario `places_calls` limitado por `PLACES_DAILY_LIMIT` (150 por defecto ≈ 4.500/mes, por debajo de las 5.000 gratis). Al llegar al límite el job espera al día siguiente. Configura además una cuota diaria en Google Cloud Console (APIs → Places API (New) → Cuotas).
+**Cuota:** contador diario `places_calls` limitado por `PLACES_DAILY_LIMIT` (150 por defecto ≈ 4.500/mes, por debajo de las 5.000 gratis). Al llegar al límite el job espera al día siguiente y la pasada se detiene (los demás jobs siguen pendientes). Configura además una cuota diaria en Google Cloud Console (APIs → Places API (New) → Cuotas).
 
 **Fallos:** API key inválida → `ConfigError`; 429/5xx → reintento.
 
