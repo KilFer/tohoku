@@ -1,7 +1,7 @@
 # japan-reader — Diseño
 
 - **Fecha:** 2026-09-28
-- **Estado:** Aprobado en conversación, pendiente de revisión del spec escrito
+- **Estado:** Aprobado
 - **Autor:** Fernando + Claude
 
 ## 1. Propósito
@@ -48,7 +48,7 @@ Decisiones derivadas:
 | Bandeja de entrada | Karakeep, lista única "Japón". Único punto de entrada. |
 | Histórico de Instagram | Exportación oficial de Instagram ("Descargar tu información" → Guardado, JSON) + comando de importación a Karakeep. Una sola vez. |
 | Orquestación | Servicio propio en Python (un contenedor). n8n descartado por consumo de recursos y porque la lógica (deduplicación, fusión, umbrales) necesita tests. |
-| Unidad en Trilium | Una nota por **lugar** (y una por **cosa**). Vídeos nuevos se suman a notas existentes. |
+| Unidad en Trilium | Una nota por **lugar** (y una por **cosa**). Las fuentes nuevas (vídeos o posts) se suman a notas existentes. |
 | Fusión | El resumen de la nota se **reescribe** integrando la nueva fuente. |
 | Autonomía | Automático con red de seguridad: lo dudoso va a una bandeja de revisión. |
 | Geocodificación | Google Places Text Search Pro, `FieldMask` restringido a campos Pro, cuota diaria limitada. |
@@ -113,7 +113,7 @@ japan-reader/
 
 ### 5.1 ingest
 - **Entrada:** lista de Karakeep configurada (`KARAKEEP_LIST_ID`).
-- **Proceso:** pagina los bookmarks de la lista; crea un job por cada bookmark de tipo enlace cuyo `bookmarkId` no exista en `state.db`. Ignora dominios no soportados (marca `jr:error` con motivo "fuente no soportada").
+- **Proceso:** pagina los bookmarks de la lista; crea un job por cada bookmark de tipo enlace cuyo `bookmarkId` no exista en `state.db`. Fuentes soportadas: YouTube (`/shorts/`, `watch`, `youtu.be`) e Instagram (`/reel/`, `/p/`). Los demás dominios no se procesan (marca `jr:error` con motivo "fuente no soportada").
 - **Salida:** job `{bookmark_id, url, plataforma}` en estado `pending`.
 
 ### 5.2 fetch
@@ -126,6 +126,7 @@ Tres tipos de contenido, detectados por URL y confirmados por los metadatos:
 | Carrusel | `gallery-dl` | Todas las imágenes; los elementos de vídeo del carrusel se tratan como vídeos (audio + fotogramas) |
 
 - **Metadatos comunes:** título (si existe), descripción/caption, hashtags, autor, fecha, duración.
+- **Duración máxima:** vídeos de más de `MAX_VIDEO_DURATION_MIN` (por defecto 15) se rechazan antes de descargar (`jr:error`, motivo "demasiado largo"). El sistema está pensado para contenido corto; un vídeo largo de YouTube tardaría horas en transcribirse en CPU.
 - **Fotogramas clave** (solo vídeos, si `REEL_KEYFRAMES_ENABLED=true`): ffmpeg con detección de cambio de escena; se conservan como máximo `KEYFRAMES_MAX` (por defecto 6), repartidos a lo largo del vídeo y descartando los casi idénticos. Si el vídeo no tiene cambios de escena, muestreo uniforme.
 - **Límites de imagen:** como máximo `POST_IMAGES_MAX` imágenes por post (por defecto 10) y redimensionado a `IMAGE_MAX_SIDE` px (por defecto 1024) antes de enviarlas al LLM, para controlar el coste.
 - **Instagram:** yt-dlp y gallery-dl usan el mismo fichero de cookies (`INSTAGRAM_COOKIES_FILE`, preferiblemente de una cuenta secundaria). Fallback: si Karakeep tiene archivados los medios del bookmark (asset de vídeo o captura), se descargan desde Karakeep.
@@ -134,20 +135,21 @@ Tres tipos de contenido, detectados por URL y confirmados por los metadatos:
 ### 5.3 transcribe
 - **Se omite** si el contenido no tiene audio (posts de imagen o carrusel sin vídeos).
 - **Proceso:** si hay subtítulos manuales útiles, se usan; si no, faster-whisper (`WHISPER_MODEL=large-v3`, `compute_type=int8`, detección automática de idioma, VAD activado).
+- **Carruseles con varios vídeos:** cada elemento se transcribe por separado y se concatena etiquetado (`[Elemento 2] …`).
 - **Salida:** `Transcript {texto, idioma, origen: subtitulos|whisper}`.
 - El modelo se cachea en un volumen (~3 GB).
 
 ### 5.4 extract
 - **Entrada al LLM:** plataforma, tipo de contenido, título, descripción/caption, hashtags, autor, transcripción (si existe) e **imágenes** (imágenes del post o fotogramas clave). El prompt indica que se lea el texto que aparece en las imágenes (rótulos, nombres de locales, texto sobreimpreso) y que se contraste con la transcripción.
 - **Modelo:** `OPENROUTER_MODEL` debe ser **multimodal** (admitir imágenes); se valida al arrancar. Si se desea, `OPENROUTER_TEXT_MODEL` permite un modelo más barato solo para contenidos sin imágenes y para la llamada de fusión.
-- **Salida:** JSON validado contra `Extraction` (Pydantic). Si no valida, un reintento incluyendo el error de validación; si vuelve a fallar → job a revisión con la transcripción adjunta.
+- **Salida:** JSON validado contra `Extraction` (Pydantic). Si no valida, un reintento incluyendo el error de validación; si vuelve a fallar → se crea una nota en la bandeja de revisión (`extraccion-fallida`) con los metadatos, la caption, la transcripción (si existe) y el enlace original.
 
 ```json
 {
   "relacionado_japon": true,
   "confianza_japon": 0.95,
   "idioma": "es",
-  "resumen_video": "…",
+  "resumen_fuente": "…",
   "lugares": [{
     "nombre": "Ichiran Shibuya",
     "nombre_local": "一蘭 渋谷店",
@@ -159,7 +161,7 @@ Tres tipos de contenido, detectados por URL y confirmados por los metadatos:
   }],
   "cosas": [{
     "nombre": "CoCo Ichibanya", "categoria": "cadenas",
-    "que_es": "…", "consejos": ["…"], "donde": ["…"],
+    "que_es": "…", "consejos": ["…"], "donde": ["…"], "donde_lugares": ["Don Quijote Shibuya"],
     "confianza": 0.85
   }],
   "otros": [{ "titulo": "…", "contenido": "…" }]
@@ -168,8 +170,9 @@ Tres tipos de contenido, detectados por URL y confirmados por los metadatos:
 
 - `categoria` de lugar: enumeración cerrada (templo, santuario, comida, cafe, bar, tienda, mercado, mirador, barrio, museo, parque, onsen, alojamiento, transporte, otro).
 - `categoria` de cosa: souvenirs, comida, cadenas, cosmetica, otros.
-- Modelo en `OPENROUTER_MODEL`; prompt versionado en `prompts/`. Salida siempre en español.
-- `confianza_japon` es la probabilidad (0–1) de que el vídeo trate sobre Japón; `relacionado_japon` es solo informativo. Las decisiones se toman con `confianza_japon` según los umbrales de §7 (< 0.4 → `no-japon`).
+- Prompt versionado en `prompts/`. Salida siempre en español.
+- **Cosa con local concreto:** si el contenido recomienda un local específico donde comprar/comer una cosa, ese local se incluye también en `lugares` y la cosa lo referencia en `donde_lugares` (lista de `nombre` de `lugares`). `publish` convierte esa referencia en la relación `~dondeComprar`.
+- `confianza_japon` es la probabilidad (0–1) de que el contenido trate sobre Japón; `relacionado_japon` es solo informativo. Las decisiones se toman con `confianza_japon` según los umbrales de §7 (< 0.4 → `no-japon`).
 
 ### 5.5 geocode
 - Solo para `lugares`. Text Search Pro con `consulta_busqueda`, `regionCode=JP`, `languageCode=es`, `FieldMask` = `places.id,places.displayName,places.formattedAddress,places.location,places.googleMapsUri,places.types`.
@@ -222,10 +225,10 @@ Ideas de Japón                    #jrRoot
 ### Nota Lugar (hija de `#jrMapa`)
 - **Atributos:** `#geolocation="lat,lng"`, `#ciudad`, `#region`, `#categoria`, `#googlePlaceId`, `#googleMaps=<url>`, `#nombreLocal`, `#fuentes=<n>`, `#iconClass` (según categoría), `~template=Lugar`. Manuales del usuario: `#visitado`, `#prioridad`.
 - **Cuerpo HTML:** Resumen · Qué hacer/comer · Consejos prácticos (precio, horario recomendado, reservas) · Fuentes · Mis notas.
-- **Bloque de fuente:** enlace al vídeo, título, autor, fecha, plataforma, resumen de 1–2 líneas de lo que aporta ese vídeo; marcador oculto con `bookmarkId`.
+- **Bloque de fuente:** enlace al vídeo o post, título, autor, fecha, plataforma, tipo, resumen de 1–2 líneas de lo que aporta esa fuente; marcador oculto con `bookmarkId`.
 
 ### Nota Cosa (hija de la categoría en `#jrComprar`)
-- Igual que Lugar sin `#geolocation`/`#googlePlaceId`; con `#categoria` y relaciones `~dondeComprar` hacia notas Lugar cuando el vídeo menciona un local concreto (que se crea también como Lugar).
+- Igual que Lugar sin `#geolocation`/`#googlePlaceId`; con `#categoria` y relaciones `~dondeComprar` hacia notas Lugar cuando la fuente menciona un local concreto (ver `donde_lugares` en §5.4).
 
 ### Nota Otros (hija de `#jrCultura`)
 - Título + contenido + fuente. Sin deduplicación.
@@ -238,19 +241,19 @@ Ideas de Japón                    #jrRoot
 | Condición | Resultado |
 |---|---|
 | `confianza_japon` < 0.4 | No es de Japón → `jr:no-japon` |
-| 0.4 ≤ `confianza_japon` < 0.7 | Se procesa, todo el vídeo a revisión (`clasificacion-incierta`) |
+| 0.4 ≤ `confianza_japon` < 0.7 | Se procesa; todos los elementos de esa fuente a revisión (`clasificacion-incierta`) |
 | `confianza` de un elemento < 0.7 | Ese elemento a revisión (`baja-confianza`) |
 | Geocodificación sin resultado válido | Lugar a revisión sin coordenadas |
 | Geocodificación ambigua | Lugar a revisión |
 | Cosa parecida pero no idéntica a una existente | Nueva nota + revisión (`posible-duplicado`) |
-| JSON del LLM inválido tras reintento | Job a revisión con transcripción (`extraccion-fallida`) |
+| JSON del LLM inválido tras reintento | Nota de revisión con el material de la fuente (`extraccion-fallida`) |
 
 ## 8. Errores, reintentos y alertas
 
 | Tipo | Ejemplos | Respuesta |
 |---|---|---|
 | Transitorio | Timeout, 5xx, 429 | Reintento de la etapa con backoff 1 min → 5 min → 30 min → 2 h → 2 h (5 intentos); luego `jr:error` |
-| Permanente del vídeo | Vídeo borrado/privado, login requerido sin cookies válidas | `jr:error` inmediato con motivo |
+| Permanente de la fuente | Vídeo/post borrado o privado, login requerido sin cookies válidas, vídeo demasiado largo | `jr:error` inmediato con motivo |
 | De contenido | Ver §7 | Revisión, no error |
 | Configuración | API key inválida, `#jrRoot` inexistente | Se detiene el procesamiento, alerta ntfy, no consume reintentos ni cuota |
 
@@ -269,7 +272,7 @@ El formato exacto del JSON de exportación se verificará con una exportación r
 
 ## 10. Configuración (`.env`)
 
-`KARAKEEP_URL`, `KARAKEEP_API_KEY`, `KARAKEEP_LIST_ID` · `TRILIUM_URL`, `TRILIUM_ETAPI_TOKEN` · `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_DAILY_BUDGET_USD` · `GOOGLE_PLACES_API_KEY`, `PLACES_DAILY_LIMIT` · `OPENROUTER_TEXT_MODEL` (opcional) · `WHISPER_MODEL`, `WHISPER_COMPUTE_TYPE` · `REEL_KEYFRAMES_ENABLED` (por defecto `true`), `KEYFRAMES_MAX`, `POST_IMAGES_MAX`, `IMAGE_MAX_SIDE` · `INSTAGRAM_COOKIES_FILE` · `NTFY_URL`, `NTFY_TOPIC`, `NTFY_TOKEN` · `POLL_INTERVAL_MINUTES` · umbrales de §7.
+`KARAKEEP_URL`, `KARAKEEP_API_KEY`, `KARAKEEP_LIST_ID` · `TRILIUM_URL`, `TRILIUM_ETAPI_TOKEN` · `OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_TEXT_MODEL` (opcional), `OPENROUTER_DAILY_BUDGET_USD` · `GOOGLE_PLACES_API_KEY`, `PLACES_DAILY_LIMIT` · `WHISPER_MODEL`, `WHISPER_COMPUTE_TYPE` · `REEL_KEYFRAMES_ENABLED` (por defecto `true`), `KEYFRAMES_MAX`, `POST_IMAGES_MAX`, `IMAGE_MAX_SIDE` · `INSTAGRAM_COOKIES_FILE` · `MAX_VIDEO_DURATION_MIN` · `NTFY_URL`, `NTFY_TOPIC`, `NTFY_TOKEN` · `POLL_INTERVAL_MINUTES` · umbrales de §7.
 
 Secretos solo en `.env` (fuera de git); `.env.example` documentado.
 
@@ -282,7 +285,8 @@ Secretos solo en `.env` (fuera de git); `.env.example` documentado.
 ## 12. Despliegue
 
 - Repositorio en `/media/1tb-disk/japan-reader`, `Dockerfile` + `docker-compose.yml` propios, unido a la(s) red(es) Docker de Karakeep y Trilium.
-- Volúmenes: `data/` (state.db, audio, transcripciones), caché del modelo Whisper, cookies (solo lectura).
+- Volúmenes: `data/` (state.db y ficheros por job), caché del modelo Whisper, cookies (solo lectura).
+- **Retención de ficheros:** tras `transcribe` se borran vídeo y audio; se conservan transcripción, imágenes y fotogramas redimensionados (pequeños) para poder reprocesar desde `extract` sin volver a descargar.
 - Límites de recursos en Compose. Un solo worker.
 - El despliegue lo ejecuta el usuario (`docker compose up -d`); el proyecto lo documenta.
 
