@@ -24,7 +24,9 @@ _HASHTAG = re.compile(r"#(\w+)")
 # HTTP 5xx / 429 son fallos transitorios del servidor aunque su frase de motivo
 # (p. ej. "503 Service Unavailable") contenga una palabra de la lista de
 # marcadores permanentes ("unavailable"); se comprueban antes que esos marcadores.
-_TRANSIENT_HTTP = re.compile(r"http error (5\d\d|429)")
+# Cubre tanto el formato de yt-dlp ("HTTP Error 503: ...") como el de gallery-dl
+# ("HttpError: '503 Service Unavailable' for '<url>'").
+_HTTP_STATUS = re.compile(r"http\s*error[:\s]*'?(\d{3})")
 
 
 class DownloadedMedia(BaseModel):
@@ -36,7 +38,8 @@ class DownloadedMedia(BaseModel):
 
 def classify_download_error(message: str) -> type[JapanReaderError]:
     lowered = message.lower()
-    if _TRANSIENT_HTTP.search(lowered):
+    match = _HTTP_STATUS.search(lowered)
+    if match and (int(match.group(1)) >= 500 or int(match.group(1)) == 429):
         return TransientError
     return PermanentError if any(marker in lowered for marker in _PERMANENT_MARKERS) else TransientError
 
@@ -143,7 +146,7 @@ class GalleryDlDownloader:
     def download(self, url: str, dest: Path) -> DownloadedMedia:
         dest.mkdir(parents=True, exist_ok=True)
         cmd = [self._binary, "--directory", str(dest), "--filename", "{num:>02}.{extension}", "--write-metadata", "--no-part"]
-        cookies = prepare_cookies(self._cookies, dest.parent / "cookies")
+        cookies = prepare_cookies(self._cookies, dest)
         if cookies:
             cmd += ["--cookies", str(cookies)]
         cmd.append(url)

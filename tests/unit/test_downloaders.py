@@ -71,6 +71,8 @@ INFO = {
         ("HTTP Error 404: Not Found", PermanentError),
         ("Read timed out", TransientError),
         ("HTTP Error 503: Service Unavailable", TransientError),
+        ("HttpError: '503 Service Unavailable' for 'https://x'", TransientError),
+        ("HttpError: '429 Too Many Requests' for 'https://x'", TransientError),
     ],
 )
 def test_classify_download_error(message, expected):
