@@ -63,6 +63,11 @@ class Service:
                 self._ready = False
                 log.error("error de configuración: %s", exc)
                 self._pipeline.notify_once(f"config:{exc}", "japan-reader: error de configuración", str(exc))
+            except Exception as exc:
+                log.exception("error inesperado en el ciclo")
+                self._pipeline.notify_once(
+                    f"loop:{type(exc).__name__}", "japan-reader: error en el ciclo", str(exc)
+                )
             sleep(self._settings.poll_interval_minutes * 60)
 
     def _maybe_daily_summary(self) -> None:

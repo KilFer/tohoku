@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from fakes import FakeKarakeep
 from japan_reader.clients.karakeep import Bookmark
-from japan_reader.errors import ConfigError
+from japan_reader.errors import ConfigError, TransientError
 from japan_reader.models import Outcome
 from japan_reader.pipeline import STAGE_ORDER
 from japan_reader.service import Service, format_status, reprocess
@@ -84,6 +84,23 @@ def test_run_forever_survives_config_errors(state, settings):
 
     assert sleeps == [600, 600]
     assert pipeline.alerts == ["config:Trilium sin #jrRoot", "config:Trilium sin #jrRoot"]
+
+
+def test_run_forever_survives_transient_errors(state, settings):
+    pipeline = FakePipeline(TransientError("karakeep caído"))
+    service = _service(state, settings, pipeline)
+    sleeps = []
+
+    def sleep(seconds):
+        sleeps.append(seconds)
+        if len(sleeps) == 2:
+            raise Stop
+
+    with pytest.raises(Stop):
+        service.run_forever(sleep=sleep)
+
+    assert sleeps == [600, 600]
+    assert pipeline.alerts == ["loop:TransientError", "loop:TransientError"]
 
 
 def test_daily_summary_sent_once_after_hour(state, settings):

@@ -27,5 +27,5 @@ class Notifier:
         body = {"topic": self._topic, "title": title, "message": message, "priority": priority, "tags": list(tags)}
         try:
             self._http.post(self._url, json=body, headers=headers).raise_for_status()
-        except httpx.HTTPError as exc:
+        except Exception as exc:
             log.warning("no se pudo enviar el aviso ntfy '%s': %s", title, exc)

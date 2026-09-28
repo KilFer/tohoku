@@ -27,3 +27,7 @@ def test_disabled_without_url():
 def test_failures_never_raise():
     respx.post("https://ntfy.example.com").mock(side_effect=httpx.ConnectError("down"))
     Notifier("https://ntfy.example.com", "japan", None).send("t", "m")
+
+
+def test_invalid_url_never_raises():
+    Notifier("http://bad url", "japan", None).send("t", "m")

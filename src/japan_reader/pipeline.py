@@ -62,8 +62,8 @@ class Pipeline:
             self.mark_failed(job.bookmark_id, "fuente no soportada")
             return
         ctx = JobContext(job=job, workdir=self._data_dir / "jobs" / job.bookmark_id)
-        ctx.workdir.mkdir(parents=True, exist_ok=True)
         try:
+            ctx.workdir.mkdir(parents=True, exist_ok=True)
             for stage in self._stages:
                 result = self._state.load_stage(job.bookmark_id, stage.name, stage.result_model)
                 if result is None:
