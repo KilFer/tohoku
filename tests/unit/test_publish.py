@@ -1,0 +1,174 @@
+import json
+from types import SimpleNamespace
+
+import pytest
+
+from builders import make_cosa, make_ctx, make_extraction, make_fetch, make_geo, make_job, make_lugar, make_meta
+from fakes import FakeLLM, FakeTrilium
+from japan_reader.models import (
+    ExtractResult,
+    GeocodeResult,
+    GeoOutcome,
+    ItemKind,
+    Outcome,
+    PlannedItem,
+    PublishedNote,
+    ResolveResult,
+    Transcript,
+)
+from japan_reader.quota import DailyQuota
+from japan_reader.stages.publish import PublishStage
+from japan_reader.state import StateStore
+from japan_reader.trilium_layout import init_layout
+
+MERGED = json.dumps({"resumen": "Resumen fusionado", "que_hacer": "Pedir extra de cerdo", "consejos": ["Ir pronto", "Pagar en la máquina"]})
+GEO = [GeoOutcome(lugar_index=0, match=make_geo())]
+
+
+@pytest.fixture
+def env(tmp_path, settings):
+    trilium = FakeTrilium()
+    viajes = trilium.add_note("root", "Viajes")
+    trilium.add_note(viajes, "Ideas de Japón", labels={"jrRoot": ""})
+    return SimpleNamespace(trilium=trilium, layout=init_layout(trilium), state=StateStore(tmp_path / "state.db"), settings=settings, tmp=tmp_path)
+
+
+def _stage(env, llm=None):
+    return PublishStage(env.trilium, lambda: env.layout, llm or FakeLLM([]), env.settings, DailyQuota(env.state, "openrouter_usd", 10), env.state)
+
+
+def _ctx(env, bookmark_id, extraction, outcomes, items):
+    job = make_job(bookmark_id=bookmark_id, url=f"https://youtu.be/{bookmark_id}")
+    return make_ctx(
+        env.tmp, job=job,
+        fetch=make_fetch(meta=make_meta(url=job.url)),
+        transcribe=Transcript(text="texto hablado", origin="whisper"),
+        extract=ExtractResult(extraction=extraction),
+        geocode=GeocodeResult(outcomes=list(outcomes)),
+        resolve=ResolveResult(items=list(items)),
+    )
+
+
+def _item(kind=ItemKind.LUGAR, index=0, action="create", existing=None, reasons=(), key=None, alias_of=None):
+    return PlannedItem(
+        key=key or f"{kind.value}:{index}", kind=kind, index=index, action=action,
+        existing_note_id=existing, alias_of=alias_of, review_reasons=list(reasons),
+    )
+
+
+def test_create_lugar(env):
+    result = _stage(env).run(_ctx(env, "b1", make_extraction(lugares=[make_lugar()]), GEO, [_item()]))
+
+    note_id = result.notes[0].note_id
+    note = env.trilium.get_note(note_id)
+    labels = env.trilium.labels(note_id)
+    assert note.parent_note_ids == [env.layout.mapa]
+    assert note.relations("template") == [env.layout.plantilla_lugar]
+    assert labels["geolocation"] == "35.66,139.7"
+    assert labels["googlePlaceId"] == "P1" and labels["fuentes"] == "1" and labels["jrTipo"] == "lugar"
+    content = env.trilium.get_content(note_id)
+    assert "Ramen en Ichiran Shibuya" in content and "https://youtu.be/b1" in content and "Mis notas" in content
+    assert [a.title for a in env.trilium.list_attachments(note_id)] == ["japan-reader.json"]
+    assert result.outcome == Outcome.PROCESADO
+    assert env.state.published("b1")["lugar:0"].note_id == note_id
+
+
+def test_merge_adds_source_rewrites_summary_and_keeps_user_notes(env):
+    extraction = make_extraction(lugares=[make_lugar()])
+    note_id = _stage(env).run(_ctx(env, "b1", extraction, GEO, [_item()])).notes[0].note_id
+    content = env.trilium.get_content(note_id)
+    env.trilium.set_content(note_id, content.replace("<h2>Mis notas</h2><p></p>", "<h2><strong>Mis notas</strong></h2><p>Reservar el martes</p>"))
+    llm = FakeLLM([MERGED])
+
+    result = _stage(env, llm).run(_ctx(env, "b2", extraction, GEO, [_item(action="merge", existing=note_id)]))
+
+    assert result.notes[0].note_id == note_id
+    assert env.trilium.labels(note_id)["fuentes"] == "2"
+    content = env.trilium.get_content(note_id)
+    assert "Resumen fusionado" in content and "Pagar en la máquina" in content
+    assert "Reservar el martes" in content
+    assert "https://youtu.be/b1" in content and "https://youtu.be/b2" in content
+    assert llm.calls[0]["model"] == "text/model"
+    assert len(env.trilium.children(env.layout.mapa)) == 1
+
+
+def test_republishing_same_bookmark_does_not_duplicate(env):
+    """Review Focus 3."""
+    extraction = make_extraction(lugares=[make_lugar()])
+    note_id = _stage(env).run(_ctx(env, "b1", extraction, GEO, [_item()])).notes[0].note_id
+    env.state.clear_stages_from("b1", "publish", ["publish"])
+    llm = FakeLLM([])
+
+    _stage(env, llm).run(_ctx(env, "b1", extraction, GEO, [_item(action="merge", existing=note_id)]))
+
+    assert llm.calls == []
+    assert env.trilium.labels(note_id)["fuentes"] == "1"
+    assert env.trilium.get_content(note_id).count("https://youtu.be/b1") == 1
+
+
+def test_review_items_are_cloned_to_inbox(env):
+    items = [_item(reasons=["geocodificacion-ambigua"])]
+
+    result = _stage(env).run(_ctx(env, "b1", make_extraction(lugares=[make_lugar()]), GEO, items))
+
+    note = env.trilium.get_note(result.notes[0].note_id)
+    assert set(note.parent_note_ids) == {env.layout.mapa, env.layout.revision}
+    assert note.label("revisar") == "geocodificacion-ambigua"
+    assert result.outcome == Outcome.REVISAR
+
+
+def test_cosa_goes_to_category_and_links_store(env):
+    extraction = make_extraction(
+        lugares=[make_lugar("Don Quijote Shibuya", categoria="tienda")],
+        cosas=[make_cosa("Kit Kat matcha", categoria="souvenirs", donde_lugares=["Don Quijote Shibuya"])],
+    )
+    items = [_item(), _item(kind=ItemKind.COSA)]
+
+    result = _stage(env).run(_ctx(env, "b1", extraction, GEO, items))
+
+    lugar_id, cosa_id = (n.note_id for n in result.notes)
+    cosa = env.trilium.get_note(cosa_id)
+    assert cosa.parent_note_ids == [env.layout.categorias["souvenirs"]]
+    assert cosa.relations("dondeComprar") == [lugar_id]
+    assert cosa.relations("template") == [env.layout.plantilla_cosa]
+    assert env.trilium.labels(cosa_id)["jrNombreNorm"] == "kit kat matcha"
+
+
+def test_failed_extraction_creates_review_note(env):
+    items = [PlannedItem(key="fallo", kind=ItemKind.FALLO, index=0, action="create", review_reasons=["extraccion-fallida"])]
+
+    result = _stage(env).run(_ctx(env, "b1", None, [], items))
+
+    note_id = result.notes[0].note_id
+    assert env.trilium.get_note(note_id).parent_note_ids == [env.layout.revision]
+    assert env.trilium.labels(note_id)["revisar"] == "extraccion-fallida"
+    assert "texto hablado" in env.trilium.get_content(note_id)
+    assert result.outcome == Outcome.REVISAR
+
+
+def test_not_japan(env):
+    result = _stage(env).run(_ctx(env, "b1", make_extraction(0.1), [], []))
+    assert result.notes == [] and result.outcome == Outcome.NO_JAPON
+
+
+def test_resume_skips_already_published_items(env):
+    env.state.record_publish("b1", PublishedNote(key="lugar:0", note_id="nX", action="create"))
+    before = len(env.trilium.notes)
+
+    result = _stage(env).run(_ctx(env, "b1", make_extraction(lugares=[make_lugar()]), GEO, [_item()]))
+
+    assert len(env.trilium.notes) == before
+    assert result.notes[0].note_id == "nX"
+
+
+def test_synthetic_summary_note_and_alias(env):
+    items = [_item(kind=ItemKind.OTRO, index=-1, key="otro:resumen")]
+    result = _stage(env).run(_ctx(env, "b1", make_extraction(), [], items))
+    note_id = result.notes[0].note_id
+    assert env.trilium.get_note(note_id).parent_note_ids == [env.layout.cultura]
+    assert env.trilium.get_note(note_id).title == "Ramen en Tokio"
+    assert "Un vídeo sobre Tokio" in env.trilium.get_content(note_id)
+
+    items = [_item(), _item(index=1, action="alias", alias_of="lugar:0")]
+    result = _stage(env).run(_ctx(env, "b2", make_extraction(lugares=[make_lugar(), make_lugar("伏見")]), GEO, items))
+    assert len(result.notes) == 1
