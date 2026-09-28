@@ -37,9 +37,12 @@ Para no disparar los límites de ritmo de Instagram, entre dos descargas de Inst
 
 ## Importar el historial de Instagram
 1. Instagram → Centro de cuentas → Tu información y permisos → Descargar tu información → solo "Guardado", formato **JSON**.
-2. Copia el .zip al servidor, p. ej. `data/instagram.zip`.
-3. `docker compose exec japan-reader japan-reader import-instagram /data/instagram.zip --collection "Japón" --dry-run`
-4. Si los recuentos cuadran, repite sin `--dry-run`. El pipeline los procesa poco a poco respetando `PLACES_DAILY_LIMIT` y `OPENROUTER_DAILY_BUDGET_USD`.
+2. Copia al servidor el .zip, la carpeta o solo `saved_collections.json`, p. ej. en `data/instagram/`.
+3. Simulación (solo lee Karakeep, no escribe): `docker compose exec japan-reader japan-reader import-instagram /data/instagram/saved_collections.json --collection "Cosas de Japon" --limit 20 --dry-run`
+4. Importa por tandas: el mismo comando sin `--dry-run`. `--limit N` cuenta solo enlaces **nuevos**, del **más antiguo al más reciente**; relanzarlo importa la siguiente tanda (los ya importados se detectan con `check-url` y se saltan). La línea final indica `Pendientes`.
+5. Ritmo recomendado: una tanda de 50-100 al día, ajustando `OPENROUTER_DAILY_BUDGET_USD` y `PLACES_DAILY_LIMIT`. Cada Reel ocupa ~2 min de CPU (Whisper large-v3).
+
+Formatos admitidos de `saved_collections.json`: el clásico (cabecera de colección seguida de sus posts) y el de 2026 (lista de colecciones con los posts anidados en `label_values`). El mojibake de Instagram (`OpciÃ³n`) se corrige al leer los nombres de colección.
 Nota: si un enlace ya estaba en Karakeep con otra forma de URL (p. ej. con `?igsh=`), puede crearse un segundo bookmark; la nota de Trilium no se duplica.
 
 ## Avisos (ntfy)

@@ -111,13 +111,14 @@ def import_instagram(
     path: Path,
     collection: Annotated[str | None, typer.Option(help="Importar solo esta colección (p. ej. 'Japón')")] = None,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Solo contar, sin crear nada")] = False,
+    limit: Annotated[int | None, typer.Option(help="Máximo de enlaces NUEVOS en esta tanda (relanzar = siguiente tanda)")] = None,
 ) -> None:
-    """Importa a la lista de Karakeep los enlaces de la exportación de Instagram."""
+    """Importa a la lista de Karakeep los enlaces de la exportación de Instagram, del más antiguo al más reciente."""
     loaded = _load()
     items = parse_export(path)
     if collection:
         items = filter_collection(items, collection)
-    report = import_items(items, loaded.karakeep, loaded.settings.karakeep_list_id, dry_run)
+    report = import_items(items, loaded.karakeep, loaded.settings.karakeep_list_id, dry_run, limit)
     typer.echo(format_import_report(report, dry_run))
 
 

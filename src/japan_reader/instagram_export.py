@@ -26,7 +26,23 @@ class ImportReport:
     total: int = 0
     created: int = 0
     existing: int = 0
+    pending: int = 0  # nuevos que quedan para próximas tandas (por --limit)
     by_collection: dict[str, int] = field(default_factory=dict)
+
+
+def _fix_text(text: str | None) -> str | None:
+    """Deshace el mojibake de las exportaciones de Instagram (UTF-8 guardado como Latin-1)."""
+    if not text:
+        return text
+    try:
+        return text.encode("latin-1").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return text
+
+
+def _is_collection_block(entry: dict) -> bool:
+    """Formato 2026: cada entrada es una colección con sus posts anidados en `label_values[].dict`."""
+    return any(isinstance(value, dict) and "dict" in value for value in entry.get("label_values") or [])
 
 
 def _load_files(path: Path) -> list[tuple[str, object]]:
@@ -81,18 +97,23 @@ def _collection_name(entry: dict) -> str | None:
 def parse_export(path: Path) -> list[ExportedItem]:
     """Lee la exportación oficial de Instagram (carpeta, .zip o JSON suelto).
 
-    En `saved_collections.json` cada colección empieza con una entrada sin URL (su nombre) seguida de sus posts.
+    Formatos de `saved_collections.json`:
+    - clásico: cada colección empieza con una entrada sin URL (su nombre) seguida de sus posts;
+    - 2026: lista de colecciones, cada una con su nombre en `label_values` y sus posts anidados.
     Un post guardado en una colección y también en `saved_posts.json` se queda con la colección.
+    Devuelve los enlaces en el orden del fichero (Instagram lista primero lo más reciente).
     """
     by_url: dict[str, ExportedItem] = {}
     for name, data in _load_files(path):
         in_collections = "collections" in name
         current: str | None = None
         for entry in _entries(data):
+            if in_collections and _is_collection_block(entry):
+                current = _fix_text(_collection_name(entry))
             urls = list(dict.fromkeys(canonical_url(m.group(0)) for s in _strings(entry) if (m := _IG_URL.match(s))))
             if not urls:
                 if in_collections:
-                    current = _collection_name(entry)
+                    current = _fix_text(_collection_name(entry))
                 continue
             for url in urls:
                 item = ExportedItem(url=url, collection=current if in_collections else None)
@@ -107,24 +128,38 @@ def filter_collection(items: list[ExportedItem], name: str) -> list[ExportedItem
     return [item for item in items if item.collection and fold(item.collection).strip() == wanted]
 
 
-def import_items(items: list[ExportedItem], karakeep: KarakeepClient, list_id: str, dry_run: bool = False) -> ImportReport:
+def import_items(
+    items: list[ExportedItem],
+    karakeep: KarakeepClient,
+    list_id: str,
+    dry_run: bool = False,
+    limit: int | None = None,
+) -> ImportReport:
+    """Importa del más antiguo al más reciente (orden inverso del fichero).
+
+    `limit` cuenta solo los enlaces nuevos: relanzar el mismo comando importa la siguiente tanda.
+    En simulación se consulta Karakeep (solo lectura) para decir qué se crearía, sin escribir nada.
+    """
     report = ImportReport(total=len(items), by_collection=dict(Counter(i.collection or NO_COLLECTION for i in items)))
-    if dry_run:
-        return report
-    for item in items:
+    for item in reversed(items):
         bookmark_id = karakeep.find_by_url(item.url)
         if bookmark_id:
             report.existing += 1
-        else:
-            bookmark_id = karakeep.create_link(item.url)
-            report.created += 1
-        karakeep.add_to_list(list_id, bookmark_id)
+            if not dry_run:
+                karakeep.add_to_list(list_id, bookmark_id)
+            continue
+        if limit is not None and report.created >= limit:
+            report.pending += 1
+            continue
+        report.created += 1
+        if not dry_run:
+            karakeep.add_to_list(list_id, karakeep.create_link(item.url))
     return report
 
 
 def format_import_report(report: ImportReport, dry_run: bool) -> str:
     lines = [f"Enlaces encontrados: {report.total}" + (" (simulación, no se ha tocado Karakeep)" if dry_run else "")]
     lines += [f"  {name}: {count}" for name, count in sorted(report.by_collection.items())]
-    if not dry_run:
-        lines.append(f"Creados: {report.created} · Ya existían: {report.existing}")
+    verb = "Se crearían" if dry_run else "Creados"
+    lines.append(f"{verb}: {report.created} · Ya existían: {report.existing} · Pendientes: {report.pending}")
     return "\n".join(lines)

@@ -83,7 +83,78 @@ def test_dry_run_does_not_touch_karakeep(tmp_path):
 
     report = import_items(items, karakeep, "L1", dry_run=True)
 
-    assert report.total == 5 and report.created == 0
+    assert report.total == 5 and report.created == 5  # se crearían 5; no se crea ninguno
     assert report.by_collection == {"Japón": 2, "Recetas": 1, "(sin colección)": 2}
-    assert karakeep.bookmarks == {}
+    assert karakeep.bookmarks == {} and karakeep.lists["L1"] == []
     assert "simulación" in format_import_report(report, dry_run=True)
+
+
+
+def _post(code, kind="reel", caption="#japan"):
+    url = f"https://www.instagram.com/{kind}/{code}/"
+    return {"dict": [
+        {"label": "URL", "value": url, "href": url},
+        {"label": "Pie de foto", "value": caption},
+        {"dict": [{"dict": [{"label": "URL", "value": "https://example.com/bio"}, {"label": "Nombre de usuario", "value": "someone"}], "title": ""}], "title": "Propietario"},
+    ], "title": ""}
+
+
+def _collection(name, posts):
+    return {"fbid": "1", "timestamp": 1, "media": [], "label_values": [
+        {"label": "Nombre", "value": name},
+        {"label": "Tipo", "value": "Opci\u00c3\u00b3n predeterminada"},
+        {"label": "Fecha y hora de la actualizaci\u00c3\u00b3n", "timestamp_value": 1},
+        {"dict": posts, "title": ""},
+    ]}
+
+
+# Formato real (2026): lista de colecciones con los posts anidados, recientes primero, texto con mojibake.
+NEW_FORMAT = [
+    _collection("Cosas de Japon", [_post("N3"), _post("N2", "p"), _post("N1")]),
+    _collection("Cocina espa\u00c3\u00b1ola", [_post("R1")]),
+]
+
+
+def test_parse_new_nested_collection_format(tmp_path):
+    path = tmp_path / "saved_collections.json"
+    path.write_text(json.dumps(NEW_FORMAT), encoding="utf-8")
+
+    items = parse_export(path)
+
+    assert [(i.url, i.collection) for i in items] == [
+        ("https://www.instagram.com/reel/N3/", "Cosas de Japon"),
+        ("https://www.instagram.com/p/N2/", "Cosas de Japon"),
+        ("https://www.instagram.com/reel/N1/", "Cosas de Japon"),
+        ("https://www.instagram.com/reel/R1/", "Cocina española"),  # mojibake corregido
+    ]
+    assert len(filter_collection(items, "cosas de japón")) == 3
+
+
+def test_import_is_oldest_first_and_limit_counts_only_new(tmp_path):
+    path = tmp_path / "saved_collections.json"
+    path.write_text(json.dumps(NEW_FORMAT), encoding="utf-8")
+    items = filter_collection(parse_export(path), "Cosas de Japon")
+    karakeep = FakeKarakeep()
+    karakeep.lists["L1"] = []
+
+    first = import_items(items, karakeep, "L1", limit=2)
+    second = import_items(items, karakeep, "L1", limit=2)
+
+    urls = [karakeep.bookmarks[b].url for b in karakeep.lists["L1"]]
+    assert urls == ["https://www.instagram.com/reel/N1/", "https://www.instagram.com/p/N2/", "https://www.instagram.com/reel/N3/"]
+    assert (first.created, first.existing, first.pending) == (2, 0, 1)
+    assert (second.created, second.existing, second.pending) == (1, 2, 0)
+    assert "Pendientes: 0" in format_import_report(second, dry_run=False)
+
+
+def test_dry_run_with_limit_reports_next_batch_without_writing(tmp_path):
+    path = tmp_path / "saved_collections.json"
+    path.write_text(json.dumps(NEW_FORMAT), encoding="utf-8")
+    items = filter_collection(parse_export(path), "Cosas de Japon")
+    karakeep = FakeKarakeep([Bookmark(id="old", url="https://www.instagram.com/reel/N1/")])
+    karakeep.lists["L1"] = []
+
+    report = import_items(items, karakeep, "L1", dry_run=True, limit=1)
+
+    assert (report.created, report.existing, report.pending) == (1, 1, 1)
+    assert karakeep.lists["L1"] == [] and len(karakeep.bookmarks) == 1
