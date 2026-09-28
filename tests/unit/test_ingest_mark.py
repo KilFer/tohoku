@@ -38,8 +38,19 @@ def test_ingest_registers_unsupported_without_platform(state):
 
     report = ingest(karakeep, state, "L1")
 
-    assert report.unsupported == ["b1", "b2"]
+    # Final review minor d: un bookmark que no es un enlace (nota, imagen suelta) se ignora.
+    assert report.unsupported == ["b1"]
     assert state.get_job("b1").platform is None
+
+
+def test_ingest_ignores_bookmarks_that_are_not_links(state):
+    karakeep = FakeKarakeep([Bookmark(id="b2", url=None)])
+
+    report = ingest(karakeep, state, "L1")
+
+    assert report.new == [] and report.unsupported == []
+    assert not state.has_job("b2")
+    assert karakeep.calls == []
 
 
 def test_ingest_skips_bookmarks_already_tagged_when_state_was_lost(state):

@@ -30,9 +30,13 @@ def ingest(karakeep: KarakeepClient, state: StateStore, list_id: str) -> IngestR
     for bookmark in bookmarks:
         if state.has_job(bookmark.id) or any(tag.startswith(JR_TAG_PREFIX) for tag in bookmark.tags):
             continue
-        classified = classify_url(bookmark.url) if bookmark.url else None
+        if not bookmark.url:
+            # No es un enlace (nota de texto, imagen suelta...): no hay nada que procesar.
+            log.debug("bookmark=%s no es un enlace; se ignora", bookmark.id)
+            continue
+        classified = classify_url(bookmark.url)
         if classified is None:
-            state.add_job(bookmark.id, bookmark.url or "", None, None)
+            state.add_job(bookmark.id, bookmark.url, None, None)
             report.unsupported.append(bookmark.id)
             log.info("bookmark=%s fuente no soportada url=%s", bookmark.id, bookmark.url)
             continue

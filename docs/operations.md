@@ -15,10 +15,12 @@ Al terminar: quita `#revisar` y quita el clon de la bandeja (clic derecho → "E
 
 ## Comandos
     docker compose exec japan-reader japan-reader status
-    docker compose exec japan-reader japan-reader run-once
+    docker compose run --rm japan-reader japan-reader run-once   # solo con el servicio parado (candado)
     docker compose exec japan-reader japan-reader reprocess <bookmarkId> [<bookmarkId>...] --from extract
     docker compose exec japan-reader japan-reader reprocess --all-errors --from fetch
     docker compose logs -f japan-reader
+
+`run` y `run-once` toman un candado exclusivo en `DATA_DIR/japan-reader.lock`: si ya hay otra instancia en marcha (p. ej. el contenedor), `run-once` sale con código 3 y un mensaje claro, y `run` lo registra en el log y sale con código 3. El resto de comandos (`status`, `reprocess`...) no lo necesitan.
 
 `reprocess --from`: `fetch` (vuelve a descargar), `extract` (nuevo prompt o modelo, sin re-transcribir), `geocode`, `resolve`, `publish`. El bookmarkId está en la URL del bookmark en Karakeep. Admite varios ids a la vez; `--all-errors` vuelve a poner en cola **todos** los jobs en error (útil tras corregir cookies o el modelo).
 

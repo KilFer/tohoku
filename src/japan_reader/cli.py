@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Annotated
 
@@ -8,6 +9,7 @@ from japan_reader.config import Settings
 from japan_reader.errors import ConfigError
 from japan_reader.evaluation import EvalRunner, format_table, load_cases
 from japan_reader.instagram_export import filter_collection, format_import_report, import_items, parse_export
+from japan_reader.lock import AlreadyRunning, single_instance
 from japan_reader.log import setup_logging
 from japan_reader.service import REPROCESS_FROM, format_status, reprocess
 from japan_reader.stages.extract import ExtractStage
@@ -32,17 +34,32 @@ def _config_exit(exc: ConfigError) -> typer.Exit:
     return typer.Exit(2)
 
 
+def _already_running_exit(exc: AlreadyRunning) -> typer.Exit:
+    logging.getLogger(__name__).error("%s", exc)
+    typer.echo(f"{exc}. No se arranca otra.", err=True)
+    return typer.Exit(3)
+
+
 @app.command()
 def run() -> None:
     """Bucle principal: sondea Karakeep y procesa la cola."""
-    _load().service.run_forever()
+    loaded = _load()
+    try:
+        with single_instance(loaded.settings.data_dir):
+            loaded.service.run_forever()
+    except AlreadyRunning as exc:
+        raise _already_running_exit(exc) from exc
 
 
 @app.command("run-once")
 def run_once() -> None:
     """Un único ciclo de sondeo y procesamiento."""
+    loaded = _load()
     try:
-        _load().service.tick()
+        with single_instance(loaded.settings.data_dir):
+            loaded.service.tick()
+    except AlreadyRunning as exc:
+        raise _already_running_exit(exc) from exc
     except ConfigError as exc:
         raise _config_exit(exc) from exc
 

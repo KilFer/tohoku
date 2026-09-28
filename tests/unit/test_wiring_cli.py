@@ -12,6 +12,7 @@ from japan_reader.sources import ContentHint, Platform
 from japan_reader.pipeline import STAGE_ORDER
 from japan_reader.state import JobStatus, StateStore
 from japan_reader.trilium_layout import LayoutCache, init_layout, resolve_layout
+from japan_reader.lock import AlreadyRunning, single_instance
 from japan_reader.wiring import build_app, preflight
 
 
@@ -152,3 +153,34 @@ def test_state_error_job_ids(tmp_path):
         state.add_job(bid, f"u{bid}", Platform.YOUTUBE, ContentHint.VIDEO)
         state.finish(bid, outcome)
     assert sorted(state.error_job_ids()) == ["a", "c"]
+
+
+def test_single_instance_lock(tmp_path):
+    """Final review minor b: un solo proceso `run`/`run-once` a la vez por DATA_DIR."""
+    with single_instance(tmp_path / "data"):
+        with pytest.raises(AlreadyRunning):
+            with single_instance(tmp_path / "data"):
+                pass
+    with single_instance(tmp_path / "data"):  # liberado al salir
+        pass
+    assert (tmp_path / "data" / "japan-reader.lock").exists()
+
+
+def test_cli_run_once_exits_3_when_another_instance_runs(fake_app):
+    ticks = []
+    fake_app.service = SimpleNamespace(tick=lambda: ticks.append(1))
+
+    with single_instance(fake_app.settings.data_dir):
+        result = CliRunner().invoke(cli.app, ["run-once"])
+    assert result.exit_code == 3 and "Ya hay otra instancia" in result.output
+    assert ticks == []
+
+    result = CliRunner().invoke(cli.app, ["run-once"])
+    assert result.exit_code == 0 and ticks == [1]
+
+
+def test_cli_run_exits_3_when_another_instance_runs(fake_app):
+    fake_app.service = SimpleNamespace(run_forever=lambda: pytest.fail("no debería arrancar"))
+    with single_instance(fake_app.settings.data_dir):
+        result = CliRunner().invoke(cli.app, ["run"])
+    assert result.exit_code == 3

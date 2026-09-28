@@ -10,7 +10,8 @@
 **Reglas:**
 - Se ignoran los bookmarks que ya tienen job o que ya llevan una etiqueta `jr:*` (protege frente a pérdida de `state.db`).
 - URLs soportadas: YouTube (`/shorts/`, `watch`, `youtu.be`) e Instagram (`/reel/`, `/reels/`, `/tv/`, `/p/`, también con usuario delante).
-- Las no soportadas (u otros tipos de bookmark) se registran sin plataforma; el pipeline las marca `jr:error` con motivo "fuente no soportada".
+- Los bookmarks que no son enlaces (notas de texto, imágenes sueltas: sin URL) se ignoran: ni job ni `jr:error`.
+- Los enlaces de dominios no soportados se registran sin plataforma; el pipeline los marca `jr:error` con motivo "fuente no soportada".
 
 **Fallos:** lista inexistente → `ConfigError` (se detiene y avisa por ntfy); 401/403 → `ConfigError`; red/5xx → se reintenta en el siguiente sondeo.
 
