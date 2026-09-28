@@ -1,0 +1,63 @@
+# CLAUDE.md — japan-reader
+
+Contexto y reglas para futuras sesiones. Idioma de trabajo con el usuario (Fernando): **español**.
+
+## Qué es
+
+Servicio Python 3.12 (uv, Docker) que convierte Shorts de YouTube, Reels y posts de Instagram guardados en la lista **"Japón"** de Karakeep en notas de Trilium bajo `Home › Viajes › Ideas de Japón` (`#jrRoot`): Geo Map de lugares, "Comprar y comer", "Cultura y curiosidades" y "Bandeja de revisión". Objetivo: planificar un viaje a Japón.
+
+Pipeline: `ingest → fetch (yt-dlp/gallery-dl + ffmpeg) → transcribe (faster-whisper large-v3, CPU) → extract (LLM multimodal vía OpenRouter) → geocode (Google Places Text Search Pro) → resolve (deduplicación) → publish (Trilium ETAPI) → mark (etiqueta jr:* + archivar en Karakeep)`. Avisos por ntfy.
+
+Documentación de referencia (leer antes de cambiar comportamiento):
+- Diseño: `docs/superpowers/specs/2026-09-28-japan-reader-design.md` (autoridad).
+- Plan original (histórico, ya ejecutado): `docs/superpowers/plans/2026-09-28-japan-reader.md`.
+- Etapas: `docs/pipeline/01-ingest.md` … `08-mark.md` (cada una con 7 secciones: Qué hace · Entrada · Salida · Dependencias · Configuración · Fallos · Cómo probarla).
+- Modelo de Trilium: `docs/trilium-model.md`. Operación diaria: `docs/operations.md`.
+
+## Entorno (servidor Delfos)
+
+- Contenedor `japan-reader` (compose en este repo), red Docker externa `pangolin`. Límite 6 CPU / 6 GB.
+- Desde el contenedor: Karakeep `http://karakeep-web:3000`, Trilium `http://trilium:8080`.
+- Desde el host (scripts/tests): Karakeep `http://localhost:3088`, Trilium `http://localhost:8750`.
+- Volúmenes: `./data → /data` (state.db, jobs, `data/instagram/`), `whisper-models → /models` (large-v3 ya copiado), `./secrets → /secrets:ro`.
+- `data/state.db` lo crea el contenedor como root: usar la CLI dentro del contenedor, no `uv run` sobre `data/`.
+- `data/models/` (~3,5 GB) es una copia del host de las pruebas; el contenedor usa el volumen `/models`. Se puede borrar si hace falta espacio.
+- No hay remoto git: todo se commitea en `master` local.
+
+## Reglas de trabajo
+
+- **Nunca** crear ni editar `.env`, ni mostrar secretos. Para comprobar credenciales, leer `.env` con `dotenv_values` e imprimir solo presencia/longitud y el resultado de la llamada.
+- TDD: test primero (sin red; `tests/fakes.py`, `tests/builders.py`, respx), luego código. `uv run pytest -q` debe quedar en verde.
+- Tests de integración solo a mano: `JR_TEST_ROOT_LABEL=... TRILIUM_URL=http://localhost:8750 KARAKEEP_URL=http://localhost:3088 uv run pytest -m integration -k ...`. Requieren una nota con `#jrRootTest` en Trilium (hoy no existe).
+- Cada cambio de comportamiento actualiza su doc de etapa / `operations.md`.
+- Tras cambiar código: `docker compose build` y `docker compose up -d` (recrea el contenedor). La CLI dentro: `docker compose exec japan-reader japan-reader <cmd>`. `run-once` choca con el lock del servicio en marcha: usar `docker compose run --rm` con el servicio parado.
+- Acciones sobre servicios reales (Trilium, Karakeep, importaciones, llamadas de pago) se confirman con el usuario antes; trabaja paso a paso y se detiene para revisión manual entre bloques.
+- Commits terminan con `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+
+## Estado (2026-09-28)
+
+- En producción: `docker compose up -d`, sondeo cada 10 min. Prueba de humo con 3 enlaces OK (2 lugares en el mapa, 4 cosas, 1 otro; todos `jr:procesado` y archivados).
+- `.env` completo: Karakeep (lista "Japón" = `seo5xdpquppqfy4hmzzeekfh`), Trilium v0.106, OpenRouter `openai/gpt-6-luna` (key con límite 8 $, presupuesto 2 $/día), Google Places (cuota diaria ~200 en Cloud Console, `PLACES_DAILY_LIMIT=150`), ntfy `https://ntfy.belaza.me` topic `kamo`. Sin cookies de Instagram (de momento no hacen falta).
+- Medidas reales: ~2 min por Reel (Whisper large-v3 ~90 s), ~0,001 $ de LLM por enlace. `small` de Whisper no basta (confundió "Miki Jet" con "Mickey Jet").
+
+### Correcciones hechas en la puesta en marcha (no estaban en el plan)
+- `e3c64ad` Places: con `regionCode=JP` Google omite el país en `formattedAddress` → se pide `places.postalAddress` (Pro) y se usa `regionCode` y la prefectura.
+- `6e1f9b0` Geocode: entre varios resultados válidos gana el de nombre más parecido, no el primero.
+- `ab99cc3` OpenRouter: `temperature` solo si el modelo la admite (modelos de razonamiento no; con `require_parameters` daba 404).
+- `17950b7` Importador: formato de exportación 2026 (lista de colecciones con posts anidados, mojibake), del más antiguo al más reciente, `--limit N` por tandas.
+
+## Importación del historial de Instagram (EN CURSO)
+
+- Fichero: `data/instagram/saved_collections.json` (en el contenedor: `/data/instagram/saved_collections.json`). Colección a importar: **"Cosas de Japon"** = 2.288 enlaces (2.166 Reels, 122 posts). Otras colecciones (Recetas, Para la casa, Boda) no se importan.
+- Comando de cada tanda (relanzarlo importa la siguiente; `--dry-run` primero para ver qué entraría):
+  `docker compose exec japan-reader japan-reader import-instagram /data/instagram/saved_collections.json --collection "Cosas de Japon" --limit N`
+- Plan: primera tanda de 20 → revisar tiempos, coste, Bandeja de revisión y calidad → tandas de 50-100/día ajustando `OPENROUTER_DAILY_BUDGET_USD` y `PLACES_DAILY_LIMIT`. Estimación total: ~75-80 h de CPU, 3-5 $ de LLM, 2.000-4.000 búsquedas de Places.
+- Progreso: consultar con `--dry-run` (línea `Ya existían / Pendientes`) y `docker compose exec japan-reader japan-reader status`.
+  - 2026-09-28: dry-run de la primera tanda → 20 nuevos, 0 existentes, 2.268 pendientes. Primera tanda aún no lanzada.
+
+## Pendientes y mejoras conocidas
+
+- **Duplicados por URL con parámetros**: Karakeep guarda la URL compartida (`?igsh=`, `?stkn=`) y `check-url` compara exacto; un post guardado en Karakeep y también en la exportación no se detecta como existente. Solo afecta a posts recientes (final de la importación). Mejora propuesta: comparar contra URLs canónicas de toda la lista.
+- `TNote` (cliente Trilium) no filtra atributos heredados de plantillas (ETAPI los devuelve con otro `noteId`). Hoy sin efecto porque no hay nombres en común; conviene filtrar por `noteId`.
+- Fotogramas: con `KEYFRAMES_MAX=6` se pueden perder carteles breves. Decidir con `japan-reader eval` (rellenar `eval/cases.yaml` con casos reales) si subirlo o bajar el umbral de escena; también para comparar modelos.
+- Menores abiertos: un 400 de OpenRouter que cite el modelo podría parar la cola (ConfigError); nota vacía huérfana tras crash+carrera; `geocode` no reanuda lugar a lugar.

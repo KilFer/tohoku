@@ -12,13 +12,14 @@ Convierte YouTube Shorts, Instagram Reels y posts de Instagram guardados en Kara
 4. `docker compose up -d` y `docker compose logs -f japan-reader`.
 
 ## Comandos
-`run` · `run-once` · `init-trilium` · `status` · `reprocess <id>... | --all-errors [--from <etapa>]` · `import-instagram <export> [--collection] [--dry-run]` · `eval [--model] [--keyframes/--no-keyframes]`
+`run` · `run-once` · `init-trilium` · `status` · `reprocess <id>... | --all-errors [--from <etapa>]` · `import-instagram <export> [--collection] [--limit N] [--dry-run]` · `eval [--model] [--keyframes/--no-keyframes]`
 
 ## Documentación
 - Diseño: `docs/superpowers/specs/2026-09-28-japan-reader-design.md`
 - Etapas: `docs/pipeline/01-ingest.md` … `08-mark.md`
 - Modelo de Trilium: `docs/trilium-model.md`
 - Operación: `docs/operations.md`
+- Estado actual, entorno y pendientes (para retomar el trabajo): `CLAUDE.md`
 
 ## Desarrollo
     uv sync
