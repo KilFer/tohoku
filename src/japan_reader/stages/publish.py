@@ -20,9 +20,11 @@ from japan_reader.models import (
     PublishedNote,
     PublishResult,
     ResolveResult,
+    SourceMeta,
     Transcript,
 )
 from japan_reader.notes import (
+    ALWAYS_WRITTEN_LABELS,
     DATA_ATTACHMENT_TITLE,
     CosaData,
     LugarData,
@@ -31,8 +33,10 @@ from japan_reader.notes import (
     add_source,
     compose_content,
     dump_data,
+    item_identity,
     labels_for,
     load_data,
+    name_key,
     note_title,
     render_failure,
     render_generated,
@@ -59,6 +63,28 @@ def upsert_labels(trilium: TriliumClient, note: TNote, labels: dict[str, str]) -
             trilium.add_label(note.note_id, name, value)
         elif current.value != value:
             trilium.update_attribute(current.attribute_id, value)
+
+
+def sync_labels(trilium: TriliumClient, note: TNote, labels: dict[str, str], old_labels: dict[str, str]) -> None:
+    """Como `upsert_labels`, pero respeta las correcciones del usuario en una nota existente.
+
+    Un atributo gestionado se reescribe solo si falta o si sigue teniendo el valor que el servicio
+    escribió la última vez (`old_labels`, calculado del adjunto anterior). `jrTipo` y `fuentes`
+    se escriben siempre.
+    """
+    for name, value in labels.items():
+        current = note.attr("label", name)
+        if current is None:
+            trilium.add_label(note.note_id, name, value)
+        elif current.value != value and (name in ALWAYS_WRITTEN_LABELS or current.value == old_labels.get(name)):
+            trilium.update_attribute(current.attribute_id, value)
+
+
+def _synthetic_title(meta: SourceMeta) -> str:
+    if meta.title and meta.title.strip():
+        return meta.title
+    first_line = next((line.strip() for line in (meta.description or "").splitlines() if line.strip()), "")
+    return first_line[:80].strip() or "Sin título"
 
 
 class PublishStage:
@@ -107,7 +133,7 @@ class PublishStage:
 
     def _publish_item(self, item: PlannedItem, ctx: JobContext, layout: Layout) -> PublishedNote:
         if item.kind == ItemKind.FALLO:
-            note_id = self._create_failure(ctx, layout, item.key)
+            note_id = self._create_failure(ctx, layout)
         else:
             data = self._build_data(item, ctx)
             if item.action == "merge" and item.existing_note_id:
@@ -117,9 +143,9 @@ class PublishStage:
                     if exc.status != 404:
                         raise
                     log.warning("nota %s de fusión no existe (borrada); se crea una nueva", item.existing_note_id)
-                    note_id = self._create(data, layout, ctx.job.bookmark_id, item.key)
+                    note_id = self._create(data, layout, ctx.job.bookmark_id)
             else:
-                note_id = self._create(data, layout, ctx.job.bookmark_id, item.key)
+                note_id = self._create(data, layout, ctx.job.bookmark_id)
         if item.review_reasons:
             self._send_to_review(note_id, item.review_reasons, layout)
         return PublishedNote(key=item.key, note_id=note_id, action=item.action, review_reasons=item.review_reasons)
@@ -150,30 +176,42 @@ class PublishStage:
             )
         if item.index == -1:
             return OtroData(
-                titulo=fetch.meta.title or "Sin título", contenido=extraction.resumen_fuente,
+                titulo=_synthetic_title(fetch.meta), contenido=extraction.resumen_fuente,
                 fuentes=[entry(extraction.resumen_fuente)],
             )
         otro = extraction.otros[item.index]
         return OtroData(titulo=otro.titulo, contenido=otro.contenido, fuentes=[entry(otro.contenido[:200])])
 
-    def _create(self, data: NoteData, layout: Layout, bookmark_id: str, key: str) -> str:
-        """Crea (o retoma, tras un fallo a medias) la nota de `data`. Idempotente vía `#jrItem`."""
+    def _natural_match(self, data: NoteData, layout: Layout) -> list[TNote]:
+        """Notas existentes con la misma clave natural (lugar con ficha de Google o cosa con el mismo nombre)."""
+        if isinstance(data, LugarData) and data.place:
+            return self._t.search(f'#googlePlaceId="{data.place.place_id}"', ancestor=layout.root)
+        if isinstance(data, CosaData):
+            return self._t.search(f'#jrTipo=cosa #jrNombreNorm="{name_key(data.nombre)}"', ancestor=layout.comprar)
+        return []
+
+    def _create(self, data: NoteData, layout: Layout, bookmark_id: str) -> str:
+        """Crea (o retoma, tras un fallo a medias) la nota de `data`. Idempotente vía `#jrItem` y la clave natural."""
         if isinstance(data, LugarData):
             parent, template = layout.mapa, layout.plantilla_lugar
         elif isinstance(data, CosaData):
             parent, template = layout.categorias[data.categoria], layout.plantilla_cosa
         else:
             parent, template = layout.cultura, None
-        item_id = f"{bookmark_id}:{key}"
+        item_id = f"{bookmark_id}:{item_identity(data)}"
         found = self._t.search(f'#jrItem="{item_id}"', ancestor=layout.root)
+        if found and self._has_data(found[0].note_id):
+            # La nota ya estaba completa (de una ejecución anterior): se trata como una
+            # fusión para no perder "Mis notas" ni duplicar la fuente ni volver a crearla.
+            return self._merge(found[0].note_id, data)
+        natural = [n for n in self._natural_match(data, layout) if not found or n.note_id != found[0].note_id]
+        if natural:
+            # Otra fuente ya creó la nota después de que `resolve` hiciera el plan: se fusiona.
+            return self._merge(natural[0].note_id, data)
         if found:
-            note = found[0]
-            if any(a.title == DATA_ATTACHMENT_TITLE for a in self._t.list_attachments(note.note_id)):
-                # La nota ya estaba completa (de una ejecución anterior): se trata como una
-                # fusión para no perder "Mis notas" ni duplicar la fuente ni volver a crearla.
-                return self._merge(note.note_id, data)
             # Retomamos una creación cortada a medias: no hay adjunto todavía, pero puede
             # haber contenido ya escrito (y hasta ediciones del usuario bajo "Mis notas").
+            note = found[0]
             existing_content = self._t.get_content(note.note_id)
         else:
             created = self._t.create_note(parent, note_title(data), "text", "")
@@ -187,16 +225,28 @@ class PublishStage:
         self._t.create_attachment(note.note_id, DATA_ATTACHMENT_TITLE, "application/json", dump_data(data))
         return note.note_id
 
+    def _has_data(self, note_id: str) -> bool:
+        return any(a.title == DATA_ATTACHMENT_TITLE for a in self._t.list_attachments(note_id))
+
     def _merge(self, note_id: str, new: NoteData) -> str:
         note = self._t.get_note(note_id)
         attachment = next((a for a in self._t.list_attachments(note_id) if a.title == DATA_ATTACHMENT_TITLE), None)
+        old_labels: dict[str, str] = {}
         if attachment is None:
             log.warning("nota %s sin %s; se regenera con la fuente nueva", note_id, DATA_ATTACHMENT_TITLE)
             data = new
         else:
             data = load_data(self._t.get_attachment_content(attachment.attachment_id))
+            old_labels = labels_for(data)
             if add_source(data, new.fuentes[0]):
                 self._merge_text(data, new)
+            elif type(data) is type(new) and all(f.bookmark_id == new.fuentes[0].bookmark_id for f in data.fuentes):
+                # Reprocesado de una nota que solo tiene esta fuente: se regenera con la extracción
+                # nueva (sin LLM). Si la nueva no tiene ficha de Google, se conserva la anterior.
+                previous = data
+                data = new.model_copy(deep=True)
+                if isinstance(data, LugarData) and isinstance(previous, LugarData) and data.place is None:
+                    data.place = previous.place
             if isinstance(data, LugarData) and isinstance(new, LugarData) and data.place is None:
                 data.place = new.place
             if isinstance(data, CosaData) and isinstance(new, CosaData):
@@ -208,7 +258,7 @@ class PublishStage:
         else:
             self._t.set_attachment_content(attachment.attachment_id, dump_data(data))
         self._t.set_content(note_id, compose_content(render_generated(data), self._t.get_content(note_id)))
-        upsert_labels(self._t, note, labels_for(data))
+        sync_labels(self._t, note, labels_for(data), old_labels)
         return note_id
 
     def _merge_text(self, data: NoteData, new: NoteData) -> None:
@@ -233,12 +283,12 @@ class PublishStage:
         if isinstance(data, LugarData):
             data.que_hacer = merged.que_hacer
 
-    def _create_failure(self, ctx: JobContext, layout: Layout, key: str) -> str:
+    def _create_failure(self, ctx: JobContext, layout: Layout) -> str:
         fetch = ctx.result("fetch", FetchResult)
         transcript = ctx.result("transcribe", Transcript)
         extract = ctx.result("extract", ExtractResult)
         meta = fetch.meta
-        item_id = f"{ctx.job.bookmark_id}:{key}"
+        item_id = f"{ctx.job.bookmark_id}:fallo"
         found = self._t.search(f'#jrItem="{item_id}"', ancestor=layout.root)
         if found:
             note = found[0]

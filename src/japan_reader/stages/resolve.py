@@ -13,8 +13,9 @@ from japan_reader.models import (
     PlannedItem,
     ResolveResult,
 )
+from japan_reader.notes import name_key
 from japan_reader.rules import japan_decision
-from japan_reader.text import normalize_name, similarity
+from japan_reader.text import similarity
 from japan_reader.trilium_layout import Layout
 
 log = logging.getLogger(__name__)
@@ -95,7 +96,7 @@ class ResolveStage:
         items: list[PlannedItem] = []
         for i, cosa in enumerate(extraction.cosas):
             key = f"cosa:{i}"
-            norm = normalize_name(cosa.nombre) or cosa.nombre.casefold().replace('"', "").strip()
+            norm = name_key(cosa.nombre)
             if norm in seen:
                 items.append(PlannedItem(key=key, kind=ItemKind.COSA, index=i, action="alias", alias_of=seen[norm]))
                 continue

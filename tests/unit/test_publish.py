@@ -220,7 +220,7 @@ def test_create_is_crash_safe_and_resumes_without_duplicating(tmp_path, settings
     assert [a.title for a in trilium.list_attachments(note_id)] == ["japan-reader.json"]
     labels = trilium.labels(note_id)
     assert labels["googlePlaceId"] == "P1"
-    assert labels["jrItem"] == "b1:lugar:0"
+    assert labels["jrItem"] == "b1:lugar:P1"
 
 
 def test_merge_target_deleted_falls_back_to_create(tmp_path, settings):
@@ -237,7 +237,7 @@ def test_merge_target_deleted_falls_back_to_create(tmp_path, settings):
     note_id = result.notes[0].note_id
     assert note_id != "gone"
     assert trilium.get_note(note_id).parent_note_ids == [layout.mapa]
-    assert trilium.labels(note_id)["jrItem"] == "b1:lugar:0"
+    assert trilium.labels(note_id)["jrItem"] == "b1:lugar:P1"
 
 
 def test_recreating_after_state_reset_reuses_jritem_note_via_merge(env):
@@ -257,3 +257,136 @@ def test_recreating_after_state_reset_reuses_jritem_note_via_merge(env):
     assert "Reservar el martes" in content
     assert env.trilium.labels(note_id)["fuentes"] == "1"
     assert llm.calls == []
+
+
+def test_reordered_reextraction_keeps_each_place_in_its_own_note(env):
+    """Final review 1: la identidad `#jrItem` es por contenido, no por posición."""
+    ichiran = make_lugar()
+    run1 = _stage(env).run(_ctx(env, "b1", make_extraction(lugares=[ichiran]), GEO, [_item()]))
+    ichiran_id = run1.notes[0].note_id
+    env.state.clear_stages_from("b1", "publish", ["publish"])
+    extraction = make_extraction(lugares=[make_lugar("Fushimi Inari", categoria="santuario"), ichiran])
+    geo = [GeoOutcome(lugar_index=0, match=make_geo("PB", "Fushimi Inari")), GeoOutcome(lugar_index=1, match=make_geo("P1"))]
+    llm = FakeLLM([])
+
+    result = _stage(env, llm).run(_ctx(env, "b1", extraction, geo, [_item(), _item(index=1)]))
+
+    fushimi_id, second_id = (n.note_id for n in result.notes)
+    assert second_id == ichiran_id and fushimi_id != ichiran_id
+    assert len(env.trilium.children(env.layout.mapa)) == 2
+    assert env.trilium.labels(fushimi_id)["googlePlaceId"] == "PB"
+    assert "Ramen en Fushimi Inari" in env.trilium.get_content(fushimi_id)
+    assert "Ramen en Ichiran Shibuya" in env.trilium.get_content(ichiran_id)
+    assert "Fushimi" not in env.trilium.get_content(ichiran_id)
+    assert env.trilium.labels(fushimi_id)["jrItem"] == "b1:lugar:PB"
+    assert llm.calls == []
+
+
+def test_reprocess_single_source_note_refreshes_text_without_llm(env):
+    """Final review 1: reprocesar una nota con una sola fuente regenera su texto."""
+    note_id = _stage(env).run(_ctx(env, "b1", make_extraction(lugares=[make_lugar()]), GEO, [_item()])).notes[0].note_id
+    content = env.trilium.get_content(note_id)
+    env.trilium.set_content(note_id, content.replace("<h2>Mis notas</h2><p></p>", "<h2>Mis notas</h2><p>Reservar el martes</p>"))
+    env.state.clear_stages_from("b1", "publish", ["publish"])
+    changed = make_extraction(lugares=[make_lugar(que_es="Ramen de cerdo muy famoso", consejos=["Ir de noche"])])
+    llm = FakeLLM([])
+
+    _stage(env, llm).run(_ctx(env, "b1", changed, GEO, [_item(action="merge", existing=note_id)]))
+
+    content = env.trilium.get_content(note_id)
+    assert "Ramen de cerdo muy famoso" in content and "Ir de noche" in content
+    assert "Ramen en Ichiran Shibuya" not in content
+    assert "Reservar el martes" in content
+    assert env.trilium.labels(note_id)["fuentes"] == "1"
+    assert llm.calls == []
+    data = json.loads(env.trilium.get_attachment_content(env.trilium.list_attachments(note_id)[0].attachment_id))
+    assert data["resumen"] == "Ramen de cerdo muy famoso" and data["place"]["place_id"] == "P1"
+
+
+def test_reprocess_multi_source_note_only_replaces_its_source(env):
+    extraction = make_extraction(lugares=[make_lugar()])
+    note_id = _stage(env).run(_ctx(env, "b1", extraction, GEO, [_item()])).notes[0].note_id
+    _stage(env, FakeLLM([MERGED])).run(_ctx(env, "b2", extraction, GEO, [_item(action="merge", existing=note_id)]))
+    env.state.clear_stages_from("b2", "publish", ["publish"])
+    llm = FakeLLM([])
+
+    changed = make_extraction(lugares=[make_lugar(que_es="Otro texto")])
+    _stage(env, llm).run(_ctx(env, "b2", changed, GEO, [_item(action="merge", existing=note_id)]))
+
+    content = env.trilium.get_content(note_id)
+    assert "Resumen fusionado" in content and "Otro texto" in content  # aporte de la fuente b2
+    assert env.trilium.labels(note_id)["fuentes"] == "2"
+    assert llm.calls == []
+
+
+def test_create_merges_into_existing_note_with_same_natural_key(env):
+    """Plan de resolve obsoleto: dice `create` pero ya hay una nota con el mismo googlePlaceId."""
+    extraction = make_extraction(lugares=[make_lugar()])
+    note_id = _stage(env).run(_ctx(env, "b1", extraction, GEO, [_item()])).notes[0].note_id
+
+    result = _stage(env, FakeLLM([MERGED])).run(_ctx(env, "b2", extraction, GEO, [_item()]))
+
+    assert result.notes[0].note_id == note_id
+    assert len(env.trilium.children(env.layout.mapa)) == 1
+    assert env.trilium.labels(note_id)["fuentes"] == "2"
+
+
+def test_create_cosa_merges_into_existing_note_with_same_name(env):
+    extraction = make_extraction(cosas=[make_cosa("Kit Kat matcha", categoria="souvenirs")])
+    item = _item(kind=ItemKind.COSA)
+    note_id = _stage(env).run(_ctx(env, "b1", extraction, [], [item])).notes[0].note_id
+    assert env.trilium.labels(note_id)["jrItem"] == "b1:cosa:kit kat matcha"
+
+    result = _stage(env, FakeLLM([MERGED])).run(_ctx(env, "b2", extraction, [], [item]))
+
+    assert result.notes[0].note_id == note_id
+    assert len(env.trilium.children(env.layout.categorias["souvenirs"])) == 1
+
+
+def test_merge_keeps_user_corrected_managed_labels(env):
+    """Final review 2: no se deshacen las correcciones del usuario en atributos gestionados."""
+    extraction = make_extraction(lugares=[make_lugar()])
+    note_id = _stage(env).run(_ctx(env, "b1", extraction, GEO, [_item()])).notes[0].note_id
+    geo_attr = env.trilium.get_note(note_id).attr("label", "geolocation")
+    env.trilium.update_attribute(geo_attr.attribute_id, "35.0,135.0")
+    icon_attr = env.trilium.get_note(note_id).attr("label", "iconClass")
+    env.trilium.delete_attribute(icon_attr.attribute_id)
+
+    _stage(env, FakeLLM([MERGED])).run(_ctx(env, "b2", extraction, GEO, [_item(action="merge", existing=note_id)]))
+
+    labels = env.trilium.labels(note_id)
+    assert labels["geolocation"] == "35.0,135.0"
+    assert labels["fuentes"] == "2"
+    assert labels["iconClass"] == "bx bx-bowl-hot"  # ausente → se vuelve a escribir
+    assert labels["googlePlaceId"] == "P1"
+
+
+def test_merge_updates_managed_labels_the_user_did_not_touch(env):
+    extraction = make_extraction(lugares=[make_lugar(ciudad=None)])
+    note_id = _stage(env).run(_ctx(env, "b1", extraction, GEO, [_item()])).notes[0].note_id
+    categoria = env.trilium.labels(note_id)["categoria"]
+    assert categoria == "comida"
+    env.state.clear_stages_from("b1", "publish", ["publish"])
+
+    changed = make_extraction(lugares=[make_lugar(categoria="bar", ciudad="Tokio")])
+    _stage(env).run(_ctx(env, "b1", changed, GEO, [_item(action="merge", existing=note_id)]))
+
+    labels = env.trilium.labels(note_id)
+    assert labels["categoria"] == "bar" and labels["ciudad"] == "Tokio"
+
+
+def test_synthetic_note_title_falls_back_to_description(env):
+    """Final review minor f."""
+    items = [_item(kind=ItemKind.OTRO, index=-1, key="otro:resumen")]
+    ctx = _ctx(env, "b1", make_extraction(), [], items)
+    long_line = "Consejos para viajar a Japón " * 5
+    ctx.results["fetch"] = make_fetch(meta=make_meta(url="https://youtu.be/b1", title="", description=f"{long_line}\nsegunda línea"))
+
+    note_id = _stage(env).run(ctx).notes[0].note_id
+
+    assert env.trilium.get_note(note_id).title == long_line.strip()[:80]
+
+    ctx2 = _ctx(env, "b2", make_extraction(), [], items)
+    ctx2.results["fetch"] = make_fetch(meta=make_meta(url="https://youtu.be/b2", title=None, description=None))
+    note_id = _stage(env).run(ctx2).notes[0].note_id
+    assert env.trilium.get_note(note_id).title == "Sin título"

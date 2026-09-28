@@ -108,6 +108,24 @@ def add_source(data: NoteData, entry: SourceEntry) -> bool:
     return True
 
 
+def name_key(text: str) -> str:
+    """Nombre normalizado usado como clave (`#jrNombreNorm`, `#jrItem`). Nunca vacío si hay texto."""
+    return normalize_name(text) or text.casefold().replace('"', "").strip()
+
+
+def item_identity(data: NoteData) -> str:
+    """Parte de `#jrItem` que identifica el elemento por su contenido (no por su posición en la extracción)."""
+    if isinstance(data, LugarData):
+        return f"lugar:{data.place.place_id}" if data.place else f"lugar:n:{name_key(data.nombre)}"
+    if isinstance(data, CosaData):
+        return f"cosa:{name_key(data.nombre)}"
+    return f"otro:{name_key(data.titulo)}"
+
+
+# Atributos gestionados que se escriben siempre, aunque el usuario los haya cambiado.
+ALWAYS_WRITTEN_LABELS = frozenset({"jrTipo", "fuentes"})
+
+
 def labels_for(data: NoteData) -> dict[str, str]:
     """Atributos que el servicio gestiona. Nunca incluye los manuales (#visitado, #prioridad, #revisar)."""
     if isinstance(data, LugarData):
@@ -131,7 +149,7 @@ def labels_for(data: NoteData) -> dict[str, str]:
     if isinstance(data, CosaData):
         return {
             "jrTipo": "cosa",
-            "jrNombreNorm": normalize_name(data.nombre) or data.nombre.casefold(),
+            "jrNombreNorm": name_key(data.nombre),
             "categoria": data.categoria,
             "fuentes": str(len(data.fuentes)),
             "iconClass": COSA_ICON,
