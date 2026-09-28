@@ -9,7 +9,7 @@
 
 **Configuración:** `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` (multimodal), `OPENROUTER_TEXT_MODEL` (opcional), `OPENROUTER_DAILY_BUDGET_USD`.
 
-**Modelo:** `OPENROUTER_MODEL` (multimodal; se comprueba al arrancar) si hay imágenes; `OPENROUTER_TEXT_MODEL` (o el mismo) si no las hay. Petición con `response_format=json_schema`, `provider.require_parameters=true` y `usage.include=true` para conocer el coste real.
+**Modelo:** `OPENROUTER_MODEL` (multimodal; al arrancar se comprueba que ambos modelos existen y admiten `response_format`/`structured_outputs`) si hay imágenes; `OPENROUTER_TEXT_MODEL` (o el mismo) si no las hay. Petición con `response_format=json_schema`, `provider.require_parameters=true` y `usage.include=true` para conocer el coste real.
 
 **Prompt:** `src/japan_reader/prompts/extract.md` (versionado con el código). Pide leer el texto de las imágenes y contrastarlo con el audio.
 
@@ -17,6 +17,6 @@
 
 **Coste:** cada llamada suma su coste al contador diario `openrouter_usd`; si se supera `OPENROUTER_DAILY_BUDGET_USD`, el job espera al día siguiente (`QuotaExceeded`), la pasada se detiene (los demás jobs siguen pendientes) y se avisa por ntfy.
 
-**Fallos:** 401/402/403 → `ConfigError` (clave inválida o sin saldo); 429/5xx/timeout → reintento.
+**Fallos:** 401/402/403 → `ConfigError` (clave inválida o sin saldo); 400/404 que hablan del modelo ("not a valid model", "No endpoints found"...) → `ConfigError` (el servicio se pausa y avisa una vez; no se marca `jr:error`); otros 4xx → `jr:error`; 429/5xx/timeout → reintento.
 
 **Cómo probarla:** `uv run pytest tests/unit/test_extract.py tests/unit/test_openrouter_client.py`. Con modelos reales: `japan-reader eval` (ver `docs/operations.md`).

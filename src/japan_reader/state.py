@@ -126,6 +126,11 @@ class StateStore:
             ).fetchall()
         return [Job.model_validate(dict(row)) for row in rows]
 
+    def error_job_ids(self) -> list[str]:
+        """Todos los jobs en error (sin límite), del más antiguo al más reciente."""
+        rows = self._db.execute("SELECT bookmark_id FROM jobs WHERE status = 'error' ORDER BY updated_at, bookmark_id").fetchall()
+        return [row["bookmark_id"] for row in rows]
+
     def schedule_retry(self, bookmark_id: str, when: datetime, error: str, count_attempt: bool = True) -> None:
         self._db.execute(
             "UPDATE jobs SET attempts = attempts + ?, next_attempt_at = ?, last_error = ?, updated_at = ?"

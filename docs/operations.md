@@ -16,15 +16,17 @@ Al terminar: quita `#revisar` y quita el clon de la bandeja (clic derecho → "E
 ## Comandos
     docker compose exec japan-reader japan-reader status
     docker compose exec japan-reader japan-reader run-once
-    docker compose exec japan-reader japan-reader reprocess <bookmarkId> --from extract
+    docker compose exec japan-reader japan-reader reprocess <bookmarkId> [<bookmarkId>...] --from extract
+    docker compose exec japan-reader japan-reader reprocess --all-errors --from fetch
     docker compose logs -f japan-reader
 
-`reprocess --from`: `fetch` (vuelve a descargar), `extract` (nuevo prompt o modelo, sin re-transcribir), `geocode`, `resolve`, `publish`. El bookmarkId está en la URL del bookmark en Karakeep.
+`reprocess --from`: `fetch` (vuelve a descargar), `extract` (nuevo prompt o modelo, sin re-transcribir), `geocode`, `resolve`, `publish`. El bookmarkId está en la URL del bookmark en Karakeep. Admite varios ids a la vez; `--all-errors` vuelve a poner en cola **todos** los jobs en error (útil tras corregir cookies o el modelo).
 
 ## Cambiar de modelo
 1. Rellena `eval/cases.yaml` con 10-15 casos reales.
 2. `docker compose run --rm -v ./eval:/app/eval japan-reader japan-reader eval --model <modelo>` y lo mismo con `--no-keyframes`.
 3. Elige por aciertos (columna Lugares) y coste; cambia `OPENROUTER_MODEL` en `.env` y `docker compose up -d`.
+Al arrancar se comprueba que `OPENROUTER_MODEL` y `OPENROUTER_TEXT_MODEL` existen en OpenRouter y admiten salida JSON estructurada (`response_format`/`structured_outputs`), y que `OPENROUTER_MODEL` admite imágenes. Si un modelo deja de estar disponible (p. ej. "not a valid model", "No endpoints found"), el servicio se pausa y avisa por ntfy una vez, sin marcar `jr:error` en los enlaces.
 Si el coste de visión es alto: `REEL_KEYFRAMES_ENABLED=false`.
 
 ## Cookies de Instagram

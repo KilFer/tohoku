@@ -1,10 +1,12 @@
 import json
 
 import httpx
+import pytest
 import respx
 
 from helpers import make_image
 from japan_reader.clients.openrouter import OpenRouterClient, image_part
+from japan_reader.errors import ApiError, ConfigError
 
 HOST = "openrouter.ai"
 
@@ -46,3 +48,43 @@ def test_image_part_is_data_url(tmp_path):
     part = image_part(make_image(tmp_path / "a.jpg", size=(10, 10)))
     assert part["type"] == "image_url"
     assert part["image_url"]["url"].startswith("data:image/jpeg;base64,")
+
+
+@respx.mock
+def test_model_info():
+    respx.get(host=HOST, path="/api/v1/models").mock(
+        return_value=httpx.Response(200, json={"data": [{"id": "vision/model", "supported_parameters": ["response_format"]}]})
+    )
+    client = OpenRouterClient("key")
+    assert client.model_info("vision/model")["supported_parameters"] == ["response_format"]
+    assert client.model_info("missing/model") is None
+
+
+@pytest.mark.parametrize(
+    ("status", "body"),
+    [
+        (400, {"error": {"message": "bad/model is not a valid model ID", "code": 400}}),
+        (404, {"error": {"message": "No endpoints found that support the requested parameters", "code": 404}}),
+        (404, {"error": {"message": "Model vision/model not found", "code": 404}}),
+    ],
+)
+@respx.mock
+def test_chat_json_model_errors_are_config_errors(status, body):
+    """Final review 4: modelo inexistente o sin proveedores → ConfigError (pausa y aviso), no jr:error."""
+    respx.post(host=HOST, path="/api/v1/chat/completions").mock(return_value=httpx.Response(status, json=body))
+    with pytest.raises(ConfigError, match="modelo"):
+        OpenRouterClient("key").chat_json("vision/model", [], {}, "x")
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["Invalid JSON in request body", "This endpoint's maximum context length is 8192 tokens for model vision/model"],
+)
+@respx.mock
+def test_other_4xx_stay_api_errors(message):
+    respx.post(host=HOST, path="/api/v1/chat/completions").mock(
+        return_value=httpx.Response(400, json={"error": {"message": message, "code": 400}})
+    )
+    with pytest.raises(ApiError) as info:
+        OpenRouterClient("key").chat_json("vision/model", [], {}, "x")
+    assert not isinstance(info.value, ConfigError)

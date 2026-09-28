@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from japan_reader.clients.karakeep import KarakeepClient
 from japan_reader.clients.ntfy import Notifier
-from japan_reader.clients.openrouter import OpenRouterClient
+from japan_reader.clients.openrouter import OpenRouterClient, supports_images, supports_structured_output
 from japan_reader.clients.places import PlacesClient
 from japan_reader.clients.trilium import TriliumClient
 from japan_reader.config import Settings
@@ -41,10 +41,23 @@ class App:
 
 
 def preflight(settings: Settings, trilium: TriliumClient, llm: OpenRouterClient, layout: LayoutCache) -> None:
-    """Comprobaciones antes de procesar: Trilium accesible y estructurado, modelo multimodal, cookies."""
+    """Comprobaciones antes de procesar: Trilium accesible y estructurado, modelos válidos, cookies."""
     trilium.app_info()
     layout.refresh()
-    if not llm.model_supports_images(settings.openrouter_model):
+    models = [("OPENROUTER_MODEL", settings.openrouter_model)]
+    if settings.text_model != settings.openrouter_model:
+        models.append(("OPENROUTER_TEXT_MODEL", settings.text_model))
+    infos: dict[str, dict] = {}
+    for variable, model in models:
+        info = llm.model_info(model)
+        if info is None:
+            raise ConfigError(f"{variable}={model} no existe en OpenRouter (revisa el nombre del modelo)")
+        if not supports_structured_output(info):
+            raise ConfigError(
+                f"{variable}={model} no admite salida JSON estructurada (response_format/structured_outputs); elige otro modelo"
+            )
+        infos[model] = info
+    if not supports_images(infos[settings.openrouter_model]):
         raise ConfigError(f"OPENROUTER_MODEL={settings.openrouter_model} no es multimodal (no admite imágenes)")
     if settings.instagram_cookies_file and not settings.instagram_cookies_file.exists():
         raise ConfigError(f"No existe el fichero de cookies de Instagram: {settings.instagram_cookies_file}")

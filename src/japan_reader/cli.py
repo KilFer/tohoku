@@ -66,17 +66,27 @@ def status() -> None:
 
 @app.command("reprocess")
 def reprocess_cmd(
-    bookmark_id: str,
+    bookmark_ids: Annotated[list[str] | None, typer.Argument(help="Uno o varios bookmarkId")] = None,
     from_stage: Annotated[str, typer.Option("--from", help=" | ".join(REPROCESS_FROM))] = "fetch",
+    all_errors: Annotated[bool, typer.Option("--all-errors", help="Reprocesar todos los jobs en error")] = False,
 ) -> None:
-    """Vuelve a poner un bookmark en la cola desde una etapa."""
+    """Vuelve a poner uno o varios bookmarks en la cola desde una etapa."""
+    if from_stage not in REPROCESS_FROM:
+        typer.echo(f"etapa no válida: {from_stage}. Opciones: {', '.join(REPROCESS_FROM)}")
+        raise typer.Exit(1)
     loaded = _load()
-    try:
-        job = reprocess(loaded.state, loaded.karakeep, bookmark_id, from_stage)
-    except ValueError as exc:
-        typer.echo(str(exc))
-        raise typer.Exit(1) from exc
-    typer.echo(f"{job.bookmark_id} en cola desde '{from_stage}'; se procesará en el próximo ciclo.")
+    ids = list(dict.fromkeys([*(bookmark_ids or []), *(loaded.state.error_job_ids() if all_errors else [])]))
+    if not ids:
+        typer.echo("Indica uno o varios bookmarkId o usa --all-errors." if not all_errors else "No hay jobs en error.")
+        raise typer.Exit(1 if not all_errors else 0)
+    for bookmark_id in ids:
+        try:
+            job = reprocess(loaded.state, loaded.karakeep, bookmark_id, from_stage)
+        except ValueError as exc:
+            typer.echo(str(exc))
+            raise typer.Exit(1) from exc
+        typer.echo(f"{job.bookmark_id} en cola desde '{from_stage}'.")
+    typer.echo(f"{len(ids)} bookmark(s) en cola; se procesarán en el próximo ciclo.")
 
 
 @app.command("import-instagram")

@@ -60,10 +60,11 @@ class FakeKarakeep:
 class FakeLLM:
     """OpenRouter falso: devuelve las respuestas en orden y registra las llamadas."""
 
-    def __init__(self, responses: list[str], cost: float = 0.001, images: bool = True) -> None:
+    def __init__(self, responses: list[str], cost: float = 0.001, images: bool = True, models: dict | None = None) -> None:
         self.responses = list(responses)
         self.cost = cost
         self.images = images
+        self.models = models
         self.calls: list[dict] = []
 
     def chat_json(self, model, messages, schema, schema_name) -> ChatResult:
@@ -72,6 +73,13 @@ class FakeLLM:
 
     def model_supports_images(self, model: str) -> bool:
         return self.images
+
+    def model_info(self, model: str) -> dict | None:
+        """Por defecto cualquier modelo existe y admite salida estructurada; `models` lo sustituye."""
+        if self.models is not None:
+            return self.models.get(model)
+        modalities = ["text", "image"] if self.images else ["text"]
+        return {"id": model, "architecture": {"input_modalities": modalities}, "supported_parameters": ["response_format", "structured_outputs"]}
 
 
 class FakeTrilium:
