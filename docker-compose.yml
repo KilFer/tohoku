@@ -1,0 +1,29 @@
+services:
+  japan-reader:
+    build: .
+    image: japan-reader:local
+    container_name: japan-reader
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+      WHISPER_DOWNLOAD_ROOT: /models
+      TZ: Europe/Madrid
+    volumes:
+      - ./data:/data
+      - whisper-models:/models
+      - ./secrets:/secrets:ro
+    networks:
+      - pangolin
+    deploy:
+      resources:
+        limits:
+          cpus: "6"
+          memory: 6g
+
+networks:
+  pangolin:
+    external: true
+
+volumes:
+  whisper-models:
