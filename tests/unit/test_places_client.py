@@ -34,7 +34,37 @@ def test_search_request_and_parsing():
 
 
 def test_field_mask_only_pro_fields():
-    assert FIELD_MASK == "places.id,places.displayName,places.formattedAddress,places.location,places.googleMapsUri,places.types"
+    assert FIELD_MASK == (
+        "places.id,places.displayName,places.formattedAddress,places.location,"
+        "places.googleMapsUri,places.types,places.postalAddress"
+    )
+
+
+# Formato real devuelto por Google con regionCode=JP: la dirección omite el país.
+REAL_PLACE = {
+    "id": "ChIJIW0uPRUPAWAR6eI6dRzKGns",
+    "displayName": {"text": "Fushimi Inari-taisha", "languageCode": "es"},
+    "formattedAddress": "68 Fukakusa Yabunouchichō, Fushimi Ward, Kyoto, 612-0882",
+    "location": {"latitude": 34.96769, "longitude": 135.77919},
+    "googleMapsUri": "https://maps.google.com/?cid=8870624639634301673",
+    "postalAddress": {
+        "regionCode": "JP", "languageCode": "es", "postalCode": "612-0882",
+        "administrativeArea": "Prefectura de Kioto",
+        "addressLines": ["68 Fukakusa Yabunouchicho", "Fushimi-ku, Kioto"],
+    },
+}
+
+
+@respx.mock
+def test_postal_address_gives_country_and_area():
+    respx.post(host=HOST, path="/v1/places:searchText").mock(return_value=httpx.Response(200, json={"places": [REAL_PLACE, PLACE]}))
+
+    real, legacy = PlacesClient("gkey").search("Fushimi Inari Taisha Kyoto")
+
+    assert real.country_code == "JP"
+    assert "Prefectura de Kioto" in real.area and "Fushimi-ku, Kioto" in real.area
+    assert real.address == "68 Fukakusa Yabunouchichō, Fushimi Ward, Kyoto, 612-0882"
+    assert legacy.country_code is None and legacy.area == ""
 
 
 @respx.mock

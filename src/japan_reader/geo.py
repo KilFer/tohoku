@@ -24,17 +24,22 @@ NAME_SIMILARITY = 0.6
 
 
 def in_japan(match: GeoMatch) -> bool:
-    # fold y no normalize_name: normalize_name elimina "japon"/"japan" por ser palabras genéricas.
     inside = _LAT_RANGE[0] <= match.lat <= _LAT_RANGE[1] and _LNG_RANGE[0] <= match.lng <= _LNG_RANGE[1]
+    if not inside:
+        return False
+    if match.country_code:
+        return match.country_code.upper() == "JP"
+    # Sin postalAddress: el país tiene que aparecer en la dirección.
+    # fold y no normalize_name: normalize_name elimina "japon"/"japan" por ser palabras genéricas.
     address = fold(match.address)
-    return inside and any(word in address for word in _JAPAN_WORDS)
+    return any(word in address for word in _JAPAN_WORDS)
 
 
 def city_matches(match: GeoMatch, ciudad: str | None) -> bool:
     if not ciudad:
         return True
     city = fold(ciudad).strip()
-    address = fold(match.address)
+    address = fold(f"{match.address} {match.area}")
     return any(fold(name) in address for name in [city, *CITY_ALIASES.get(city, [])])
 
 

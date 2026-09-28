@@ -12,6 +12,12 @@ SHIBUYA = make_geo("P1", "Ichiran Shibuya", "Jinnan, Shibuya, Tokio 150-0041, Ja
 OSAKA = make_geo("P2", "Ichiran Dotonbori", "Chuo Ward, Osaka, 542-0084, Japón", lat=34.66, lng=135.50)
 OTHER_TOKYO = make_geo("P3", "Ramen Nagi", "Shinjuku, Tokio, Japón")
 PARIS = make_geo("P4", "Ichiran Paris", "Rue X, 75001 Paris, Francia", lat=48.85, lng=2.35)
+# Formato real con regionCode=JP: sin país en la dirección, país y prefectura en postalAddress.
+FUSHIMI_REAL = make_geo(
+    "F1", "Fushimi Inari-taisha", "68 Fukakusa Yabunouchichō, Fushimi Ward, Kyoto, 612-0882", lat=34.97, lng=135.78,
+    country_code="JP", area="Prefectura de Kioto 68 Fukakusa Yabunouchicho Fushimi-ku, Kioto",
+)
+SEOUL = make_geo("K9", "Myeongdong", "Jung-gu, Seúl", lat=37.56, lng=126.98, country_code="KR", area="Seúl")
 
 
 class FakePlaces:
@@ -96,3 +102,19 @@ def test_quota_exceeded(tmp_path, state):
     state.add_counter("places_calls", 150)
     with pytest.raises(QuotaExceeded):
         _run(tmp_path, state, FakePlaces({}), [make_lugar()])
+
+
+def test_real_address_without_country_is_accepted(tmp_path, state):
+    places = FakePlaces({"Fushimi Inari Kyoto": [FUSHIMI_REAL]})
+    lugar = make_lugar("Fushimi Inari", consulta_busqueda="Fushimi Inari Kyoto", ciudad="Kioto")
+    outcome = _run(tmp_path, state, places, [lugar]).outcomes[0]
+    assert outcome.match.place_id == "F1"
+    assert outcome.review_reason is None
+
+
+def test_country_code_outside_japan_is_rejected_even_inside_bbox(tmp_path, state):
+    places = FakePlaces({"Myeongdong Tokyo": [SEOUL]})
+    lugar = make_lugar("Myeongdong", consulta_busqueda="Myeongdong Tokyo")
+    outcome = _run(tmp_path, state, places, [lugar]).outcomes[0]
+    assert outcome.match is None
+    assert outcome.review_reason == "geocodificacion-fallida"

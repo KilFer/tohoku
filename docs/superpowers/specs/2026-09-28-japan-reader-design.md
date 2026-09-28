@@ -175,8 +175,8 @@ Tres tipos de contenido, detectados por URL y confirmados por los metadatos:
 - `confianza_japon` es la probabilidad (0–1) de que el contenido trate sobre Japón; `relacionado_japon` es solo informativo. Las decisiones se toman con `confianza_japon` según los umbrales de §7 (< 0.4 → `no-japon`).
 
 ### 5.5 geocode
-- Solo para `lugares`. Text Search Pro con `consulta_busqueda`, `regionCode=JP`, `languageCode=es`, `FieldMask` = `places.id,places.displayName,places.formattedAddress,places.location,places.googleMapsUri,places.types`.
-- **Validación:** resultado dentro de Japón y, si hay `ciudad`, coherente con la dirección. Si no hay resultado o no valida → segundo intento con `nombre_local`. Si tampoco → lugar marcado para revisión (sin coordenadas).
+- Solo para `lugares`. Text Search Pro con `consulta_busqueda`, `regionCode=JP`, `languageCode=es`, `FieldMask` = `places.id,places.displayName,places.formattedAddress,places.location,places.googleMapsUri,places.types,places.postalAddress` (todos Pro; `postalAddress` aporta el país, que `formattedAddress` omite con `regionCode=JP`).
+- **Validación:** resultado dentro de Japón (`postalAddress.regionCode == "JP"`) y, si hay `ciudad`, coherente con la dirección. Si no hay resultado o no valida → segundo intento con `nombre_local`. Si tampoco → lugar marcado para revisión (sin coordenadas).
 - Varios resultados plausibles con nombres distintos → revisión (ambiguo).
 - Contador diario propio (`PLACES_DAILY_LIMIT`); al alcanzarlo, los jobs esperan al día siguiente.
 

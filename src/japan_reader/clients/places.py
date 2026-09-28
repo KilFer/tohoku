@@ -6,7 +6,11 @@ from japan_reader.models import GeoMatch
 
 SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 # Solo campos del SKU "Text Search Pro" (5.000 llamadas gratis al mes). No añadir campos Enterprise.
-FIELD_MASK = "places.id,places.displayName,places.formattedAddress,places.location,places.googleMapsUri,places.types"
+# postalAddress es Pro y trae el país: con regionCode=JP, formattedAddress lo omite.
+FIELD_MASK = (
+    "places.id,places.displayName,places.formattedAddress,places.location,"
+    "places.googleMapsUri,places.types,places.postalAddress"
+)
 
 
 class PlacesClient:
@@ -28,6 +32,8 @@ class PlacesClient:
         for place in resp.json().get("places", []):
             if "location" not in place:
                 continue
+            postal = place.get("postalAddress") or {}
+            area_parts = [postal.get("administrativeArea"), postal.get("locality"), *postal.get("addressLines", [])]
             matches.append(
                 GeoMatch(
                     place_id=place["id"],
@@ -37,6 +43,8 @@ class PlacesClient:
                     lng=place["location"]["longitude"],
                     maps_url=place.get("googleMapsUri", ""),
                     types=place.get("types", []),
+                    country_code=postal.get("regionCode"),
+                    area=" ".join(part for part in area_parts if part),
                 )
             )
         return matches

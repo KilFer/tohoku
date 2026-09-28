@@ -59,5 +59,11 @@ def make_extraction(confianza_japon=0.95, lugares=(), cosas=(), otros=()) -> Ext
     )
 
 
-def make_geo(place_id="P1", name="Ichiran Shibuya", address="Jinnan, Shibuya, Tokio 150-0041, Japón", lat=35.66, lng=139.70) -> GeoMatch:
-    return GeoMatch(place_id=place_id, name=name, address=address, lat=lat, lng=lng, maps_url=f"https://maps.google.com/?cid={place_id}")
+def make_geo(
+    place_id="P1", name="Ichiran Shibuya", address="Jinnan, Shibuya, Tokio 150-0041, Japón", lat=35.66, lng=139.70,
+    country_code=None, area="",
+) -> GeoMatch:
+    return GeoMatch(
+        place_id=place_id, name=name, address=address, lat=lat, lng=lng,
+        maps_url=f"https://maps.google.com/?cid={place_id}", country_code=country_code, area=area,
+    )

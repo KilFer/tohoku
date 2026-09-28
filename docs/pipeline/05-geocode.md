@@ -9,11 +9,11 @@
 
 **Configuración:** `GOOGLE_PLACES_API_KEY`, `PLACES_DAILY_LIMIT` (150 por defecto).
 
-**Petición:** `POST places:searchText` con `regionCode=JP`, `languageCode=es`, `pageSize=5` y `X-Goog-FieldMask` limitado a campos Pro (`id, displayName, formattedAddress, location, googleMapsUri, types`). No se piden horarios ni valoraciones (Enterprise).
+**Petición:** `POST places:searchText` con `regionCode=JP`, `languageCode=es`, `pageSize=5` y `X-Goog-FieldMask` limitado a campos Pro (`id, displayName, formattedAddress, location, googleMapsUri, types, postalAddress`). No se piden horarios ni valoraciones (Enterprise).
 
 **Validación y decisión:**
 1. Consulta `consulta_busqueda`; si no hay resultado válido, segunda consulta con `nombre_local`.
-2. Válido = dentro de Japón (caja de coordenadas + "Japón/Japan/日本" en la dirección) y en la ciudad esperada (con alias: Tokio/Tokyo/東京, Kioto/Kyoto/京都...).
+2. Válido = dentro de Japón (caja de coordenadas + `postalAddress.regionCode == "JP"`; con `regionCode=JP` Google omite el país en `formattedAddress`, así que el texto "Japón/Japan/日本" solo se usa si falta `postalAddress`) y en la ciudad esperada, buscada en la dirección y en la prefectura/localidad de `postalAddress` (con alias: Tokio/Tokyo/東京, Kioto/Kyoto/京都...).
 3. Un único válido, o el primero con nombre parecido → aceptado.
 4. Varios válidos con nombres distintos, o solo resultados en Japón pero en otra ciudad → se usa el primero y va a revisión (`geocodificacion-ambigua`).
 5. Nada en Japón → sin coordenadas y a revisión (`geocodificacion-fallida`).
