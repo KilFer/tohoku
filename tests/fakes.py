@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from japan_reader.clients.karakeep import Bookmark
+from japan_reader.clients.openrouter import ChatResult
 
 
 class FakeKarakeep:
@@ -49,3 +50,20 @@ class FakeKarakeep:
         self.lists.setdefault(list_id, [])
         if bookmark_id not in self.lists[list_id]:
             self.lists[list_id].append(bookmark_id)
+
+
+class FakeLLM:
+    """OpenRouter falso: devuelve las respuestas en orden y registra las llamadas."""
+
+    def __init__(self, responses: list[str], cost: float = 0.001, images: bool = True) -> None:
+        self.responses = list(responses)
+        self.cost = cost
+        self.images = images
+        self.calls: list[dict] = []
+
+    def chat_json(self, model, messages, schema, schema_name) -> ChatResult:
+        self.calls.append({"model": model, "messages": messages, "schema_name": schema_name})
+        return ChatResult(content=self.responses.pop(0), cost_usd=self.cost)
+
+    def model_supports_images(self, model: str) -> bool:
+        return self.images
