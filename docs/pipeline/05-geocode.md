@@ -14,8 +14,8 @@
 **Validación y decisión:**
 1. Consulta `consulta_busqueda`; si no hay resultado válido, segunda consulta con `nombre_local`.
 2. Válido = dentro de Japón (caja de coordenadas + `postalAddress.regionCode == "JP"`; con `regionCode=JP` Google omite el país en `formattedAddress`, así que el texto "Japón/Japan/日本" solo se usa si falta `postalAddress`) y en la ciudad esperada, buscada en la dirección y en la prefectura/localidad de `postalAddress` (con alias: Tokio/Tokyo/東京, Kioto/Kyoto/京都...).
-3. Un único válido, o el primero con nombre parecido → aceptado.
-4. Varios válidos con nombres distintos, o solo resultados en Japón pero en otra ciudad → se usa el primero y va a revisión (`geocodificacion-ambigua`).
+3. Un único válido → aceptado. Si hay varios, se elige el de **nombre más parecido** al extraído (no necesariamente el primero de Google): igual > uno contiene al otro > similitud ≥ 0.6. Si ese mejor es único, se acepta sin revisión.
+4. Varios válidos sin ningún nombre parecido (se usa el primero), o empate entre los mejores, o solo resultados en Japón pero en otra ciudad → va a revisión (`geocodificacion-ambigua`).
 5. Nada en Japón → sin coordenadas y a revisión (`geocodificacion-fallida`).
 
 **Cuota:** contador diario `places_calls` limitado por `PLACES_DAILY_LIMIT` (150 por defecto ≈ 4.500/mes, por debajo de las 5.000 gratis). Al llegar al límite el job espera al día siguiente y la pasada se detiene (los demás jobs siguen pendientes). Configura además una cuota diaria en Google Cloud Console (APIs → Places API (New) → Cuotas).

@@ -118,3 +118,26 @@ def test_country_code_outside_japan_is_rejected_even_inside_bbox(tmp_path, state
     outcome = _run(tmp_path, state, places, [lugar]).outcomes[0]
     assert outcome.match is None
     assert outcome.review_reason == "geocodificacion-fallida"
+
+
+# Caso real (Short "This Hidden Gem in Japan has CRAZY Ramen"): el local correcto sale en tercera posición.
+JINSEI = make_geo("J1", "Ramen Jinsei JET", "7-chōme-12-2 Fukushima, Fukushima Ward, Osaka, 553-0003", lat=34.69, lng=135.49, country_code="JP", area="Osaka")
+JINSEI_600 = make_geo("J2", "Ramen Jinsei JET 600", "1-chōme-3-2 Higashiobase, Higashinari Ward, Osaka, 537-0024", lat=34.67, lng=135.54, country_code="JP", area="Osaka")
+MIKI_JET = make_geo("M1", "Miki Jet", "4-chōme-1-5 Nadaminamidōri, Nada Ward, Kobe, Hyogo 657-0841", lat=34.71, lng=135.22, country_code="JP", area="Hyogo Kobe")
+
+
+def test_best_name_match_wins_over_first_result(tmp_path, state):
+    places = FakePlaces({"Miki Jet ramen": [JINSEI, JINSEI_600, MIKI_JET]})
+    lugar = make_lugar("Miki Jet", consulta_busqueda="Miki Jet ramen", ciudad=None)
+    outcome = _run(tmp_path, state, places, [lugar]).outcomes[0]
+    assert outcome.match.place_id == "M1"
+    assert outcome.review_reason is None
+
+
+def test_equally_good_name_matches_are_ambiguous(tmp_path, state):
+    shinjuku = make_geo("P5", "Ichiran Shinjuku", "Shinjuku, Tokio", country_code="JP", area="Tokio")
+    places = FakePlaces({"Ichiran Tokyo": [SHIBUYA, shinjuku]})
+    lugar = make_lugar("Ichiran", consulta_busqueda="Ichiran Tokyo")
+    outcome = _run(tmp_path, state, places, [lugar]).outcomes[0]
+    assert outcome.match.place_id == "P1"
+    assert outcome.review_reason == "geocodificacion-ambigua"

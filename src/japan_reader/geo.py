@@ -43,7 +43,19 @@ def city_matches(match: GeoMatch, ciudad: str | None) -> bool:
     return any(fold(name) in address for name in [city, *CITY_ALIASES.get(city, [])])
 
 
-def name_matches(match: GeoMatch, lugar: Lugar) -> bool:
+def name_score(match: GeoMatch, lugar: Lugar) -> float:
+    """Parecido entre el nombre de Google y el extraído: 2 = igual, 1 = uno contiene al otro, si no la similitud."""
     found = normalize_name(match.name)
     wanted = [normalize_name(lugar.nombre)] + ([normalize_name(lugar.nombre_local)] if lugar.nombre_local else [])
-    return any(w and (w in found or found in w or similarity(w, found) >= NAME_SIMILARITY) for w in wanted)
+    best = 0.0
+    for w in wanted:
+        if not w or not found:
+            continue
+        if w == found:
+            return 2.0
+        best = max(best, 1.0 if (w in found or found in w) else similarity(w, found))
+    return best
+
+
+def name_matches(match: GeoMatch, lugar: Lugar) -> bool:
+    return name_score(match, lugar) >= NAME_SIMILARITY
