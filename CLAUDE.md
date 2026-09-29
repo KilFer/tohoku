@@ -45,6 +45,7 @@ Documentación de referencia (leer antes de cambiar comportamiento):
 - `6e1f9b0` Geocode: entre varios resultados válidos gana el de nombre más parecido, no el primero.
 - `ab99cc3` OpenRouter: `temperature` solo si el modelo la admite (modelos de razonamiento no; con `require_parameters` daba 404).
 - `659102c` Posts de Instagram: gallery-dl sin cookies recibe "redirect to login" en todos los posts → plan B con yt-dlp (caption + imágenes a tamaño original); la redirección a login es error permanente (antes quemaba 5 h de reintentos).
+- `8e1a8fe` Geocode de áreas: ciudades, barrios e islas llegan sin `postalAddress` y se descartaban (`geocodificacion-fallida`, una nota repetida por fuente) → país y ciudad también de `addressComponents` (Pro); los lugares que sigan sin ficha se deduplican por `#jrNombreNorm`.
 - `17950b7` Importador: formato de exportación 2026 (lista de colecciones con posts anidados, mojibake), del más antiguo al más reciente, `--limit N` por tandas.
 
 ## Importación del historial de Instagram (EN CURSO)
@@ -60,6 +61,8 @@ Documentación de referencia (leer antes de cambiar comportamiento):
   - 2026-09-29 ~08:45: **tanda 2 importada** (50 creados, 20 ya existían, 2.218 pendientes).
   - 2026-09-29: tanda 2 terminada (84 búsquedas de Places en 50 enlaces). Total: 49 procesados, 24 revisar, 1 no-Japón; hoy 0,046 $ de LLM y 113 llamadas a Places.
   - 2026-09-29: **tanda 3 importada** (40 creados, 70 ya existían, 2.178 pendientes). Con 113/150 de Places gastados, parte se geocodificará al día siguiente (la cola espera sola).
+  - 2026-09-29 ~10:30: desplegado `8e1a8fe` (la tanda 3 ya se procesa con él). Pendiente: el usuario borra en Trilium las 26 notas de áreas en la Bandeja y después se reprocesan desde `geocode` estos 13 jobs (~68 llamadas a Places):
+    `reprocess --from geocode dhsw4ldl3khzd145e9385sl7 juv01lhqf91wby9ozcvfxkec mo91h0rd3jg7ccc2q7o6dmc7 rc7gk19vmlmwoyv07zb4ubk6 kveqwi6kyzy2qhcvszcij9i1 t7yi0nvsouv6yll97muff1b0 cnvwjfo8jqz4edavehnqlz43 j9o6xkshwsb59d18uskhjydk nrlo70v8zi5llfcsa6i9dorl pcw1o9bw3676298ddec7s8an dw92dzjxj8c7yf7y5mhqbis2 leixw9zvipkmbklu5uzzlnzj x1kiqes6t6i3s6igdd8orywg`
 
 ## Pendientes y mejoras conocidas
 
