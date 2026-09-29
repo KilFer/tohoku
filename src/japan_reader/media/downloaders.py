@@ -19,6 +19,8 @@ SUBTITLE_LANGS = ("es", "en", "ja")
 _PERMANENT_MARKERS = (
     "private", "unavailable", "removed", "not available", "login required", "log in",
     "does not exist", "copyright", "sign in to confirm", "404",
+    # gallery-dl sin cookies ante un post de Instagram.
+    "redirect to login",
 )
 # Límites de ritmo (sobre todo de Instagram): transitorios aunque el mensaje de yt-dlp incluya
 # marcadores permanentes ("Requested content is not available, rate-limit reached or login required").
@@ -134,6 +136,55 @@ class YtDlpDownloader:
         if not videos:
             raise PermanentError("yt-dlp: no se descargó ningún vídeo")
         return DownloadedMedia(meta=meta_from_ytdlp(info, url, platform), videos=videos[:1], subtitles=self._subtitles(dest))
+
+    def download_post(self, url: str, dest: Path) -> DownloadedMedia:
+        """Post de Instagram (imagen o carrusel) sin sesión: plan B cuando gallery-dl exige login.
+
+        Las imágenes no tienen formatos para yt-dlp; se descarga su miniatura a tamaño original.
+        Los elementos de vídeo de un carrusel se descargan como vídeo.
+        """
+        dest.mkdir(parents=True, exist_ok=True)
+        cookies = prepare_cookies(self._cookies, dest)
+        opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "noprogress": True,
+            "ignore_no_formats_error": True,
+            "outtmpl": str(dest / "post_%(id)s.%(ext)s"),
+            "format": "bv*[height<=720]+ba/b[height<=720]/b",
+            "merge_output_format": "mp4",
+            "cookiefile": str(cookies) if cookies else None,
+        }
+        images: list[Path] = []
+        videos: list[Path] = []
+        try:
+            with self._factory(opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                entries = [e for e in info.get("entries") or [] if e] if info.get("_type") == "playlist" else [info]
+                for i, entry in enumerate(entries):
+                    if entry.get("formats"):
+                        ydl.process_ie_result(entry, download=True)
+                        videos += [p for p in sorted(dest.glob(f"post_{entry['id']}.*")) if p.suffix in VIDEO_EXTS]
+                        continue
+                    thumbnail = entry.get("thumbnail") or ((entry.get("thumbnails") or [{}])[-1]).get("url")
+                    if thumbnail:
+                        response = ydl.urlopen(thumbnail)
+                        try:
+                            path = dest / f"post_{i:02}.jpg"
+                            path.write_bytes(response.read())
+                        finally:
+                            response.close()
+                        images.append(path)
+        except DownloadError as exc:
+            raise classify_download_error(str(exc))(f"yt-dlp: {exc}") from exc
+        if not images and not videos:
+            raise PermanentError("yt-dlp: el post no contiene medios")
+        if len(images) + len(videos) > 1:
+            content_type = ContentType.CAROUSEL
+        else:
+            content_type = ContentType.VIDEO if videos else ContentType.IMAGE
+        meta = meta_from_ytdlp(info, url, Platform.INSTAGRAM).model_copy(update={"content_type": content_type, "duration_s": None})
+        return DownloadedMedia(meta=meta, images=images, videos=videos)
 
     @staticmethod
     def _subtitles(dest: Path) -> str | None:

@@ -79,6 +79,8 @@ INFO = {
         ("HTTP Error 503: Service Unavailable", TransientError),
         ("HttpError: '503 Service Unavailable' for 'https://x'", TransientError),
         ("HttpError: '429 Too Many Requests' for 'https://x'", TransientError),
+        # gallery-dl sin cookies ante un post de Instagram: reintentar no sirve de nada.
+        ("[instagram][error] HTTP redirect to login page (https://www.instagram.com/accounts/login/)", PermanentError),
     ],
 )
 def test_classify_download_error(message, expected):
@@ -192,3 +194,114 @@ def test_gallery_uses_cookie_copy(tmp_path):
 
     cmd = runner.calls[0]
     assert Path(cmd[cmd.index("--cookies") + 1]) != original
+
+
+def post_ydl_factory(info: dict, images: dict[str, bytes] | None = None, error: str | None = None):
+    """yt-dlp ante un post de Instagram: sin formatos en las imágenes, miniatura a tamaño original."""
+    created = []
+
+    class FakeResponse:
+        def __init__(self, data: bytes):
+            self._data = data
+
+        def read(self):
+            return self._data
+
+        def close(self):
+            pass
+
+    class FakeYDL:
+        def __init__(self, opts):
+            self.opts = opts
+            self.processed = []
+            created.append(self)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def extract_info(self, url, download=False):
+            if error:
+                raise DownloadError(error)
+            return json.loads(json.dumps(info))
+
+        def urlopen(self, url):
+            return FakeResponse((images or {})[url])
+
+        def process_ie_result(self, result, download=True):
+            self.processed.append(result["id"])
+            Path(self.opts["outtmpl"].replace("%(id)s", result["id"]).replace("%(ext)s", "mp4")).write_bytes(b"video")
+            return result
+
+
+    FakeYDL.created = created
+    return FakeYDL
+
+
+def image_entry(entry_id: str) -> dict:
+    return {"id": entry_id, "formats": [], "thumbnail": f"https://cdn/{entry_id}.jpg", "thumbnails": [{"url": f"https://cdn/{entry_id}_small.jpg"}]}
+
+
+POST_INFO = {
+    "_type": "playlist",
+    "id": "C5qf",
+    "title": "Post by japan.undiscovered",
+    "description": "Las 6 torres más famosas de Japón #tokyotower",
+    "uploader": "Discover Japan",
+    "channel": "japan.undiscovered",
+    "upload_date": "20240412",
+    "entries": [image_entry("a"), None, image_entry("b")],
+}
+
+
+def test_ytdlp_post_carousel_downloads_original_images(tmp_path):
+    factory = post_ydl_factory(POST_INFO, {"https://cdn/a.jpg": b"A", "https://cdn/b.jpg": b"B"})
+
+    media = YtDlpDownloader(None, 900, ydl_factory=factory).download_post("https://www.instagram.com/p/C5qf/", tmp_path / "raw")
+
+    assert [p.read_bytes() for p in media.images] == [b"A", b"B"]
+    assert media.videos == []
+    assert media.meta.content_type == ContentType.CAROUSEL
+    assert media.meta.platform == Platform.INSTAGRAM
+    assert media.meta.description == "Las 6 torres más famosas de Japón #tokyotower"
+    assert media.meta.published == "2024-04-12"
+    assert factory.created[0].opts["ignore_no_formats_error"] is True
+    assert factory.created[0].processed == []
+
+
+def test_ytdlp_post_single_image_uses_last_thumbnail_without_best(tmp_path):
+    info = {"id": "X", "formats": [], "description": "Onigiri de 7-Eleven", "thumbnails": [{"url": "https://cdn/s.jpg"}, {"url": "https://cdn/l.jpg"}]}
+    factory = post_ydl_factory(info, {"https://cdn/l.jpg": b"L"})
+
+    media = YtDlpDownloader(None, 900, ydl_factory=factory).download_post("https://www.instagram.com/p/X/", tmp_path / "raw")
+
+    assert [p.read_bytes() for p in media.images] == [b"L"]
+    assert media.meta.content_type == ContentType.IMAGE
+
+
+def test_ytdlp_post_downloads_videos_inside_carousel(tmp_path):
+    video = {"id": "v", "formats": [{"format_id": "1"}], "thumbnail": "https://cdn/v.jpg"}
+    info = POST_INFO | {"entries": [image_entry("a"), video]}
+    factory = post_ydl_factory(info, {"https://cdn/a.jpg": b"A"})
+
+    media = YtDlpDownloader(None, 900, ydl_factory=factory).download_post("https://www.instagram.com/p/C5qf/", tmp_path / "raw")
+
+    assert [p.read_bytes() for p in media.images] == [b"A"]
+    assert [p.name for p in media.videos] == ["post_v.mp4"]
+    assert factory.created[0].processed == ["v"]
+    assert media.meta.content_type == ContentType.CAROUSEL
+
+
+def test_ytdlp_post_without_media_is_permanent(tmp_path):
+    factory = post_ydl_factory({"id": "X", "formats": [], "thumbnails": []})
+    with pytest.raises(PermanentError, match="no contiene medios"):
+        YtDlpDownloader(None, 900, ydl_factory=factory).download_post("https://www.instagram.com/p/X/", tmp_path / "raw")
+
+
+def test_ytdlp_post_maps_errors(tmp_path):
+    with pytest.raises(PermanentError):
+        YtDlpDownloader(None, 900, ydl_factory=post_ydl_factory({}, error="This content is unavailable")).download_post(
+            "https://www.instagram.com/p/X/", tmp_path / "raw"
+        )

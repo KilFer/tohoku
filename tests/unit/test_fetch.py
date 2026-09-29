@@ -13,8 +13,10 @@ from japan_reader.stages.fetch import FetchStage
 
 
 class StubVideo:
-    def __init__(self, error=None):
+    def __init__(self, error=None, post_error=None):
         self.error = error
+        self.post_error = post_error
+        self.post_calls = 0
 
     def download(self, url, platform, dest):
         if self.error:
@@ -23,12 +25,23 @@ class StubVideo:
         meta = SourceMeta(url=url, platform=platform, content_type=ContentType.VIDEO, title="Vídeo")
         return DownloadedMedia(meta=meta, videos=[video], subtitles="hola")
 
+    def download_post(self, url, dest):
+        self.post_calls += 1
+        if self.post_error:
+            raise self.post_error
+        images = [make_image(dest / f"post_{i:02}.jpg") for i in range(2)]
+        meta = SourceMeta(url=url, platform=Platform.INSTAGRAM, content_type=ContentType.CAROUSEL, description="desde yt-dlp")
+        return DownloadedMedia(meta=meta, images=images)
+
 
 class StubPost:
-    def __init__(self, count=3):
+    def __init__(self, count=3, error=None):
         self.count = count
+        self.error = error
 
     def download(self, url, dest):
+        if self.error:
+            raise self.error
         images = [make_image(dest / f"{i:02}.jpg") for i in range(self.count)]
         meta = SourceMeta(url=url, platform=Platform.INSTAGRAM, content_type=ContentType.CAROUSEL, description="caption")
         return DownloadedMedia(meta=meta, images=images)
@@ -166,3 +179,42 @@ def test_failed_instagram_download_also_counts_for_spacing(tmp_path, settings):
     with pytest.raises(TransientError):
         stage.run(make_ctx(tmp_path / "2", job=IG_REEL))
     assert fake.sleeps == [20]
+
+
+def test_post_falls_back_to_ytdlp_when_gallery_needs_login(tmp_path, settings):
+    video = StubVideo()
+    gallery = StubPost(error=PermanentError("gallery-dl: HTTP redirect to login page"))
+
+    result = FetchStage(settings, video, gallery, FakeKarakeep()).run(make_ctx(tmp_path, job=IG_POST))
+
+    assert result.meta.description == "desde yt-dlp"
+    assert len(result.images) == 2
+    assert video.post_calls == 1
+
+
+def test_post_uses_karakeep_when_ytdlp_also_fails(tmp_path, settings):
+    image_bytes = make_image(tmp_path / "src.jpg").read_bytes()
+    karakeep = FakeKarakeep([Bookmark(id="b1", url=IG_POST.url, title="Desde Karakeep", image_asset_id="i1")])
+    karakeep.assets["i1"] = image_bytes
+    video = StubVideo(post_error=PermanentError("yt-dlp: unavailable"))
+    gallery = StubPost(error=PermanentError("gallery-dl: HTTP redirect to login page"))
+
+    result = FetchStage(settings, video, gallery, karakeep).run(make_ctx(tmp_path, job=IG_POST))
+
+    assert result.meta.title == "Desde Karakeep"
+    assert len(result.images) == 1
+
+
+def test_post_transient_gallery_error_does_not_try_ytdlp(tmp_path, settings):
+    video = StubVideo()
+    with pytest.raises(TransientError):
+        FetchStage(settings, video, StubPost(error=TransientError("timeout")), FakeKarakeep()).run(make_ctx(tmp_path, job=IG_POST))
+    assert video.post_calls == 0
+
+
+def test_post_transient_ytdlp_error_is_not_masked_by_karakeep(tmp_path, settings):
+    karakeep = FakeKarakeep([Bookmark(id="b1", url=IG_POST.url, image_asset_id="i1")])
+    video = StubVideo(post_error=TransientError("rate limit"))
+    gallery = StubPost(error=PermanentError("gallery-dl: HTTP redirect to login page"))
+    with pytest.raises(TransientError):
+        FetchStage(settings, video, gallery, karakeep).run(make_ctx(tmp_path, job=IG_POST))

@@ -107,7 +107,7 @@ class FetchStage:
         try:
             if job.hint == ContentHint.VIDEO:
                 return self._ytdlp.download(job.url, job.platform, raw)
-            return self._gallery.download(job.url, raw)
+            return self._download_post(job, raw)
         except PermanentError as exc:
             if not instagram or isinstance(exc, TooLongError):
                 raise
@@ -119,6 +119,14 @@ class FetchStage:
         finally:
             if instagram:
                 self._last_instagram = self._clock()
+
+    def _download_post(self, job: Job, raw: Path) -> DownloadedMedia:
+        """gallery-dl primero; si falla de forma definitiva (p. ej. exige login), yt-dlp."""
+        try:
+            return self._gallery.download(job.url, raw / "gallery")
+        except PermanentError as exc:
+            log.warning("bookmark=%s gallery-dl falló (%s); pruebo con yt-dlp", job.bookmark_id, exc)
+            return self._ytdlp.download_post(job.url, raw / "ytdlp")
 
     def _from_karakeep(self, job: Job, raw: Path) -> DownloadedMedia | None:
         try:
