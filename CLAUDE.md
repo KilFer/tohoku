@@ -57,7 +57,7 @@ Documentación de referencia (leer antes de cambiar comportamiento):
   - 2026-09-28: dry-run de la primera tanda → 20 nuevos, 0 existentes, 2.268 pendientes.
   - 2026-09-28 ~23:55: **tanda 1 importada** (20 creados, 2.268 pendientes). Revisión prevista a la mañana siguiente: `status`, logs, Bandeja de revisión, coste del día, calidad de notas.
   - 2026-09-29: revisión tanda 1 → 16 procesados, 7 revisar, 1 no-Japón. El único post falló (gallery-dl exige login) → arreglado con `659102c` y reprocesado (6 torres, 4 nuevas + 2 fusionadas). Revisar: 1 baja confianza, 4 ciudades sin punto exacto (aceptable para el usuario), 1 cosa genérica ("Comida preparada refrigerada", el usuario la borrará si no se enriquece), 1 geocodificación ambigua.
-  - 2026-09-29 ~08:45: **tanda 2 importada** (50 creados, 70 existentes, 2.218 pendientes).
+  - 2026-09-29 ~08:45: **tanda 2 importada** (50 creados, 20 ya existían, 2.218 pendientes).
 
 ## Pendientes y mejoras conocidas
 
