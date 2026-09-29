@@ -74,12 +74,16 @@ class ResolveStage:
             key = f"lugar:{i}"
             outcome = outcomes.get(i) or GeoOutcome(lugar_index=i, review_reason="geocodificacion-fallida")
             match = outcome.match
-            if match and match.place_id in seen:
-                items.append(PlannedItem(key=key, kind=ItemKind.LUGAR, index=i, action="alias", alias_of=seen[match.place_id]))
+            # Sin ficha de Google, la clave es el nombre normalizado: no se repite la nota en cada fuente.
+            natural = match.place_id if match else f"n:{name_key(lugar.nombre)}"
+            if natural in seen:
+                items.append(PlannedItem(key=key, kind=ItemKind.LUGAR, index=i, action="alias", alias_of=seen[natural]))
                 continue
-            existing = self._t.search(f'#googlePlaceId="{match.place_id}"', ancestor=layout.root) if match else []
+            seen[natural] = key
             if match:
-                seen[match.place_id] = key
+                existing = self._t.search(f'#googlePlaceId="{match.place_id}"', ancestor=layout.root)
+            else:
+                existing = self._t.search(f'#jrTipo=lugar #jrNombreNorm="{name_key(lugar.nombre)}"', ancestor=layout.root)
             items.append(
                 PlannedItem(
                     key=key, kind=ItemKind.LUGAR, index=i,

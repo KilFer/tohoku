@@ -9,11 +9,11 @@
 
 **Configuración:** `GOOGLE_PLACES_API_KEY`, `PLACES_DAILY_LIMIT` (150 por defecto).
 
-**Petición:** `POST places:searchText` con `regionCode=JP`, `languageCode=es`, `pageSize=5` y `X-Goog-FieldMask` limitado a campos Pro (`id, displayName, formattedAddress, location, googleMapsUri, types, postalAddress`). No se piden horarios ni valoraciones (Enterprise).
+**Petición:** `POST places:searchText` con `regionCode=JP`, `languageCode=es`, `pageSize=5` y `X-Goog-FieldMask` limitado a campos Pro (`id, displayName, formattedAddress, location, googleMapsUri, types, postalAddress, addressComponents`). No se piden horarios ni valoraciones (Enterprise).
 
 **Validación y decisión:**
 1. Consulta `consulta_busqueda`; si no hay resultado válido, segunda consulta con `nombre_local`.
-2. Válido = dentro de Japón (caja de coordenadas + `postalAddress.regionCode == "JP"`; con `regionCode=JP` Google omite el país en `formattedAddress`, así que el texto "Japón/Japan/日本" solo se usa si falta `postalAddress`) y en la ciudad esperada, buscada en la dirección y en la prefectura/localidad de `postalAddress` (con alias: Tokio/Tokyo/東京, Kioto/Kyoto/京都...).
+2. Válido = dentro de Japón (caja de coordenadas + país `JP`, tomado de `postalAddress.regionCode` o, si falta, del componente `country` de `addressComponents`: las áreas —ciudades, barrios, islas— no traen `postalAddress`; con `regionCode=JP` Google omite el país en `formattedAddress`, así que el texto "Japón/Japan/日本" solo se usa si faltan ambos) y en la ciudad esperada, buscada en la dirección y en la prefectura/localidad de `postalAddress` y `addressComponents` (con alias: Tokio/Tokyo/東京, Kioto/Kyoto/京都...).
 3. Un único válido → aceptado. Si hay varios, se elige el de **nombre más parecido** al extraído (no necesariamente el primero de Google): igual > uno contiene al otro > similitud ≥ 0.6. Si ese mejor es único, se acepta sin revisión.
 4. Varios válidos sin ningún nombre parecido (se usa el primero), o empate entre los mejores, o solo resultados en Japón pero en otra ciudad → va a revisión (`geocodificacion-ambigua`).
 5. Nada en Japón → sin coordenadas y a revisión (`geocodificacion-fallida`).
@@ -23,3 +23,5 @@
 **Fallos:** API key inválida → `ConfigError`; 429/5xx → reintento.
 
 **Cómo probarla:** `uv run pytest tests/unit/test_geocode.py tests/unit/test_places_client.py`.
+
+**Áreas (2026-09-29):** ciudades, barrios e islas (Kioto, Akihabara, Hokkaido…) se geocodifican como cualquier lugar: pin en el punto central que da Google y deduplicación por `googlePlaceId`. Antes se descartaban por no traer `postalAddress` y acababan en la Bandeja como `geocodificacion-fallida`, repetidas en cada fuente.

@@ -7,10 +7,13 @@ from japan_reader.models import GeoMatch
 SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 # Solo campos del SKU "Text Search Pro" (5.000 llamadas gratis al mes). No añadir campos Enterprise.
 # postalAddress es Pro y trae el país: con regionCode=JP, formattedAddress lo omite.
+# Las áreas (ciudades, barrios, islas) no traen postalAddress: el país y la ciudad salen de
+# addressComponents (también Pro).
 FIELD_MASK = (
     "places.id,places.displayName,places.formattedAddress,places.location,"
-    "places.googleMapsUri,places.types,places.postalAddress"
+    "places.googleMapsUri,places.types,places.postalAddress,places.addressComponents"
 )
+_AREA_COMPONENTS = {"administrative_area_level_1", "administrative_area_level_2", "locality", "sublocality", "colloquial_area"}
 
 
 class PlacesClient:
@@ -33,7 +36,12 @@ class PlacesClient:
             if "location" not in place:
                 continue
             postal = place.get("postalAddress") or {}
-            area_parts = [postal.get("administrativeArea"), postal.get("locality"), *postal.get("addressLines", [])]
+            components = place.get("addressComponents") or []
+            country = next((c.get("shortText") for c in components if "country" in c.get("types", [])), None)
+            area_parts = [
+                postal.get("administrativeArea"), postal.get("locality"), *postal.get("addressLines", []),
+                *(c.get("longText") for c in components if _AREA_COMPONENTS & set(c.get("types", []))),
+            ]
             matches.append(
                 GeoMatch(
                     place_id=place["id"],
@@ -43,8 +51,8 @@ class PlacesClient:
                     lng=place["location"]["longitude"],
                     maps_url=place.get("googleMapsUri", ""),
                     types=place.get("types", []),
-                    country_code=postal.get("regionCode"),
-                    area=" ".join(part for part in area_parts if part),
+                    country_code=postal.get("regionCode") or country,
+                    area=" ".join(dict.fromkeys(part for part in area_parts if part)),
                 )
             )
         return matches

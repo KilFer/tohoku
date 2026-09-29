@@ -183,9 +183,11 @@ class PublishStage:
         return OtroData(titulo=otro.titulo, contenido=otro.contenido, fuentes=[entry(otro.contenido[:200])])
 
     def _natural_match(self, data: NoteData, layout: Layout) -> list[TNote]:
-        """Notas existentes con la misma clave natural (lugar con ficha de Google o cosa con el mismo nombre)."""
+        """Notas existentes con la misma clave natural (ficha de Google; si no la hay, el nombre normalizado)."""
         if isinstance(data, LugarData) and data.place:
             return self._t.search(f'#googlePlaceId="{data.place.place_id}"', ancestor=layout.root)
+        if isinstance(data, LugarData):
+            return self._t.search(f'#jrTipo=lugar #jrNombreNorm="{name_key(data.nombre)}"', ancestor=layout.root)
         if isinstance(data, CosaData):
             return self._t.search(f'#jrTipo=cosa #jrNombreNorm="{name_key(data.nombre)}"', ancestor=layout.comprar)
         return []

@@ -331,6 +331,17 @@ def test_create_merges_into_existing_note_with_same_natural_key(env):
     assert env.trilium.labels(note_id)["fuentes"] == "2"
 
 
+def test_create_ungeocoded_lugar_merges_into_existing_note_with_same_name(env):
+    extraction = make_extraction(lugares=[make_lugar("Línea Yamanote")])
+    failed = [GeoOutcome(lugar_index=0, review_reason="geocodificacion-fallida")]
+    note_id = _stage(env).run(_ctx(env, "b1", extraction, failed, [_item(reasons=["geocodificacion-fallida"])])).notes[0].note_id
+
+    result = _stage(env, FakeLLM([MERGED])).run(_ctx(env, "b2", extraction, failed, [_item(reasons=["geocodificacion-fallida"])]))
+
+    assert result.notes[0].note_id == note_id
+    assert env.trilium.labels(note_id)["fuentes"] == "2"
+
+
 def test_create_cosa_merges_into_existing_note_with_same_name(env):
     extraction = make_extraction(cosas=[make_cosa("Kit Kat matcha", categoria="souvenirs")])
     item = _item(kind=ItemKind.COSA)

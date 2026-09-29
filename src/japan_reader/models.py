@@ -105,8 +105,8 @@ class GeoMatch(BaseModel):
     lng: float
     maps_url: str
     types: list[str] = []
-    country_code: str | None = None  # postalAddress.regionCode (ISO 3166-1), p. ej. "JP"
-    area: str = ""  # prefectura, localidad y líneas de postalAddress (para comprobar la ciudad)
+    country_code: str | None = None  # postalAddress.regionCode o país de addressComponents (ISO 3166-1), p. ej. "JP"
+    area: str = ""  # prefectura, localidad y líneas de postalAddress / addressComponents (para comprobar la ciudad)
 
 
 class GeoOutcome(BaseModel):

@@ -141,3 +141,18 @@ def test_equally_good_name_matches_are_ambiguous(tmp_path, state):
     outcome = _run(tmp_path, state, places, [lugar]).outcomes[0]
     assert outcome.match.place_id == "P1"
     assert outcome.review_reason == "geocodificacion-ambigua"
+
+
+# Caso real: barrio sin postalAddress; el país y la ciudad vienen de addressComponents.
+KABUKICHO = make_geo("A1", "Kabukichō", "Kabukichō, Shinjuku, Tokio 160-0021", lat=35.6955, lng=139.7031, country_code="JP", area="Kabukichō Shinjuku Tokio")
+KYOTO_CITY = make_geo("A2", "Kioto", "Kioto, Prefectura de Kioto", lat=35.01, lng=135.77, country_code="JP", area="Kioto Prefectura de Kioto")
+
+
+def test_areas_are_geocoded_like_any_place(tmp_path, state):
+    places = FakePlaces({"Kabukicho Shinjuku Tokyo": [KABUKICHO], "Kyoto Japan": [KYOTO_CITY]})
+    lugares = [
+        make_lugar("Kabukicho", consulta_busqueda="Kabukicho Shinjuku Tokyo", ciudad="Tokio"),
+        make_lugar("Kioto", consulta_busqueda="Kyoto Japan", ciudad="Kioto"),
+    ]
+    outcomes = _run(tmp_path, state, places, lugares).outcomes
+    assert [(o.match.place_id, o.review_reason) for o in outcomes] == [("A1", None), ("A2", None)]

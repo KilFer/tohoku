@@ -75,6 +75,8 @@ def test_labels_for_lugar_and_cosa():
     assert labels["iconClass"] == "bx bx-bowl-hot"
     assert labels["nombreLocal"] == "一蘭 渋谷店"
     assert "geolocation" not in labels_for(_lugar(place=None))
+    # Clave para deduplicar lugares que Google no encuentra.
+    assert labels_for(_lugar(place=None))["jrNombreNorm"] == labels["jrNombreNorm"] != ""
     cosa = labels_for(CosaData(nombre="CoCo Ichibanya", categoria="cadenas", resumen="r"))
     assert cosa["jrTipo"] == "cosa" and cosa["jrNombreNorm"] == "coco ichibanya" and cosa["categoria"] == "cadenas"
 

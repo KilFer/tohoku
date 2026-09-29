@@ -13,7 +13,7 @@
 - `confianza_japon` < 0.4 → sin elementos (resultado `no-japon`).
 - 0.4 ≤ `confianza_japon` < 0.7 → todos los elementos con `clasificacion-incierta`.
 - Elemento con `confianza` < 0.7 → `baja-confianza`.
-- Lugar: busca `#googlePlaceId` bajo la raíz → `merge` o `create`. Sin coordenadas → `create` + motivo de geocodificación. Mismo `place_id` dos veces en la misma fuente → `alias` del primero.
+- Lugar: busca `#googlePlaceId` bajo la raíz → `merge` o `create`. Sin coordenadas → busca `#jrTipo=lugar #jrNombreNorm="<normalizado>"` bajo la raíz → `merge` o `create`, siempre con el motivo de geocodificación (así un lugar que Google no encuentra no se repite en cada fuente). Mismo `place_id` (o, sin ficha, mismo nombre normalizado) dos veces en la misma fuente → `alias` del primero.
 - Cosa: busca `#jrTipo=cosa #jrNombreNorm="<normalizado>"` en "Comprar y comer" → `merge`; si no, compara con todas las cosas y, si alguna tiene similitud ≥ 0.85, `create` + `posible-duplicado`. Mismo nombre normalizado dos veces → `alias`.
 - Otros → siempre `create`. Si el contenido es de Japón pero no hay ningún elemento → `otro:resumen` con el resumen de la fuente.
 

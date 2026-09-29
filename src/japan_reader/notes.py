@@ -134,6 +134,8 @@ def labels_for(data: NoteData) -> dict[str, str]:
             "categoria": data.categoria,
             "fuentes": str(len(data.fuentes)),
             "iconClass": ICONS.get(data.categoria, ICONS["otro"]),
+            # Clave para no duplicar lugares que Google no encuentra (sin googlePlaceId).
+            "jrNombreNorm": name_key(data.nombre),
         }
         if data.ciudad:
             labels["ciudad"] = data.ciudad
