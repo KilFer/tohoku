@@ -142,7 +142,8 @@ def test_quota_waits_until_tomorrow_and_notifies_once(tmp_path, state):
 
     job = state.get_job("b1")
     assert job.attempts == 0
-    assert job.next_attempt_at == datetime(2026, 9, 29, 0, 5, tzinfo=UTC)
+    # Medianoche del Pacífico (cuando Google renueva la cuota) + 5 min: 28/09 10:00 UTC → 29/09 07:05 UTC.
+    assert job.next_attempt_at == datetime(2026, 9, 29, 7, 5, tzinfo=UTC)
     assert len(notifier.sent) == 1
 
 

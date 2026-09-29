@@ -7,7 +7,7 @@ from japan_reader.errors import QuotaExceeded
 from japan_reader.models import Outcome, PublishedNote
 from japan_reader.quota import DailyQuota
 from japan_reader.sources import ContentHint, Platform
-from japan_reader.state import JobStatus, StateStore
+from japan_reader.state import JobStatus, StateStore, next_quota_reset
 
 
 class Clock:
@@ -95,6 +95,34 @@ def test_counters_are_daily(state, clock):
     assert state.add_counter("places_calls", 2) == 3
     clock.now += timedelta(days=1)
     assert state.get_counter("places_calls") == 0
+
+
+def test_counters_follow_the_google_quota_day_in_pacific_time(state, clock):
+    """Google renueva las cuotas a medianoche del Pacífico (07:00 UTC en verano), no a medianoche UTC."""
+    clock.now = datetime(2026, 9, 29, 23, 0, tzinfo=UTC)  # 16:00 PDT del día 29
+    state.add_counter("places_calls", 2000)
+    clock.now = datetime(2026, 9, 30, 2, 0, tzinfo=UTC)  # ya es día 30 en UTC, pero sigue siendo 29 en PDT
+    assert state.get_counter("places_calls") == 2000
+    clock.now = datetime(2026, 9, 30, 7, 1, tzinfo=UTC)  # 00:01 PDT del día 30
+    assert state.get_counter("places_calls") == 0
+
+
+def test_next_quota_reset_is_pacific_midnight(state, clock):
+    clock.now = datetime(2026, 9, 29, 21, 0, tzinfo=UTC)
+    assert next_quota_reset(clock.now) == datetime(2026, 9, 30, 7, 5, tzinfo=UTC)
+    clock.now = datetime(2026, 12, 1, 3, 0, tzinfo=UTC)  # horario de invierno (PST, UTC-8)
+    assert next_quota_reset(clock.now) == datetime(2026, 12, 1, 8, 5, tzinfo=UTC)
+
+
+def test_places_cache_roundtrip_and_expiry(state, clock):
+    assert state.get_places_cache("Dotonbori Osaka", timedelta(days=30)) is None
+    state.put_places_cache("Dotonbori Osaka", [{"place_id": "D1"}])
+    state.put_places_cache("Nada en Japón", [])
+
+    assert state.get_places_cache("  dotonbori   OSAKA ", timedelta(days=30)) == [{"place_id": "D1"}]
+    assert state.get_places_cache("nada en japón", timedelta(days=30)) == []
+    clock.now += timedelta(days=31)
+    assert state.get_places_cache("Dotonbori Osaka", timedelta(days=30)) is None
 
 
 def test_status_counts(state):

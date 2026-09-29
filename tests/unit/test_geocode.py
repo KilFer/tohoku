@@ -38,7 +38,7 @@ def state(tmp_path):
 
 def _run(tmp_path, state, places, lugares, confianza=0.95, limit=150):
     ctx = make_ctx(tmp_path, extract=ExtractResult(extraction=make_extraction(confianza, lugares=lugares)))
-    return GeocodeStage(places, DailyQuota(state, "places_calls", limit), Thresholds()).run(ctx)
+    return GeocodeStage(places, DailyQuota(state, "places_calls", limit), Thresholds(), cache=state).run(ctx)
 
 
 def test_direct_match(tmp_path, state):
@@ -206,3 +206,32 @@ def test_translated_generic_words_and_city_aliases_match(tmp_path, state):
 )
 def test_name_score_translations(google, extracted, expected):
     assert name_score(make_geo(name=google), make_lugar(extracted)) == expected
+
+
+def test_repeated_queries_use_the_cache(tmp_path, state):
+    places = FakePlaces({"Ichiran Shibuya Tokyo": [SHIBUYA]})
+    _run(tmp_path, state, places, [make_lugar()])
+
+    outcome = _run(tmp_path, state, places, [make_lugar()]).outcomes[0]
+
+    assert outcome.match.place_id == "P1"
+    assert places.queries == ["Ichiran Shibuya Tokyo"]
+    assert state.get_counter("places_calls") == 1
+
+
+def test_empty_results_are_cached_too(tmp_path, state):
+    places = FakePlaces({})
+    lugar = make_lugar("Nada", consulta_busqueda="Nada Tokyo", nombre_local=None)
+    _run(tmp_path, state, places, [lugar])
+    _run(tmp_path, state, places, [lugar])
+    assert places.queries == ["Nada Tokyo"]
+
+
+def test_cache_hit_needs_no_quota(tmp_path, state):
+    places = FakePlaces({"Ichiran Shibuya Tokyo": [SHIBUYA]})
+    _run(tmp_path, state, places, [make_lugar()])
+    state.add_counter("places_calls", 500)
+
+    outcome = _run(tmp_path, state, places, [make_lugar()], limit=150).outcomes[0]
+
+    assert outcome.match.place_id == "P1"

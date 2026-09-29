@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from japan_reader.clients.places import PlacesClient
 from japan_reader.config import Thresholds
@@ -7,8 +8,11 @@ from japan_reader.geo import NAME_SIMILARITY, SAME_PLACE_RADIUS_M, city_matches,
 from japan_reader.models import ExtractResult, GeocodeResult, GeoMatch, GeoOutcome, Lugar
 from japan_reader.quota import DailyQuota
 from japan_reader.rules import japan_decision
+from japan_reader.state import StateStore
 
 log = logging.getLogger(__name__)
+# Los mismos sitios aparecen en muchos vídeos ("dotonbori osaka" ×18): se reutiliza la búsqueda.
+CACHE_MAX_AGE = timedelta(days=30)
 
 
 class GeocodeStage:
@@ -17,10 +21,11 @@ class GeocodeStage:
     name = "geocode"
     result_model = GeocodeResult
 
-    def __init__(self, places: PlacesClient, quota: DailyQuota, thresholds: Thresholds) -> None:
+    def __init__(self, places: PlacesClient, quota: DailyQuota, thresholds: Thresholds, cache: StateStore | None = None) -> None:
         self._places = places
         self._quota = quota
         self._th = thresholds
+        self._cache = cache
 
     def run(self, ctx: JobContext) -> GeocodeResult:
         extraction = ctx.result("extract", ExtractResult).extraction
@@ -38,9 +43,7 @@ class GeocodeStage:
         queries = list(dict.fromkeys(q for q in (lugar.consulta_busqueda, lugar.nombre_local) if q))
         japan_only: GeoMatch | None = None
         for query in queries:
-            self._quota.check()
-            results = self._places.search(query)
-            self._quota.add(1)
+            results = self._search(query)
             in_jp = [r for r in results if in_japan(r)]
             valid = [r for r in in_jp if city_matches(r, lugar.ciudad)]
             # Nombre exacto en Japón aunque la ciudad no cuadre: el LLM suele equivocar la ciudad
@@ -54,6 +57,19 @@ class GeocodeStage:
         if japan_only:
             return GeoOutcome(lugar_index=index, match=japan_only, review_reason="geocodificacion-ambigua")
         return GeoOutcome(lugar_index=index, review_reason="geocodificacion-fallida")
+
+
+    def _search(self, query: str) -> list[GeoMatch]:
+        if self._cache is not None:
+            cached = self._cache.get_places_cache(query, CACHE_MAX_AGE)
+            if cached is not None:
+                return [GeoMatch.model_validate(r) for r in cached]
+        self._quota.check()
+        results = self._places.search(query)
+        self._quota.add(1)
+        if self._cache is not None:
+            self._cache.put_places_cache(query, [r.model_dump() for r in results])
+        return results
 
 
 def _choose(valid: list[GeoMatch], lugar: Lugar) -> tuple[GeoMatch, bool]:

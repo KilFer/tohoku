@@ -19,7 +19,9 @@
 4. Varios válidos sin ningún nombre parecido (se usa el primero), o empate entre los mejores a más de 300 m (p. ej. dos sucursales), o solo resultados en Japón en otra ciudad y sin nombre igual → va a revisión (`geocodificacion-ambigua`).
 5. Nada en Japón → sin coordenadas y a revisión (`geocodificacion-fallida`).
 
-**Cuota:** contador diario `places_calls` limitado por `PLACES_DAILY_LIMIT` (150 por defecto ≈ 4.500/mes, por debajo de las 5.000 gratis). Al llegar al límite el job espera al día siguiente y la pasada se detiene (los demás jobs siguen pendientes). Configura además una cuota diaria en Google Cloud Console (APIs → Places API (New) → Cuotas).
+**Cuota:** contador diario `places_calls` limitado por `PLACES_DAILY_LIMIT` (150 por defecto ≈ 4.500/mes, por debajo de las 5.000 gratis). El "día" de los contadores de cuota es el de **hora del Pacífico**, como el de Google (renueva a medianoche PT = 09:00 en España en verano): así el servicio no llama a Google cuando su cuota del día ya está agotada. Al llegar al límite el job se reprograma a la siguiente medianoche del Pacífico + 5 min y la pasada se detiene (los demás jobs siguen pendientes). Configura además una cuota diaria en Google Cloud Console (APIs → Places API (New) → Cuotas) igual a `PLACES_DAILY_LIMIT`.
+
+**Caché de búsquedas:** cada consulta a Places (normalizada: minúsculas y espacios) se guarda en la tabla `places_cache` de `state.db` durante 30 días (`CACHE_MAX_AGE`), también las que no devuelven nada. Una consulta repetida ("dotonbori osaka" aparece en 18 vídeos) se resuelve sin llamar a Google ni gastar cuota. Medido el 2026-09-29: el 31 % de las consultas eran repetidas. Si cambia el cliente de Places (campos pedidos o su interpretación), vaciar la tabla: `DELETE FROM places_cache`.
 
 **Fallos:** API key inválida → `ConfigError`; 429/5xx → reintento.
 

@@ -83,7 +83,7 @@ def build_app(settings: Settings) -> App:
         FetchStage(settings, ytdlp, gallery, karakeep),
         transcribe,
         ExtractStage(settings, llm, llm_budget),
-        GeocodeStage(places, places_quota, thresholds),
+        GeocodeStage(places, places_quota, thresholds, cache=state),
         ResolveStage(trilium, layout, thresholds),
         PublishStage(trilium, layout, llm, settings, llm_budget, state),
     ]

@@ -1,8 +1,11 @@
+import json
+import re
 import sqlite3
 from collections.abc import Callable, Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time, timedelta
 from enum import StrEnum
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel
 
@@ -12,6 +15,21 @@ from japan_reader.sources import ContentHint, Platform
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+# Google renueva las cuotas diarias (y mide el mes) a medianoche del Pacífico. Los contadores de
+# cuota usan ese mismo día para no llamar a Google cuando su cuota del día ya está agotada.
+QUOTA_TZ = ZoneInfo("America/Los_Angeles")
+
+
+def next_quota_reset(now: datetime) -> datetime:
+    """Siguiente medianoche del Pacífico + 5 min, en UTC."""
+    tomorrow = now.astimezone(QUOTA_TZ).date() + timedelta(days=1)
+    return datetime.combine(tomorrow, time(0, 5), tzinfo=QUOTA_TZ).astimezone(UTC)
+
+
+def _cache_key(query: str) -> str:
+    return re.sub(r"\s+", " ", query.casefold()).strip()
 
 
 def _iso(value: datetime) -> str:
@@ -71,6 +89,11 @@ CREATE TABLE IF NOT EXISTS counters (
     value REAL NOT NULL DEFAULT 0,
     PRIMARY KEY (day, key)
 );
+CREATE TABLE IF NOT EXISTS places_cache (
+    query TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 """
 
 
@@ -89,6 +112,10 @@ class StateStore:
 
     def today(self) -> str:
         return self._clock().astimezone(UTC).date().isoformat()
+
+    def quota_day(self) -> str:
+        """Día de las cuotas (hora del Pacífico, como Google)."""
+        return self._clock().astimezone(QUOTA_TZ).date().isoformat()
 
     # --- jobs -------------------------------------------------------------
 
@@ -208,13 +235,27 @@ class StateStore:
         self._db.execute(
             "INSERT INTO counters (day, key, value) VALUES (?, ?, ?)"
             " ON CONFLICT(day, key) DO UPDATE SET value = value + excluded.value",
-            (self.today(), key, amount),
+            (self.quota_day(), key, amount),
         )
         return self.get_counter(key)
 
     def get_counter(self, key: str) -> float:
-        row = self._db.execute("SELECT value FROM counters WHERE day = ? AND key = ?", (self.today(), key)).fetchone()
+        row = self._db.execute("SELECT value FROM counters WHERE day = ? AND key = ?", (self.quota_day(), key)).fetchone()
         return float(row["value"]) if row else 0.0
+
+    # --- caché de Google Places -------------------------------------------
+
+    def get_places_cache(self, query: str, max_age: timedelta) -> list[dict] | None:
+        row = self._db.execute("SELECT data, created_at FROM places_cache WHERE query = ?", (_cache_key(query),)).fetchone()
+        if row is None or self._clock() - datetime.fromisoformat(row["created_at"]) > max_age:
+            return None
+        return json.loads(row["data"])
+
+    def put_places_cache(self, query: str, results: list[dict]) -> None:
+        self._db.execute(
+            "INSERT OR REPLACE INTO places_cache (query, data, created_at) VALUES (?, ?, ?)",
+            (_cache_key(query), json.dumps(results, ensure_ascii=False), self._now()),
+        )
 
     # --- informes -----------------------------------------------------------
 

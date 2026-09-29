@@ -11,7 +11,7 @@ from japan_reader.context import JobContext
 from japan_reader.errors import ConfigError, JapanReaderError, PermanentError, QuotaExceeded
 from japan_reader.models import Outcome, PublishResult
 from japan_reader.stages.mark import MarkStage
-from japan_reader.state import Job, StateStore, utcnow
+from japan_reader.state import Job, StateStore, next_quota_reset, utcnow
 
 log = logging.getLogger(__name__)
 
@@ -116,4 +116,5 @@ class Pipeline:
             self._notifier.send(title, message, priority=4, tags=["warning"])
 
     def _tomorrow(self) -> datetime:
-        return (self._clock() + timedelta(days=1)).replace(hour=0, minute=5, second=0, microsecond=0)
+        """Cuando se renuevan las cuotas (medianoche del Pacífico, como Google)."""
+        return next_quota_reset(self._clock())
