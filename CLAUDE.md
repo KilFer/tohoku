@@ -37,7 +37,7 @@ Documentación de referencia (leer antes de cambiar comportamiento):
 ## Estado (2026-09-28)
 
 - En producción: `docker compose up -d`, sondeo cada 10 min. Prueba de humo con 3 enlaces OK (2 lugares en el mapa, 4 cosas, 1 otro; todos `jr:procesado` y archivados).
-- `.env` completo: Karakeep (lista "Japón" = `seo5xdpquppqfy4hmzzeekfh`), Trilium v0.106, OpenRouter `openai/gpt-6-luna` (key con límite 8 $, presupuesto 2 $/día), Google Places (cuota diaria ~200 en Cloud Console, `PLACES_DAILY_LIMIT=150`), ntfy `https://ntfy.belaza.me` topic `kamo`. Sin cookies de Instagram (de momento no hacen falta).
+- `.env` completo: Karakeep (lista "Japón" = `seo5xdpquppqfy4hmzzeekfh`), Trilium v0.106, OpenRouter `openai/gpt-6-luna` (key con límite 8 $, presupuesto 2 $/día), Google Places (desde 2026-09-29: cuota diaria ~2.000 en Cloud Console, `PLACES_DAILY_LIMIT=2000`, presupuesto con alertas de 5 $; el límite real es el cupo gratuito de 5.000/mes, que se renueva el día 1 en hora del Pacífico), ntfy `https://ntfy.belaza.me` topic `kamo`. Sin cookies de Instagram (de momento no hacen falta).
 - Medidas reales: ~2 min por Reel (Whisper large-v3 ~90 s), ~0,001 $ de LLM por enlace. `small` de Whisper no basta (confundió "Miki Jet" con "Mickey Jet").
 
 ### Correcciones hechas en la puesta en marcha (no estaban en el plan)
@@ -63,7 +63,8 @@ Documentación de referencia (leer antes de cambiar comportamiento):
   - 2026-09-29: **tanda 3 importada** (40 creados, 70 ya existían, 2.178 pendientes). Con 113/150 de Places gastados, parte se geocodificará al día siguiente (la cola espera sola).
   - 2026-09-29 ~10:30: desplegado `8e1a8fe` (la tanda 3 ya se procesa con él). Pendiente: el usuario borra en Trilium las 26 notas de áreas en la Bandeja y después se reprocesan desde `geocode` estos 13 jobs (~68 llamadas a Places):
     `reprocess --from geocode dhsw4ldl3khzd145e9385sl7 juv01lhqf91wby9ozcvfxkec mo91h0rd3jg7ccc2q7o6dmc7 rc7gk19vmlmwoyv07zb4ubk6 kveqwi6kyzy2qhcvszcij9i1 t7yi0nvsouv6yll97muff1b0 cnvwjfo8jqz4edavehnqlz43 j9o6xkshwsb59d18uskhjydk nrlo70v8zi5llfcsa6i9dorl pcw1o9bw3676298ddec7s8an dw92dzjxj8c7yf7y5mhqbis2 leixw9zvipkmbklu5uzzlnzj x1kiqes6t6i3s6igdd8orywg`
-  - 2026-09-29 ~11:30: 26 notas borradas por ETAPI (borrar en la Bandeja solo quita el clon; la nota sigue en el Mapa). Contador de Places de ese día bajado a mano a 87 (quedaban 63 en Google Cloud, excepción puntual). Reprocesados 10 de 13; quedan `dw92dz`, `leixw9`, `x1kiqe` en espera de cuota (se reanudan solos). 58 geocodificaciones, 56 sin revisión. Kioto = 1 nota con 2 fuentes. Huérfana: "Koyasan" `EUCc4I9K6WoF` (Google devolvió otro placeId al reprocesar; la vigente es `0j3tghMvbFK0`).
+  - 2026-09-29 ~11:30: 26 notas borradas por ETAPI (borrar en la Bandeja solo quita el clon; la nota sigue en el Mapa). Contador de Places de ese día bajado a mano a 87 (quedaban 63 en Google Cloud, excepción puntual). Reprocesados 10 de 13; quedan `dw92dz`, `leixw9`, `x1kiqe` en espera de cuota (se reanudan solos). 58 geocodificaciones, 56 sin revisión. Kioto = 1 nota con 2 fuentes. Huérfana: "Koyasan" `EUCc4I9K6WoF` (Google devolvió otro placeId al reprocesar; la vigente es `0j3tghMvbFK0`). Huérfana borrada. Desplegado `bfd4eb5` (restricción de audiencia = error permanente).
+  - 2026-09-29 tarde: límite diario de Places subido a 2.000 (aprovechar las ~4.700 gratuitas que quedan de septiembre; el cupo de octubre da para el resto). **Tanda 4 importada: 200 creados**, 110 ya existían, 1.978 pendientes. Criterio del usuario: si la Bandeja crece, revisar antes de seguir; si se mantiene estable, subir el tamaño de tanda.
 
 ## Pendientes y mejoras conocidas
 
