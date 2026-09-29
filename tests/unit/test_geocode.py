@@ -3,6 +3,7 @@ import pytest
 from builders import make_ctx, make_extraction, make_geo, make_lugar
 from japan_reader.config import Thresholds
 from japan_reader.errors import QuotaExceeded
+from japan_reader.geo import name_score
 from japan_reader.models import ExtractResult
 from japan_reader.quota import DailyQuota
 from japan_reader.stages.geocode import GeocodeStage
@@ -135,7 +136,8 @@ def test_best_name_match_wins_over_first_result(tmp_path, state):
 
 
 def test_equally_good_name_matches_are_ambiguous(tmp_path, state):
-    shinjuku = make_geo("P5", "Ichiran Shinjuku", "Shinjuku, Tokio", country_code="JP", area="Tokio")
+    # Dos sucursales de verdad, a ~3 km: sigue siendo ambiguo.
+    shinjuku = make_geo("P5", "Ichiran Shinjuku", "Shinjuku, Tokio", lat=35.69, lng=139.70, country_code="JP", area="Tokio")
     places = FakePlaces({"Ichiran Tokyo": [SHIBUYA, shinjuku]})
     lugar = make_lugar("Ichiran", consulta_busqueda="Ichiran Tokyo")
     outcome = _run(tmp_path, state, places, [lugar]).outcomes[0]
@@ -156,3 +158,51 @@ def test_areas_are_geocoded_like_any_place(tmp_path, state):
     ]
     outcomes = _run(tmp_path, state, places, lugares).outcomes
     assert [(o.match.place_id, o.review_reason) for o in outcomes] == [("A1", None), ("A2", None)]
+
+
+# Casos reales (tanda 4): empates entre resultados que son el mismo sitio.
+DOTONBORI_SPOT = make_geo("D1", "Dōtonbori", "1 Chome Dotonbori, Chūō-ku, Osaka", lat=34.66868, lng=135.50128, country_code="JP", area="Prefectura de Osaka")
+DOTONBORI_AREA = make_geo("D2", "Dotonbori", "Dotonbori, Chūō-ku, Osaka", lat=34.66890, lng=135.49950, country_code="JP", area="Prefectura de Osaka")
+
+
+def test_tie_between_nearby_results_is_clear(tmp_path, state):
+    places = FakePlaces({"Dotonbori Osaka": [DOTONBORI_SPOT, DOTONBORI_AREA]})
+    lugar = make_lugar("Dotonbori", consulta_busqueda="Dotonbori Osaka", ciudad="Osaka")
+    outcome = _run(tmp_path, state, places, [lugar]).outcomes[0]
+    assert outcome.match.place_id == "D1"
+    assert outcome.review_reason is None
+
+
+def test_exact_name_in_japan_but_other_city_is_accepted(tmp_path, state):
+    disneysea = make_geo("S1", "Tokyo DisneySea", "1-13 Maihama, Urayasu, Chiba", lat=35.6267, lng=139.8851, country_code="JP", area="Prefectura de Chiba Urayasu")
+    places = FakePlaces({"Tokyo DisneySea": [disneysea]})
+    lugar = make_lugar("Tokyo DisneySea", consulta_busqueda="Tokyo DisneySea", ciudad="Tokio")
+    outcome = _run(tmp_path, state, places, [lugar]).outcomes[0]
+    assert outcome.match.place_id == "S1"
+    assert outcome.review_reason is None
+
+
+def test_translated_generic_words_and_city_aliases_match(tmp_path, state):
+    torre = make_geo("T1", "Torre de Kioto", "721-1 Higashishiokojicho, Kioto", lat=34.98755, lng=135.75945, country_code="JP", area="Prefectura de Kioto")
+    building = make_geo("T2", "Kyoto Tower Building", "721-1 Higashishiokojicho, Kioto", lat=34.98770, lng=135.75960, country_code="JP", area="Prefectura de Kioto")
+    hotel = make_geo("T3", "Kyoto Tower Hotel", "721-1 Higashishiokojicho, Kioto", lat=34.98760, lng=135.75950, country_code="JP", area="Prefectura de Kioto")
+    places = FakePlaces({"Kyoto Tower Kyoto Station": [torre, building, hotel]})
+    lugar = make_lugar("Kyoto Tower", consulta_busqueda="Kyoto Tower Kyoto Station", ciudad="Kioto")
+    outcome = _run(tmp_path, state, places, [lugar]).outcomes[0]
+    assert outcome.match.place_id == "T1"
+    assert outcome.review_reason is None
+
+
+@pytest.mark.parametrize(
+    ("google", "extracted", "expected"),
+    [
+        ("Santuario Meiji", "Meiji Shrine", 2.0),
+        ("Torre de Kioto", "Kyoto Tower", 2.0),
+        ("Lago Shinji", "Lake Shinji", 2.0),
+        ("Estación de Umeda", "Umeda Station", 2.0),
+        ("Ichiran Shibuya", "Ichiran Shibuya", 2.0),
+        ("Kyoto Tower Hotel", "Kyoto Tower", 1.0),
+    ],
+)
+def test_name_score_translations(google, extracted, expected):
+    assert name_score(make_geo(name=google), make_lugar(extracted)) == expected

@@ -1,3 +1,5 @@
+import math
+
 from japan_reader.models import GeoMatch, Lugar
 from japan_reader.text import fold, normalize_name, similarity
 
@@ -21,6 +23,32 @@ CITY_ALIASES: dict[str, list[str]] = {
     "kamakura": ["鎌倉"],
 }
 NAME_SIMILARITY = 0.6
+# Resultados empatados a menos de esta distancia son el mismo sitio (la zona y su punto de
+# interés, el edificio y la torre...). Medido en casos reales: 4-165 m.
+SAME_PLACE_RADIUS_M = 300
+# Solo para comparar nombres (no para las claves de deduplicación): Google devuelve el nombre
+# en español y el LLM a menudo en inglés o romaji ("Santuario Meiji" / "Meiji Shrine").
+_NAME_EQUIVALENTS = {
+    "shrine": ("santuario", "jinja", "jingu"),
+    "temple": ("templo",),
+    "tower": ("torre",),
+    "lake": ("lago",),
+    "station": ("estacion", "eki"),
+    "castle": ("castillo",),
+    "park": ("parque", "koen"),
+    "garden": ("jardin", "jardines", "gardens"),
+    "museum": ("museo",),
+    "market": ("mercado",),
+    "bridge": ("puente",),
+    "island": ("isla",),
+    "mount": ("monte", "mountain", "montana"),
+    "street": ("calle",),
+    "beach": ("playa",),
+    "waterfall": ("cascada",),
+    "center": ("centro", "centre"),
+    "airport": ("aeropuerto",),
+}
+_NAME_STOPWORDS = {"de", "del", "la", "el", "los", "las", "of"}
 
 
 def in_japan(match: GeoMatch) -> bool:
@@ -43,18 +71,45 @@ def city_matches(match: GeoMatch, ciudad: str | None) -> bool:
     return any(fold(name) in address for name in [city, *CITY_ALIASES.get(city, [])])
 
 
+def _canonical_words() -> dict[str, str]:
+    words = {alias: canon for canon, aliases in _NAME_EQUIVALENTS.items() for alias in aliases}
+    words |= {fold(alias): city for city, aliases in CITY_ALIASES.items() for alias in aliases}
+    return words
+
+
+_CANONICAL = _canonical_words()
+
+
+def _name_words(text: str) -> list[str]:
+    return [_CANONICAL.get(w, w) for w in normalize_name(text).split() if w not in _NAME_STOPWORDS]
+
+
 def name_score(match: GeoMatch, lugar: Lugar) -> float:
-    """Parecido entre el nombre de Google y el extraído: 2 = igual, 1 = uno contiene al otro, si no la similitud."""
-    found = normalize_name(match.name)
-    wanted = [normalize_name(lugar.nombre)] + ([normalize_name(lugar.nombre_local)] if lugar.nombre_local else [])
+    """Parecido entre el nombre de Google y el extraído: 2 = igual, 1 = uno contiene al otro, si no la similitud.
+
+    "Igual" admite otro orden y palabras traducidas o alias de ciudad ("Torre de Kioto" = "Kyoto Tower").
+    """
+    found_words = _name_words(match.name)
+    found = " ".join(found_words)
+    names = [lugar.nombre] + ([lugar.nombre_local] if lugar.nombre_local else [])
     best = 0.0
-    for w in wanted:
+    for name in names:
+        words = _name_words(name)
+        w = " ".join(words)
         if not w or not found:
             continue
-        if w == found:
+        if w == found or sorted(words) == sorted(found_words):
             return 2.0
         best = max(best, 1.0 if (w in found or found in w) else similarity(w, found))
     return best
+
+
+def distance_m(a: GeoMatch, b: GeoMatch) -> float:
+    """Distancia en metros (haversine)."""
+    lat1, lat2 = math.radians(a.lat), math.radians(b.lat)
+    dlat, dlng = lat2 - lat1, math.radians(b.lng - a.lng)
+    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng / 2) ** 2
+    return 2 * 6_371_000 * math.asin(math.sqrt(h))
 
 
 def name_matches(match: GeoMatch, lugar: Lugar) -> bool:

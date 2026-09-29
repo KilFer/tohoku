@@ -3,7 +3,7 @@ import logging
 from japan_reader.clients.places import PlacesClient
 from japan_reader.config import Thresholds
 from japan_reader.context import JobContext
-from japan_reader.geo import NAME_SIMILARITY, city_matches, in_japan, name_score
+from japan_reader.geo import NAME_SIMILARITY, SAME_PLACE_RADIUS_M, city_matches, distance_m, in_japan, name_score
 from japan_reader.models import ExtractResult, GeocodeResult, GeoMatch, GeoOutcome, Lugar
 from japan_reader.quota import DailyQuota
 from japan_reader.rules import japan_decision
@@ -43,8 +43,11 @@ class GeocodeStage:
             self._quota.add(1)
             in_jp = [r for r in results if in_japan(r)]
             valid = [r for r in in_jp if city_matches(r, lugar.ciudad)]
-            if valid:
-                match, clear = _choose(valid, lugar)
+            # Nombre exacto en Japón aunque la ciudad no cuadre: el LLM suele equivocar la ciudad
+            # de sitios de las afueras (Tokyo DisneySea está en Chiba), no el nombre.
+            candidates = valid or [r for r in in_jp if name_score(r, lugar) >= 2]
+            if candidates:
+                match, clear = _choose(candidates, lugar)
                 return GeoOutcome(lugar_index=index, match=match, review_reason=None if clear else "geocodificacion-ambigua")
             if in_jp and japan_only is None:
                 japan_only = in_jp[0]
@@ -56,7 +59,8 @@ class GeocodeStage:
 def _choose(valid: list[GeoMatch], lugar: Lugar) -> tuple[GeoMatch, bool]:
     """Elige el resultado cuyo nombre mejor coincide (no necesariamente el primero).
 
-    Es claro si solo hay uno, o si el mejor supera el umbral de nombre y no empata con otro.
+    Es claro si solo hay uno, o si el mejor supera el umbral de nombre y no empata con otro
+    (o los empatados están a menos de SAME_PLACE_RADIUS_M: son el mismo sitio).
     Si ninguno se parece, se devuelve el primero (el más relevante para Google) como ambiguo.
     """
     if len(valid) == 1:
@@ -65,5 +69,6 @@ def _choose(valid: list[GeoMatch], lugar: Lugar) -> tuple[GeoMatch, bool]:
     best = max(range(len(valid)), key=lambda i: scores[i])  # max devuelve el primero en caso de empate
     if scores[best] < NAME_SIMILARITY:
         return valid[0], False
-    tied = sum(1 for sc in scores if sc == scores[best]) > 1
-    return valid[best], not tied
+    tied = [r for r, sc in zip(valid, scores) if sc == scores[best]]
+    same_place = all(distance_m(valid[best], r) <= SAME_PLACE_RADIUS_M for r in tied)
+    return valid[best], same_place
