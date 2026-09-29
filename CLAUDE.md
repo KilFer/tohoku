@@ -58,6 +58,8 @@ Documentación de referencia (leer antes de cambiar comportamiento):
   - 2026-09-28 ~23:55: **tanda 1 importada** (20 creados, 2.268 pendientes). Revisión prevista a la mañana siguiente: `status`, logs, Bandeja de revisión, coste del día, calidad de notas.
   - 2026-09-29: revisión tanda 1 → 16 procesados, 7 revisar, 1 no-Japón. El único post falló (gallery-dl exige login) → arreglado con `659102c` y reprocesado (6 torres, 4 nuevas + 2 fusionadas). Revisar: 1 baja confianza, 4 ciudades sin punto exacto (aceptable para el usuario), 1 cosa genérica ("Comida preparada refrigerada", el usuario la borrará si no se enriquece), 1 geocodificación ambigua.
   - 2026-09-29 ~08:45: **tanda 2 importada** (50 creados, 20 ya existían, 2.218 pendientes).
+  - 2026-09-29: tanda 2 terminada (84 búsquedas de Places en 50 enlaces). Total: 49 procesados, 24 revisar, 1 no-Japón; hoy 0,046 $ de LLM y 113 llamadas a Places.
+  - 2026-09-29: **tanda 3 importada** (40 creados, 70 ya existían, 2.178 pendientes). Con 113/150 de Places gastados, parte se geocodificará al día siguiente (la cola espera sola).
 
 ## Pendientes y mejoras conocidas
 
