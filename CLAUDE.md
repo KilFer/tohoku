@@ -44,6 +44,7 @@ Documentación de referencia (leer antes de cambiar comportamiento):
 - `e3c64ad` Places: con `regionCode=JP` Google omite el país en `formattedAddress` → se pide `places.postalAddress` (Pro) y se usa `regionCode` y la prefectura.
 - `6e1f9b0` Geocode: entre varios resultados válidos gana el de nombre más parecido, no el primero.
 - `ab99cc3` OpenRouter: `temperature` solo si el modelo la admite (modelos de razonamiento no; con `require_parameters` daba 404).
+- `659102c` Posts de Instagram: gallery-dl sin cookies recibe "redirect to login" en todos los posts → plan B con yt-dlp (caption + imágenes a tamaño original); la redirección a login es error permanente (antes quemaba 5 h de reintentos).
 - `17950b7` Importador: formato de exportación 2026 (lista de colecciones con posts anidados, mojibake), del más antiguo al más reciente, `--limit N` por tandas.
 
 ## Importación del historial de Instagram (EN CURSO)
@@ -55,6 +56,8 @@ Documentación de referencia (leer antes de cambiar comportamiento):
 - Progreso: consultar con `--dry-run` (línea `Ya existían / Pendientes`) y `docker compose exec japan-reader japan-reader status`.
   - 2026-09-28: dry-run de la primera tanda → 20 nuevos, 0 existentes, 2.268 pendientes.
   - 2026-09-28 ~23:55: **tanda 1 importada** (20 creados, 2.268 pendientes). Revisión prevista a la mañana siguiente: `status`, logs, Bandeja de revisión, coste del día, calidad de notas.
+  - 2026-09-29: revisión tanda 1 → 16 procesados, 7 revisar, 1 no-Japón. El único post falló (gallery-dl exige login) → arreglado con `659102c` y reprocesado (6 torres, 4 nuevas + 2 fusionadas). Revisar: 1 baja confianza, 4 ciudades sin punto exacto (aceptable para el usuario), 1 cosa genérica ("Comida preparada refrigerada", el usuario la borrará si no se enriquece), 1 geocodificación ambigua.
+  - 2026-09-29 ~08:45: **tanda 2 importada** (50 creados, 70 existentes, 2.218 pendientes).
 
 ## Pendientes y mejoras conocidas
 
