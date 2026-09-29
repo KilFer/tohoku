@@ -78,3 +78,24 @@ def test_attributes_branches_and_attachments(client):
     assert json.loads(attach.calls[0].request.content) == {
         "ownerId": "n1", "role": "file", "mime": "application/json", "title": "japan-reader.json", "content": "{}", "position": 10,
     }
+
+
+@respx.mock
+def test_remove_from_parent_deletes_only_that_branch(client):
+    note = NOTE | {"parentNoteIds": ["p1", "inbox"], "parentBranchIds": ["p1_n1", "inbox_n1"]}
+    respx.get(host=HOST, path="/etapi/notes/n1").mock(return_value=httpx.Response(200, json=note))
+    respx.get(host=HOST, path="/etapi/branches/p1_n1").mock(return_value=httpx.Response(200, json={"branchId": "p1_n1", "noteId": "n1", "parentNoteId": "p1"}))
+    respx.get(host=HOST, path="/etapi/branches/inbox_n1").mock(return_value=httpx.Response(200, json={"branchId": "inbox_n1", "noteId": "n1", "parentNoteId": "inbox"}))
+    delete = respx.delete(host=HOST, path="/etapi/branches/inbox_n1").mock(return_value=httpx.Response(204))
+
+    assert client.remove_from_parent("n1", "inbox") is True
+    assert delete.called
+
+
+@respx.mock
+def test_remove_from_parent_never_deletes_the_last_branch(client):
+    respx.get(host=HOST, path="/etapi/notes/n1").mock(return_value=httpx.Response(200, json=NOTE))
+    delete = respx.delete(host=HOST, path__regex=r"/etapi/branches/.*")
+
+    assert client.remove_from_parent("n1", "p1") is False
+    assert not delete.called

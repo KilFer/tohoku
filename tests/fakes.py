@@ -152,6 +152,13 @@ class FakeTrilium:
         self.notes[note_id]["parents"].append(parent_id)
         return f"{parent_id}_{note_id}"
 
+    def remove_from_parent(self, note_id: str, parent_id: str) -> bool:
+        parents = self.notes[note_id]["parents"]
+        if parent_id not in parents or len(parents) < 2:
+            return False
+        parents.remove(parent_id)
+        return True
+
     def create_attachment(self, owner_id: str, title: str, mime: str, content: str, role: str = "file") -> str:
         attachment_id = self._new_id("x")
         self.attachments[attachment_id] = {"owner": owner_id, "title": title, "mime": mime, "role": role, "content": content}

@@ -48,4 +48,4 @@ Cada nota lleva un adjunto `japan-reader.json` con sus datos (resumen, consejos,
 
 ## Bandeja de revisión
 
-Las notas dudosas se **clonan** en la bandeja (siguen también en su sitio) con `#revisar=<motivos>`: `geocodificacion-fallida`, `geocodificacion-ambigua`, `posible-duplicado`, `baja-confianza`, `clasificacion-incierta`, `extraccion-fallida`. Revisar = corregir la nota, quitar `#revisar` y quitar el clon de la bandeja.
+Las notas dudosas se **clonan** en la bandeja (siguen también en su sitio) con `#revisar=<motivos>`: `geocodificacion-fallida`, `geocodificacion-ambigua`, `posible-duplicado`, `baja-confianza`, `clasificacion-incierta`, `extraccion-fallida`. Revisar = corregir la nota, quitar `#revisar` y quitar el clon de la bandeja. El servicio no vuelve a meter en la bandeja una nota que el usuario sacó salvo que llegue una fuente nueva con motivos; y la saca él mismo si un reprocesado resuelve todos sus motivos.

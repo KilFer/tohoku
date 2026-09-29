@@ -190,6 +190,18 @@ class StateStore:
         notes = [PublishedNote.model_validate_json(row["data"]) for row in rows]
         return {note.key: note for note in notes}
 
+    def review_reasons_for_note(self, note_id: str, exclude: tuple[str, str] | None = None) -> list[str]:
+        """Motivos de revisión vigentes de todas las fuentes publicadas en `note_id` (salvo `exclude`)."""
+        rows = self._db.execute(
+            "SELECT bookmark_id, item_key, data FROM published WHERE json_extract(data, '$.note_id') = ?", (note_id,)
+        ).fetchall()
+        reasons: list[str] = []
+        for row in rows:
+            if exclude and (row["bookmark_id"], row["item_key"]) == exclude:
+                continue
+            reasons += PublishedNote.model_validate_json(row["data"]).review_reasons
+        return list(dict.fromkeys(reasons))
+
     # --- contadores diarios -------------------------------------------------
 
     def add_counter(self, key: str, amount: float) -> float:

@@ -102,6 +102,17 @@ class TriliumClient:
     def clone(self, note_id: str, parent_id: str) -> str:
         return self._req("POST", "/branches", json={"noteId": note_id, "parentNoteId": parent_id}).json()["branchId"]
 
+    def remove_from_parent(self, note_id: str, parent_id: str) -> bool:
+        """Quita el clon de `note_id` bajo `parent_id`. Nunca borra la última rama (eso borraría la nota)."""
+        note = self.get_note(note_id)
+        if parent_id not in note.parent_note_ids or len(note.parent_note_ids) < 2:
+            return False
+        for branch_id in note.parent_branch_ids:
+            if self._req("GET", f"/branches/{branch_id}").json().get("parentNoteId") == parent_id:
+                self._req("DELETE", f"/branches/{branch_id}")
+                return True
+        return False
+
     def create_attachment(self, owner_id: str, title: str, mime: str, content: str, role: str = "file") -> str:
         body = {"ownerId": owner_id, "role": role, "mime": mime, "title": title, "content": content, "position": 10}
         return self._req("POST", "/attachments", json=body).json()["attachmentId"]

@@ -118,6 +118,43 @@ def test_review_items_are_cloned_to_inbox(env):
     assert result.outcome == Outcome.REVISAR
 
 
+def test_reprocessed_item_without_reasons_leaves_the_inbox(env):
+    extraction = make_extraction(lugares=[make_lugar()])
+    note_id = _stage(env).run(_ctx(env, "b1", extraction, GEO, [_item(reasons=["geocodificacion-ambigua"])])).notes[0].note_id
+    env.state.clear_stages_from("b1", "publish", ["publish"])
+
+    result = _stage(env).run(_ctx(env, "b1", extraction, GEO, [_item()]))
+
+    note = env.trilium.get_note(note_id)
+    assert result.notes[0].note_id == note_id
+    assert note.parent_note_ids == [env.layout.mapa]
+    assert note.label("revisar") is None
+    assert result.outcome == Outcome.PROCESADO
+
+
+def test_inbox_keeps_note_while_another_source_has_reasons(env):
+    extraction = make_extraction(lugares=[make_lugar()])
+    note_id = _stage(env).run(_ctx(env, "b1", extraction, GEO, [_item(reasons=["baja-confianza"])])).notes[0].note_id
+    _stage(env, FakeLLM([MERGED])).run(_ctx(env, "b2", extraction, GEO, [_item(action="merge", existing=note_id, reasons=["geocodificacion-ambigua"])]))
+    env.state.clear_stages_from("b2", "publish", ["publish"])
+
+    _stage(env).run(_ctx(env, "b2", extraction, GEO, [_item(action="merge", existing=note_id)]))
+
+    note = env.trilium.get_note(note_id)
+    assert env.layout.revision in note.parent_note_ids
+    assert note.label("revisar") == "baja-confianza"
+
+
+def test_note_dismissed_by_user_is_not_sent_back_by_a_clean_source(env):
+    extraction = make_extraction(lugares=[make_lugar()])
+    note_id = _stage(env).run(_ctx(env, "b1", extraction, GEO, [_item(reasons=["baja-confianza"])])).notes[0].note_id
+    env.trilium.remove_from_parent(note_id, env.layout.revision)  # el usuario la revisa y la saca
+
+    _stage(env, FakeLLM([MERGED])).run(_ctx(env, "b2", extraction, GEO, [_item(action="merge", existing=note_id)]))
+
+    assert env.trilium.get_note(note_id).parent_note_ids == [env.layout.mapa]
+
+
 def test_cosa_goes_to_category_and_links_store(env):
     extraction = make_extraction(
         lugares=[make_lugar("Don Quijote Shibuya", categoria="tienda")],

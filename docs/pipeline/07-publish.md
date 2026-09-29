@@ -11,7 +11,7 @@
 **Crear:** nota de texto en su sitio (Lugar → Mapa; Cosa → su categoría; Otro → Cultura), atributos gestionados, `~template` y adjunto `japan-reader.json`.
 **Fusionar:** lee el adjunto, añade la fuente (o la actualiza si es el mismo bookmark; si además es la única fuente de la nota, la nota se regenera con la extracción nueva sin llamar al LLM), una llamada al LLM (`OPENROUTER_TEXT_MODEL`, prompt `prompts/merge.md`) reescribe Resumen, Qué hacer y Consejos, y se regenera el HTML conservando "Mis notas". Si el LLM devuelve algo inválido, se conservan los textos y se unen los consejos.
 **Atributos gestionados en fusiones:** cada uno se reescribe solo si falta o si conserva el valor que el servicio escribió la vez anterior (calculado del adjunto previo); así no se deshacen las correcciones del usuario. `#fuentes` y `#jrTipo` se escriben siempre.
-**Revisión:** clon en la Bandeja de revisión + `#revisar=<motivos>` (se acumulan).
+**Revisión:** clon en la Bandeja de revisión + `#revisar=<motivos>`. Los motivos vigentes de una nota son la unión de los de todas sus fuentes (guardados por fuente en `published` de `state.db`); `#revisar` se reescribe con esa unión y no acumula motivos ya resueltos. Si un elemento trae motivos, la nota entra (o sigue) en la Bandeja. Si no trae y ninguna fuente tiene ya motivos (p. ej. tras un reprocesado que lo resuelve), se quitan el clon de la Bandeja y `#revisar`; la nota sigue en su sitio. Si no trae pero otra fuente sí, se actualiza `#revisar` solo si la nota sigue en la Bandeja: si el usuario ya la sacó, se respeta.
 **Extracción fallida:** nota en la Bandeja con caption, transcripción, error y enlace.
 **Cosa con local concreto:** relación `~dondeComprar` hacia la nota Lugar del local.
 

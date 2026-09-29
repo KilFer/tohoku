@@ -111,3 +111,13 @@ def test_daily_quota(state):
     quota.add(2)
     with pytest.raises(QuotaExceeded):
         quota.check()
+
+
+def test_review_reasons_for_note_joins_other_sources(state):
+    state.record_publish("b1", PublishedNote(key="lugar:0", note_id="n1", action="create", review_reasons=["baja-confianza"]))
+    state.record_publish("b2", PublishedNote(key="lugar:3", note_id="n1", action="merge", review_reasons=["geocodificacion-ambigua"]))
+    state.record_publish("b3", PublishedNote(key="lugar:0", note_id="n2", action="create", review_reasons=["posible-duplicado"]))
+
+    assert state.review_reasons_for_note("n1", exclude=("b2", "lugar:3")) == ["baja-confianza"]
+    assert sorted(state.review_reasons_for_note("n1")) == ["baja-confianza", "geocodificacion-ambigua"]
+    assert state.review_reasons_for_note("n9") == []

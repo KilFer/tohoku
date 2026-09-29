@@ -147,8 +147,7 @@ class PublishStage:
                     note_id = self._create(data, layout, ctx.job.bookmark_id)
             else:
                 note_id = self._create(data, layout, ctx.job.bookmark_id)
-        if item.review_reasons:
-            self._send_to_review(note_id, item.review_reasons, layout)
+        self._sync_review(note_id, item, ctx.job.bookmark_id, layout)
         return PublishedNote(key=item.key, note_id=note_id, action=item.action, review_reasons=item.review_reasons)
 
     def _build_data(self, item: PlannedItem, ctx: JobContext) -> NoteData:
@@ -307,12 +306,30 @@ class PublishStage:
         self._t.set_content(note_id, render_failure(meta, transcript.text, extract.error or ""))
         return note_id
 
-    def _send_to_review(self, note_id: str, reasons: list[str], layout: Layout) -> None:
+    def _sync_review(self, note_id: str, item: PlannedItem, bookmark_id: str, layout: Layout) -> None:
+        """Mantiene la Bandeja y `#revisar` al día con los motivos vigentes de todas las fuentes de la nota.
+
+        - El elemento trae motivos → la nota va (o sigue) en la Bandeja.
+        - No trae y ninguna fuente tiene ya motivos → sale de la Bandeja y se borra `#revisar`.
+        - No trae pero otra fuente sí: si sigue en la Bandeja se actualiza `#revisar`; si el usuario
+          ya la sacó, se respeta.
+        `#revisar` es la unión de los motivos vigentes (no se acumulan motivos ya resueltos).
+        """
+        reasons = _unique(item.review_reasons + self._state.review_reasons_for_note(note_id, exclude=(bookmark_id, item.key)))
         note = self._t.get_note(note_id)
-        if layout.revision not in note.parent_note_ids:
-            self._t.clone(note_id, layout.revision)
-        previous = (note.label("revisar") or "").split(",")
-        upsert_labels(self._t, note, {"revisar": ",".join(_unique([r for r in previous + reasons if r]))})
+        in_inbox = layout.revision in note.parent_note_ids
+        label = note.attr("label", "revisar")
+        if item.review_reasons or (reasons and in_inbox):
+            if not in_inbox:
+                self._t.clone(note_id, layout.revision)
+            upsert_labels(self._t, note, {"revisar": ",".join(reasons)})
+            return
+        if reasons:
+            return
+        if in_inbox:
+            self._t.remove_from_parent(note_id, layout.revision)
+        if label is not None:
+            self._t.delete_attribute(label.attribute_id)
 
     def _link_donde(self, extraction: Extraction, plan: ResolveResult, by_key: dict[str, PublishedNote]) -> None:
         lugar_notes: dict[str, str] = {}
