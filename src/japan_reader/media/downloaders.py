@@ -21,6 +21,8 @@ _PERMANENT_MARKERS = (
     "does not exist", "copyright", "sign in to confirm", "404",
     # gallery-dl sin cookies ante un post de Instagram.
     "redirect to login",
+    # Reels con restricción de audiencia (edad/país): "This content isn't available to everyone".
+    "isn't available", "certain audiences",
 )
 # Límites de ritmo (sobre todo de Instagram): transitorios aunque el mensaje de yt-dlp incluya
 # marcadores permanentes ("Requested content is not available, rate-limit reached or login required").

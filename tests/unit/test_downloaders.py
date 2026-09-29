@@ -81,6 +81,8 @@ INFO = {
         ("HttpError: '429 Too Many Requests' for 'https://x'", TransientError),
         # gallery-dl sin cookies ante un post de Instagram: reintentar no sirve de nada.
         ("[instagram][error] HTTP redirect to login page (https://www.instagram.com/accounts/login/)", PermanentError),
+        # Reel con restricción de audiencia (edad/país): sin sesión nunca se podrá ver.
+        ("ERROR: [Instagram] C73RxLTy8qF: This content isn't available to everyone: It can't be seen by certain audiences.", PermanentError),
     ],
 )
 def test_classify_download_error(message, expected):

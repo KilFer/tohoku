@@ -24,6 +24,6 @@
 **Dependencias:** yt-dlp, gallery-dl, ffmpeg/ffprobe, Pillow, Karakeep (respaldo).
 **Configuración:** `INSTAGRAM_COOKIES_FILE` (se usa una copia; el original nunca se modifica), `REEL_KEYFRAMES_ENABLED`, `KEYFRAMES_MAX`, `POST_IMAGES_MAX`, `IMAGE_MAX_SIDE`, `MAX_VIDEO_DURATION_MIN`, `INSTAGRAM_MIN_INTERVAL_SECONDS`. `INSTAGRAM_COOKIES_FILE=` vacío equivale a no configurarlo.
 
-**Fallos:** privado/borrado/login requerido/redirección a login/404/demasiado largo → `PermanentError` (`jr:error`); timeouts, 5xx, 429 y límites de ritmo ("rate-limit", "too many requests", "please wait", aunque el mensaje también diga "login required") → `TransientError` (reintento); fichero de cookies inexistente → `ConfigError`.
+**Fallos:** privado/borrado/login requerido/redirección a login/restricción de audiencia ("isn't available to everyone")/404/demasiado largo → `PermanentError` (`jr:error`); timeouts, 5xx, 429 y límites de ritmo ("rate-limit", "too many requests", "please wait", aunque el mensaje también diga "login required") → `TransientError` (reintento); fichero de cookies inexistente → `ConfigError`.
 
 **Cómo probarla:** `uv run pytest tests/unit/test_fetch.py tests/unit/test_downloaders.py tests/unit/test_media.py`. Descarga real: `uv run pytest -m integration -k ytdlp`.
