@@ -37,7 +37,7 @@ Documentación de referencia (leer antes de cambiar comportamiento):
 ## Estado (2026-09-28)
 
 - En producción: `docker compose up -d`, sondeo cada 10 min. Prueba de humo con 3 enlaces OK (2 lugares en el mapa, 4 cosas, 1 otro; todos `jr:procesado` y archivados).
-- `.env` completo: Karakeep (lista "Japón" = `seo5xdpquppqfy4hmzzeekfh`), Trilium v0.106, OpenRouter `openai/gpt-6-luna` (key con límite 8 $, presupuesto 2 $/día), Google Places (desde 2026-09-29: cuota diaria ~2.000 en Cloud Console, `PLACES_DAILY_LIMIT=2000`, presupuesto con alertas de 5 $; el límite real es el cupo gratuito de 5.000/mes, que se renueva el día 1 en hora del Pacífico), ntfy `https://ntfy.belaza.me` topic `kamo`. Sin cookies de Instagram (de momento no hacen falta).
+- `.env` completo: Karakeep (lista "Japón" = `seo5xdpquppqfy4hmzzeekfh`), Trilium v0.106, OpenRouter `openai/gpt-6-luna` (key con límite 8 $, presupuesto 2 $/día), Google Places (desde 2026-09-29: cuota diaria 2.200 en Cloud Console, `PLACES_DAILY_LIMIT=2000` — propuesto subirlo a 2200 —, presupuesto con alertas de 5 $; el límite real es el cupo gratuito de 5.000/mes, que se renueva el día 1 en hora del Pacífico), ntfy `https://ntfy.belaza.me` topic `kamo`. Sin cookies de Instagram (de momento no hacen falta).
 - Medidas reales: ~2 min por Reel (Whisper large-v3 ~90 s), ~0,001 $ de LLM por enlace. `small` de Whisper no basta (confundió "Miki Jet" con "Mickey Jet").
 
 ### Correcciones hechas en la puesta en marcha (no estaban en el plan)
@@ -49,6 +49,7 @@ Documentación de referencia (leer antes de cambiar comportamiento):
 - `6077526` Geocode menos "ambiguo": empates a <300 m = mismo sitio; nombre exacto en Japón se acepta aunque la ciudad del LLM no cuadre; al comparar nombres, palabras genéricas traducidas (shrine/santuario…), alias de ciudad y orden de palabras cuentan como iguales (las claves `#jrNombreNorm` no cambian).
 - `67690dd` Mismo sitio con dos fichas de Google (Omoide Yokocho, dos placeId a 45 m): si no hay nota con ese placeId, se fusiona con un lugar del mismo `#jrNombreNorm` a <300 m. Migración puntual `data/backfill_jrnombrenorm.py` (42 lugares antiguos sin `#jrNombreNorm`, aplicada 2026-09-29).
 - `b269073` Bandeja sincronizada: `#revisar` = unión de motivos vigentes de todas las fuentes (de `published` en state.db), sin acumular resueltos; la nota sale de la Bandeja si ya no queda ninguno; no se vuelve a meter una nota que el usuario sacó salvo que llegue una fuente con motivos.
+- `204488d` Caché de búsquedas de Places (`places_cache` en state.db, 30 días; el 31 % de consultas se repetía) y día de cuota en hora del Pacífico, como Google (antes el contador local se reiniciaba a 00:00 UTC y habría llamado a Google con su cuota del día agotada).
 - `17950b7` Importador: formato de exportación 2026 (lista de colecciones con posts anidados, mojibake), del más antiguo al más reciente, `--limit N` por tandas.
 
 ## Importación del historial de Instagram (EN CURSO)
@@ -72,6 +73,7 @@ Documentación de referencia (leer antes de cambiar comportamiento):
   - 2026-09-29 ~17:30: desplegado `67690dd` + migración de `#jrNombreNorm`. Omoide Yokocho unificado (`dKEjUYyoDIqs`, 2 fuentes). Huérfana "Yurakucho Alley" `GkNJeHpaUo5c` borrada (al reprocesar Google dio otra ficha a ~400 m: la vigente es `R2bkiO4Libcs` "The Alley - Yurakucho"; la vieja era 有楽町産直横丁 — revisar a mano cuál es la buena). Estado limpio: 507 lugares, 502 con pin, sin títulos ni placeId repetidos; Bandeja 42.
   - 2026-09-29 ~18:00: **tanda 5 importada: 400 creados**, 310 ya existían, 1.578 pendientes. Punto de partida: 43 en revisión de ~318 procesados. Revisión prevista esa noche.
   - 2026-09-29 noche: tabla de la Bandeja en `data/bandeja-2026-09-29.json` (67 notas: 54 con motivo vigente, 13 ya resueltas por reprocesados). Desplegado `b269073` y quitados los 13 clones obsoletos → Bandeja 54. El usuario revisa a mano el resto. Nota: las 54 pueden tener en `#revisar` motivos antiguos acumulados (se refrescan solos si su enlace se reprocesa).
+  - 2026-09-29 ~23:00: tanda 5 parada en 56 pendientes al llegar a 2.000 llamadas de Places. Medido: 3,2 lugares/enlace en la tanda 5 (mediana 1; 64 enlaces con ≥5 lugares, máx. 57), ~1,2 llamadas/lugar. Proyección de lo que queda (~1.630 enlaces): 5.500-6.000 llamadas sin caché, ~3.800-4.200 con caché. Plan de cupo: día PT 30/09 con 2.200 (cupo de septiembre, que acaba el 1/10 a las 09:00 en España) y el resto con las 5.000 de octubre. **Tanda 6 lanzada: 600.**
   - Procedimiento para reprocesar sin huérfanas: guardar antes nota+placeId de cada lugar; después, notas viejas no reutilizadas con 1 fuente y sin "Mis notas" → borrar; con varias fuentes → reprocesar también los enlaces de sus otras fuentes y borrar cuando la nota nueva las contenga todas.
 
 ## Pendientes y mejoras conocidas
