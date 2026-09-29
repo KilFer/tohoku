@@ -9,6 +9,7 @@ from japan_reader.clients.trilium import TNote, TriliumClient
 from japan_reader.config import Settings
 from japan_reader.context import JobContext
 from japan_reader.errors import ApiError
+from japan_reader.geo import near_notes
 from japan_reader.models import (
     Extraction,
     ExtractResult,
@@ -185,7 +186,9 @@ class PublishStage:
     def _natural_match(self, data: NoteData, layout: Layout) -> list[TNote]:
         """Notas existentes con la misma clave natural (ficha de Google; si no la hay, el nombre normalizado)."""
         if isinstance(data, LugarData) and data.place:
-            return self._t.search(f'#googlePlaceId="{data.place.place_id}"', ancestor=layout.root)
+            return self._t.search(f'#googlePlaceId="{data.place.place_id}"', ancestor=layout.root) or near_notes(
+                self._t.search(f'#jrTipo=lugar #jrNombreNorm="{name_key(data.nombre)}"', ancestor=layout.root), data.place
+            )
         if isinstance(data, LugarData):
             return self._t.search(f'#jrTipo=lugar #jrNombreNorm="{name_key(data.nombre)}"', ancestor=layout.root)
         if isinstance(data, CosaData):

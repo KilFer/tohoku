@@ -104,12 +104,32 @@ def name_score(match: GeoMatch, lugar: Lugar) -> float:
     return best
 
 
-def distance_m(a: GeoMatch, b: GeoMatch) -> float:
-    """Distancia en metros (haversine)."""
-    lat1, lat2 = math.radians(a.lat), math.radians(b.lat)
-    dlat, dlng = lat2 - lat1, math.radians(b.lng - a.lng)
+def _haversine_m(lat_a: float, lng_a: float, lat_b: float, lng_b: float) -> float:
+    lat1, lat2 = math.radians(lat_a), math.radians(lat_b)
+    dlat, dlng = lat2 - lat1, math.radians(lng_b - lng_a)
     h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlng / 2) ** 2
     return 2 * 6_371_000 * math.asin(math.sqrt(h))
+
+
+def distance_m(a: GeoMatch, b: GeoMatch) -> float:
+    """Distancia en metros (haversine)."""
+    return _haversine_m(a.lat, a.lng, b.lat, b.lng)
+
+
+def near_notes(notes: list, match: GeoMatch) -> list:
+    """Notas (con etiqueta `geolocation="lat,lng"`) a menos de SAME_PLACE_RADIUS_M de `match`.
+
+    Google a veces tiene dos fichas para el mismo sitio (Omoide Yokocho: dos placeId a 45 m).
+    """
+    near = []
+    for note in notes:
+        try:
+            lat, lng = (float(x) for x in (note.label("geolocation") or "").split(","))
+        except ValueError:
+            continue
+        if _haversine_m(lat, lng, match.lat, match.lng) <= SAME_PLACE_RADIUS_M:
+            near.append(note)
+    return near
 
 
 def name_matches(match: GeoMatch, lugar: Lugar) -> bool:

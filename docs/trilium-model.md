@@ -39,7 +39,7 @@ Cada nota lleva un adjunto `japan-reader.json` con sus datos (resumen, consejos,
 
 ## Reglas de fusión
 
-- **Lugar:** mismo `#googlePlaceId` → misma nota; sin ficha de Google, mismo `#jrNombreNorm`. Se añade la fuente, `#fuentes` sube y el LLM reescribe Resumen, Qué hacer y Consejos integrando lo nuevo.
+- **Lugar:** mismo `#googlePlaceId` → misma nota; si no, mismo `#jrNombreNorm` con el pin a menos de 300 m (dos fichas de Google para el mismo sitio) → misma nota; sin ficha de Google, mismo `#jrNombreNorm`. Se añade la fuente, `#fuentes` sube y el LLM reescribe Resumen, Qué hacer y Consejos integrando lo nuevo.
 - **Cosa:** mismo `#jrNombreNorm` → misma nota. Si hay una parecida pero no idéntica (similitud ≥ 0.85), se crea una nota nueva y se manda a revisión (`posible-duplicado`).
 - **Misma fuente otra vez** (reprocesado): su entrada se actualiza; no se duplica ni se llama al LLM. Si la nota **solo** tiene esa fuente, se regenera entera con la extracción nueva (conservando la ficha de Google si la nueva no la trae, y siempre "Mis notas"). Si otras fuentes también contribuyeron, solo se sustituye la entrada de esta fuente.
 - **Clave natural antes de crear:** aunque el plan diga `create`, si ya existe una nota con el mismo `#googlePlaceId` (lugar) o `#jrNombreNorm` (cosa), se fusiona en ella.

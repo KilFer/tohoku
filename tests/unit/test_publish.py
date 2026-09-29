@@ -342,6 +342,20 @@ def test_create_ungeocoded_lugar_merges_into_existing_note_with_same_name(env):
     assert env.trilium.labels(note_id)["fuentes"] == "2"
 
 
+def test_create_merges_into_same_name_note_nearby_with_other_place_id(env):
+    """Plan obsoleto: otra fuente creó la misma nota con otra ficha de Google a pocos metros."""
+    extraction = make_extraction(lugares=[make_lugar("Omoide Yokocho")])
+    first = [GeoOutcome(lugar_index=0, match=make_geo("OLD", "Omoide Yokocho", lat=35.6930, lng=139.6995))]
+    note_id = _stage(env).run(_ctx(env, "b1", extraction, first, [_item()])).notes[0].note_id
+
+    second = [GeoOutcome(lugar_index=0, match=make_geo("NEW", "Omoide Yokochō", lat=35.6933, lng=139.6997))]
+    result = _stage(env, FakeLLM([MERGED])).run(_ctx(env, "b2", extraction, second, [_item()]))
+
+    assert result.notes[0].note_id == note_id
+    assert env.trilium.labels(note_id)["googlePlaceId"] == "OLD"
+    assert env.trilium.labels(note_id)["fuentes"] == "2"
+
+
 def test_create_cosa_merges_into_existing_note_with_same_name(env):
     extraction = make_extraction(cosas=[make_cosa("Kit Kat matcha", categoria="souvenirs")])
     item = _item(kind=ItemKind.COSA)

@@ -4,6 +4,7 @@ from collections.abc import Callable
 from japan_reader.clients.trilium import TriliumClient
 from japan_reader.config import Thresholds
 from japan_reader.context import JobContext
+from japan_reader.geo import near_notes
 from japan_reader.models import (
     Extraction,
     ExtractResult,
@@ -81,7 +82,9 @@ class ResolveStage:
                 continue
             seen[natural] = key
             if match:
-                existing = self._t.search(f'#googlePlaceId="{match.place_id}"', ancestor=layout.root)
+                existing = self._t.search(f'#googlePlaceId="{match.place_id}"', ancestor=layout.root) or near_notes(
+                    self._t.search(f'#jrTipo=lugar #jrNombreNorm="{name_key(lugar.nombre)}"', ancestor=layout.root), match
+                )
             else:
                 existing = self._t.search(f'#jrTipo=lugar #jrNombreNorm="{name_key(lugar.nombre)}"', ancestor=layout.root)
             items.append(

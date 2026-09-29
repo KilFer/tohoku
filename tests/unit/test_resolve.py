@@ -55,6 +55,30 @@ def test_same_place_twice_in_one_source_is_aliased(tmp_path, env):
     assert [(i.key, i.action, i.alias_of) for i in items] == [("lugar:0", "create", None), ("lugar:1", "alias", "lugar:0")]
 
 
+def test_same_name_nearby_note_with_other_place_id_is_merged(tmp_path, env):
+    """Google tiene dos fichas para el mismo sitio (caso real: Omoide Yokocho, a 45 m)."""
+    trilium, layout = env
+    near = trilium.add_note(layout.mapa, "Omoide Yokocho", labels={"jrTipo": "lugar", "jrNombreNorm": "omoide yokocho", "googlePlaceId": "OLD", "geolocation": "35.6930,139.6995"})
+    trilium.add_note(layout.mapa, "Omoide Yokocho", labels={"jrTipo": "lugar", "jrNombreNorm": "omoide yokocho", "googlePlaceId": "FAR", "geolocation": "34.6930,135.5000"})
+    extraction = make_extraction(lugares=[make_lugar("Omoide Yokocho")])
+    outcomes = [GeoOutcome(lugar_index=0, match=make_geo("NEW", "Omoide Yokochō", lat=35.6933, lng=139.6997))]
+
+    items = _run(tmp_path, env, extraction, outcomes)
+
+    assert (items[0].action, items[0].existing_note_id) == ("merge", near)
+
+
+def test_same_name_far_away_is_a_different_place(tmp_path, env):
+    trilium, layout = env
+    trilium.add_note(layout.mapa, "Ichiran", labels={"jrTipo": "lugar", "jrNombreNorm": "ichiran", "googlePlaceId": "P1", "geolocation": "35.6614,139.7005"})
+    extraction = make_extraction(lugares=[make_lugar("Ichiran")])
+    outcomes = [GeoOutcome(lugar_index=0, match=make_geo("P2", "Ichiran", lat=34.6687, lng=135.5013))]
+
+    items = _run(tmp_path, env, extraction, outcomes)
+
+    assert (items[0].action, items[0].existing_note_id) == ("create", None)
+
+
 def test_ungeocoded_place_merges_with_same_name_note(tmp_path, env):
     trilium, layout = env
     existing = trilium.add_note(layout.mapa, "Línea Yamanote", labels={"jrTipo": "lugar", "jrNombreNorm": "linea yamanote"})
