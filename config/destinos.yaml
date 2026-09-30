@@ -9,9 +9,10 @@
 #   modo: json_schema
 #   confianza_minima: 0.5
 #   margen_revision: 0.15
-# Limpieza (opcional; este es el valor por defecto). Al terminar un job se borran siempre sus ficheros
-# (data/jobs/<id>/) y el resultado de fetch; los demás resultados de etapa se guardan 'retencion_dias'
-# (0 = borrarlos también al terminar). Nunca se borran la tabla jobs ni las publicaciones.
+# Limpieza (opcional; este es el valor por defecto). Al terminar un job (salvo error) se borran siempre sus
+# ficheros (data/jobs/<id>/); el resultado de fetch se conserva (metadatos) marcado files_purged, y solo se
+# vuelve a descargar si un reprocesado repite una etapa que necesita los ficheros. Los resultados de etapa se
+# guardan 'retencion_dias' (0 = borrarlos todos al terminar). Nunca se borran la tabla jobs ni las publicaciones.
 # limpieza:
 #   retencion_dias: 30
 listas:

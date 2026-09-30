@@ -14,7 +14,7 @@
 | descartado | `jr:descartado` | sí |
 | error | `jr:error` | no |
 
-Además añade `jr:destino:<destino>` con el destino decidido por `classify`. Quita las etiquetas `jr:` de resultado o de destino anteriores que difieran de las nuevas (útil al reprocesar). La etiqueta antigua `jr:no-japon` se sigue reconociendo como ya procesado (ingest no recrea el job) y se sustituye al reprocesar. El resto de etiquetas del usuario no se tocan.
+Además añade `jr:destino:<destino>` con el destino decidido por `classify`, salvo en `descartado`: **un `descartado` nunca lleva `jr:destino`**, ni cuando `classify` no eligió destino ni cuando el flujo del destino descarta el contenido (p. ej. el flujo `viaje` con contenido que no es de ese país). Un `error` lo lleva solo si el job ya tenía destino. Quita las etiquetas `jr:` de resultado o de destino anteriores que difieran de las nuevas (útil al reprocesar). La etiqueta antigua `jr:no-japon` se sigue reconociendo como ya procesado (ingest no recrea el job) y se sustituye al reprocesar. El resto de etiquetas del usuario no se tocan.
 
 **Fallos:** red/5xx → reintento del job (las etapas anteriores no se repiten); si falla marcando un error definitivo, el job queda en error igualmente y se registra en el log.
 

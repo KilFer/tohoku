@@ -188,10 +188,11 @@ Prevalecen sobre lo que digan las tareas de más abajo.
 2. **`reprocess` de un bookmark que no está en `state.db`:** usa `destino_legado`, salvo `--destino`.
 3. **Destino forzado:** `reprocess --destino X` guarda `destination=X` y repite desde `classify` (que no llama al LLM). `--from fetch|classify` sin `--destino` olvida el destino; `--from extract` o posterior lo conserva. Las notas viejas de Trilium no se borran.
 4. **Modo `etiqueta`:** confianza 1,0 y sin alternativa; adaptadores específicos (JEV) abiertos vía registro `CLASSIFIERS`.
-5. **Modelo del clasificador:** `clasificador.modelo`, o `OPENROUTER_TEXT_MODEL`/`OPENROUTER_MODEL`. El preflight solo lo comprueba si alguna lista tiene varios destinos.
+5. **Modelo del clasificador:** `clasificador.modelo`, o `OPENROUTER_TEXT_MODEL`/`OPENROUTER_MODEL`. El preflight solo lo comprueba si hay clasificador. **Revisión final:** hay clasificador si una lista tiene varios destinos **o** las listas apuntan a destinos distintos (la ingesta une candidatos de varias listas); con imágenes (sin caption ni transcripción) se clasifica con `OPENROUTER_MODEL` (multimodal), no con `clasificador.modelo`. Dos destinos con el mismo nombre para el clasificador (`japon`/`Japón`) son `ConfigError`.
 6. **`clasificacion-dudosa`:** la calcula `classify` (`Classification.dudosa`) y la añade el `resolve` del flujo `viaje`.
 7. **`App.stages`:** tramo común + etapas del destino legado; solo para el test de orden y `eval`.
-8. **Fase 4:** al limpiar un job terminado se borran su directorio y el resultado de `fetch`; un reprocesado vuelve a descargar. La limpieza se hace en cada pasada del servicio. **Sustituida (Task 12, "No volver a descargar si no hace falta"):** el resultado de `fetch` se conserva (metadatos) con `files_purged: true`, y el pipeline solo vuelve a descargar antes de una etapa con `needs_files` (`transcribe`, `classify`, `extract`); `--from geocode`/`resolve`/`publish` no descargan.
+8. **Fase 4:** al limpiar un job terminado se borran su directorio y el resultado de `fetch`; un reprocesado vuelve a descargar. La limpieza se hace en cada pasada del servicio. **Sustituida (Task 12, "No volver a descargar si no hace falta"):** el resultado de `fetch` se conserva (metadatos) con `files_purged: true`, y el pipeline solo vuelve a descargar antes de una etapa con `needs_files` (`transcribe`, `extract`) o de `classify` cuando va a clasificar con imágenes (`needs_files_for`, revisión final); `--from geocode`/`resolve`/`publish` no descargan, tampoco en jobs anteriores a la fase 3 sin resultado de `classify` (toman `destino_legado`).
+8b. **`jr:destino` (spec §6.4, revisión final):** un `descartado` nunca lleva `jr:destino:<d>`, tampoco cuando lo descarta el flujo del destino.
 9. **Destino retirado del YAML:** no para la cola. `classify` descarta los candidatos obsoletos (respaldo `destino_legado`); un job cuyo destino decidido o forzado ya no existe falla solo (`PermanentError` → `jr:error`), no `ConfigError`.
 10. **Despliegue:** Tohoku (fases 0-4) se despliega solo cuando termine la importación de Instagram en curso; no habrá jobs legados aparcados en ese momento.
 
@@ -285,7 +286,7 @@ class ClassifyStage:                     # name = "classify", result_model = Cla
 - Tras la purga, `reprocess --from geocode` rehace `fetch`/`transcribe`/`extract`: los Steps falsos cuentan las llamadas.
 - `published` y el registro de `jobs` no se tocan nunca.
 
-**Nota (Task 12):** la decisión 8 y los tests de aceptación "sin `fetch`" y "`reprocess --from geocode` rehace `fetch`" quedan sustituidos: `fetch` se conserva con `files_purged: true` y solo se vuelve a descargar para las etapas con `needs_files` (`transcribe`, `classify`, `extract`). Ver `docs/operations.md`, "Limpieza".
+**Nota (Task 12):** la decisión 8 y los tests de aceptación "sin `fetch`" y "`reprocess --from geocode` rehace `fetch`" quedan sustituidos: `fetch` se conserva con `files_purged: true` y solo se vuelve a descargar para las etapas con `needs_files` (`transcribe`, `extract`) y para `classify` cuando clasifica con imágenes. Ver `docs/operations.md`, "Limpieza". Vuelta atrás: el código anterior a la fase 3 no lee `descartado` ni `files_purged`; hay que guardar una copia de `state.db` antes de desplegar.
 
 **Despliegue:** la primera pasada limpia los ~800+ directorios de jobs terminados. Hay que avisar al usuario del espacio liberado (`du -sh data/jobs` antes y después).
 
