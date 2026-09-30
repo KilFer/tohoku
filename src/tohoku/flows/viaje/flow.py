@@ -4,6 +4,7 @@ from tohoku.clients.trilium import TriliumClient
 from tohoku.destinations import Destination
 from tohoku.flows.base import FlowDeps
 from tohoku.flows.viaje.params import ViajeParams
+from tohoku.flows.viaje.prompt import render_extract_prompt
 from tohoku.pipeline import Stage
 from tohoku.stages.extract import ExtractStage
 from tohoku.stages.geocode import GeocodeStage
@@ -32,7 +33,7 @@ class ViajeFlow:
         layout = LayoutCache(lambda: resolve_layout(deps.trilium, dest.raiz, params.categorias_cosa))
         th = deps.settings.thresholds
         stages: list[Stage] = [
-            ExtractStage(deps.settings, deps.llm, deps.llm_budget, dest.prompt),
+            ExtractStage(deps.settings, deps.llm, deps.llm_budget, render_extract_prompt(dest.prompt, params), params),
             GeocodeStage(deps.places, deps.places_quota, th, cache=deps.state, params=params),
             ResolveStage(deps.trilium, layout, th),
             PublishStage(deps.trilium, layout, deps.llm, deps.settings, deps.llm_budget, deps.state),

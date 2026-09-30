@@ -5,6 +5,8 @@ from pydantic import ValidationError
 from tohoku.clients.openrouter import OpenRouterClient, image_part
 from tohoku.config import Settings
 from tohoku.context import JobContext
+from tohoku.flows.viaje.params import ViajeParams
+from tohoku.flows.viaje.prompt import extraction_schema, invalid_categories
 from tohoku.models import Extraction, ExtractResult, FetchResult, Transcript
 from tohoku.quota import DailyQuota
 from tohoku.text import strip_fences
@@ -39,11 +41,15 @@ class ExtractStage:
     name = "extract"
     result_model = ExtractResult
 
-    def __init__(self, settings: Settings, llm: OpenRouterClient, budget: DailyQuota, system_prompt: str) -> None:
+    def __init__(
+        self, settings: Settings, llm: OpenRouterClient, budget: DailyQuota, system_prompt: str,
+        params: ViajeParams | None = None,
+    ) -> None:
         self._settings = settings
         self._llm = llm
         self._budget = budget
         self.system_prompt = system_prompt
+        self._params = params or ViajeParams()
 
     def run(self, ctx: JobContext) -> ExtractResult:
         fetch = ctx.result("fetch", FetchResult)
@@ -55,7 +61,7 @@ class ExtractStage:
             {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": content},
         ]
-        schema = Extraction.model_json_schema()
+        schema = extraction_schema(self._params)
         cost = 0.0
         error = ""
         for _ in range(2):
@@ -65,8 +71,11 @@ class ExtractStage:
             cost += result.cost_usd
             try:
                 extraction = Extraction.model_validate_json(strip_fences(result.content))
+                problems = invalid_categories(extraction, self._params)
             except ValidationError as exc:
-                error = str(exc)
+                problems = [str(exc)]
+            if problems:
+                error = "\n".join(problems)
                 messages = [
                     *messages,
                     {"role": "assistant", "content": result.content},

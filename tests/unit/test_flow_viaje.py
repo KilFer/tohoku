@@ -58,3 +58,11 @@ def test_extract_stage_gets_the_destination_prompt(settings, tmp_path):
     runtime = FLOWS["viaje"].build(_dest(), _deps(settings, tmp_path, FakeTrilium()))
     extract = next(s for s in runtime.stages if s.name == "extract")
     assert extract.system_prompt == "PROMPT NZ"
+
+
+def test_extract_prompt_is_rendered_with_destination_categories(settings, tmp_path):
+    dest = Destination(nombre="nz", flujo="viaje", raiz="jrRootNZ", descripcion="NZ",
+                       prompt="Lugar: {{categorias_lugar}} · Cosa: {{categorias_cosa}}",
+                       params=ViajeParams(categorias_lugar=["naturaleza", "otro"], categorias_cosa={"a": "A", "b": "B"}))
+    extract = next(s for s in FLOWS["viaje"].build(dest, _deps(settings, tmp_path, FakeTrilium())).stages if s.name == "extract")
+    assert extract.system_prompt == "Lugar: naturaleza, otro · Cosa: a | b"

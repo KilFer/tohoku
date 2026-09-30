@@ -68,7 +68,7 @@ class FakeLLM:
         self.calls: list[dict] = []
 
     def chat_json(self, model, messages, schema, schema_name) -> ChatResult:
-        self.calls.append({"model": model, "messages": messages, "schema_name": schema_name})
+        self.calls.append({"model": model, "messages": messages, "schema": schema, "schema_name": schema_name})
         return ChatResult(content=self.responses.pop(0), cost_usd=self.cost)
 
     def model_supports_images(self, model: str) -> bool:

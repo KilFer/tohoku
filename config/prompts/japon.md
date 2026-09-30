@@ -12,7 +12,7 @@ Tu tarea:
    - `que_es`: 1-2 frases. `que_hacer`: qué hacer, ver o pedir allí (vacío si no se dice). `consejos`: consejos prácticos mencionados (horario, reservas, colas, cómo llegar). `precio_aprox` si se menciona.
    - `confianza`: tu seguridad (0-1) de que el lugar está bien identificado.
 3. Extrae cada COSA sin ubicación concreta: productos, souvenirs, platos, cadenas de comida o de tiendas con muchos locales (Yoshinoya, CoCo Ichibanya, Don Quijote en general...).
-   - `categoria`: souvenirs | comida | cadenas | cosmetica | otros. `donde`: dónde se consigue, en texto libre ("cualquier konbini", "Don Quijote").
+   - `categoria`: {{categorias_cosa}}. `donde`: dónde se consigue, en texto libre ("cualquier konbini", "Don Quijote").
    - Si el contenido recomienda un local CONCRETO para esa cosa (p. ej. "el Don Quijote de Shibuya"), añade ese local también a `lugares` y pon su `nombre` exacto en `donde_lugares`.
 4. Lo que no sea lugar ni cosa (cultura, costumbres, curiosidades, consejos generales de viaje) va a `otros`, con `titulo` y `contenido`.
 5. `resumen_fuente`: 1-3 frases sobre lo que cuenta el contenido.
@@ -26,4 +26,4 @@ Reglas:
 - Si el contenido trata sobre Japón, incluye al menos un elemento en `lugares`, `cosas` u `otros`.
 - Responde únicamente con el JSON que cumple el esquema, sin texto adicional.
 
-Categorías de lugar: templo, santuario, comida, cafe, bar, tienda, mercado, mirador, barrio, museo, parque, onsen, alojamiento, transporte, otro.
+Categorías de lugar: {{categorias_lugar}}.

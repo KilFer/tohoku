@@ -99,3 +99,43 @@ def test_build_user_text_mentions_everything():
     text = build_user_text(fetch, Transcript(text="audio", origin="whisper"))
     assert "Mi caption" in text and "audio" in text and "#tokyo" in text
     assert "1 imágenes del post" in text and "2 fotogramas" in text
+
+
+from tohoku.flows.viaje.params import ViajeParams
+from tohoku.flows.viaje.prompt import extraction_schema
+
+NZ_PARAMS = ViajeParams(pais="NZ", categorias_lugar=["naturaleza", "otro"], categorias_cosa={"artesania": "Artesanía"})
+
+
+def _nz_payload(categoria):
+    return json.dumps({
+        "relacionado_destino": True, "confianza_destino": 0.9, "idioma": "es", "resumen_fuente": "Hobbiton",
+        "lugares": [make_lugar("Hobbiton", categoria=categoria).model_dump()], "cosas": [], "otros": [],
+    })
+
+
+def test_schema_sent_to_the_llm_uses_destination_categories(tmp_path, settings, state):
+    llm = FakeLLM([_nz_payload("naturaleza")])
+    ExtractStage(settings, llm, DailyQuota(state, "openrouter_usd", 1.0), "p", NZ_PARAMS).run(_ctx(tmp_path))
+    schema = llm.calls[0]["schema"]
+    assert schema == extraction_schema(NZ_PARAMS)
+    assert schema["$defs"]["Lugar"]["properties"]["categoria"]["enum"] == ["naturaleza", "otro"]
+    assert schema["$defs"]["Cosa"]["properties"]["categoria"]["enum"] == ["artesania"]
+
+
+def test_category_outside_the_destination_is_retried(tmp_path, settings, state):
+    llm = FakeLLM([_nz_payload("comida"), _nz_payload("naturaleza")])
+
+    result = ExtractStage(settings, llm, DailyQuota(state, "openrouter_usd", 1.0), "p", NZ_PARAMS).run(_ctx(tmp_path))
+
+    assert result.extraction.lugares[0].categoria == "naturaleza"
+    assert "categoria 'comida'" in llm.calls[1]["messages"][-1]["content"]
+
+
+def test_japan_category_not_in_the_list_is_still_retried(tmp_path, settings, state):
+    """Antes lo rechazaba el Literal de Pydantic; ahora la comprobación del destino."""
+    bad = json.loads(VALID)
+    bad["lugares"][0]["categoria"] = "playa"
+    llm = FakeLLM([json.dumps(bad), VALID])
+    result = _stage(settings, llm, state).run(_ctx(tmp_path))
+    assert result.extraction is not None and len(llm.calls) == 2

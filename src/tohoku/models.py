@@ -11,12 +11,6 @@ LUGAR_CATEGORIAS = (
 )
 COSA_CATEGORIAS = ("souvenirs", "comida", "cadenas", "cosmetica", "otros")
 
-LugarCategoria = Literal[
-    "templo", "santuario", "comida", "cafe", "bar", "tienda", "mercado", "mirador",
-    "barrio", "museo", "parque", "onsen", "alojamiento", "transporte", "otro",
-]
-CosaCategoria = Literal["souvenirs", "comida", "cadenas", "cosmetica", "otros"]
-
 
 class ContentType(StrEnum):
     VIDEO = "video"
@@ -58,7 +52,7 @@ class Lugar(BaseModel):
     consulta_busqueda: str
     ciudad: str | None = None
     region: str | None = None
-    categoria: LugarCategoria
+    categoria: str
     que_es: str
     que_hacer: str = ""
     consejos: list[str] = []
@@ -68,7 +62,7 @@ class Lugar(BaseModel):
 
 class Cosa(BaseModel):
     nombre: str
-    categoria: CosaCategoria
+    categoria: str
     que_es: str
     consejos: list[str] = []
     donde: list[str] = []

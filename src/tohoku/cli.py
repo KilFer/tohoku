@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from tohoku.config import Settings
 from tohoku.errors import ConfigError
 from tohoku.evaluation import EvalRunner, format_table, load_cases
+from tohoku.flows.viaje.prompt import render_extract_prompt
 from tohoku.instagram_export import filter_collection, format_import_report, import_items, parse_export
 from tohoku.lock import AlreadyRunning, single_instance
 from tohoku.log import setup_logging
@@ -135,6 +136,7 @@ def eval_cmd(
         updates |= {"openrouter_model": model, "openrouter_text_model": model}
     settings = loaded.settings.model_copy(update=updates)
     runner = EvalRunner(FetchStage(settings, loaded.ytdlp, loaded.gallery, loaded.karakeep), loaded.transcribe, Path("eval/.cache"))
-    extract = ExtractStage(settings, loaded.llm, loaded.llm_budget, loaded.destination.prompt)
+    params = loaded.destination.params
+    extract = ExtractStage(settings, loaded.llm, loaded.llm_budget, render_extract_prompt(loaded.destination.prompt, params), params)
     scores = runner.run(load_cases(cases), extract, settings.thresholds, keyframes)
     typer.echo(format_table(scores, settings.openrouter_model, keyframes))

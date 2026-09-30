@@ -8,7 +8,9 @@ from pathlib import Path
 from builders import make_ctx, make_fetch
 from fakes import FakeLLM, FakeTrilium
 from tohoku.config import Thresholds
-from tohoku.models import Extraction, ExtractResult, GeocodeResult, Outcome, ResolveResult, Transcript
+from tohoku.flows.viaje.params import ViajeParams
+from tohoku.flows.viaje.prompt import extraction_schema, render_extract_prompt
+from tohoku.models import ExtractResult, GeocodeResult, Outcome, ResolveResult, Transcript
 from tohoku.notes import name_key
 from tohoku.quota import DailyQuota
 from tohoku.stages.publish import PublishStage
@@ -41,12 +43,13 @@ def _renamed(text: str) -> str:
     return text
 
 
-def test_japan_prompt_matches_baseline():
-    assert _read(REPO / "config/prompts/japon.md") == _renamed(_read(BASELINE / "extract_prompt.md"))
+def test_japan_prompt_renders_as_baseline():
+    rendered = render_extract_prompt(_read(REPO / "config/prompts/japon.md"), ViajeParams())
+    assert rendered == _renamed(_read(BASELINE / "extract_prompt.md"))
 
 
-def test_extraction_schema_matches_baseline():
-    assert Extraction.model_json_schema() == json.loads(_renamed(_read(BASELINE / "extraction_schema.json")))
+def test_japan_extraction_schema_matches_baseline():
+    assert extraction_schema(ViajeParams()) == json.loads(_renamed(_read(BASELINE / "extraction_schema.json")))
 
 
 def test_name_keys_match_baseline():
