@@ -1,4 +1,4 @@
-# CLAUDE.md — japan-reader
+# CLAUDE.md — Tohoku (antes japan-reader)
 
 Contexto y reglas para futuras sesiones. Idioma de trabajo con el usuario (Fernando): **español**.
 
@@ -16,10 +16,10 @@ Documentación de referencia (leer antes de cambiar comportamiento):
 
 ## Entorno (servidor Delfos)
 
-- Contenedor `japan-reader` (compose en este repo), red Docker externa `pangolin`. Límite 6 CPU / 6 GB.
+- Contenedor `tohoku` (proyecto Compose `tohoku`, en este repo), red Docker externa `pangolin`. Límite 6 CPU / 6 GB.
 - Desde el contenedor: Karakeep `http://karakeep-web:3000`, Trilium `http://trilium:8080`.
 - Desde el host (scripts/tests): Karakeep `http://localhost:3088`, Trilium `http://localhost:8750`.
-- Volúmenes: `./data → /data` (state.db, jobs, `data/instagram/`), `whisper-models → /models` (large-v3 ya copiado), `./secrets → /secrets:ro`.
+- Volúmenes: `./data → /data` (state.db, jobs, `data/instagram/`), `tohoku_whisper-models → /models` (large-v3; antes `japan-reader_whisper-models`), `./secrets → /secrets:ro`.
 - `data/state.db` lo crea el contenedor como root: usar la CLI dentro del contenedor, no `uv run` sobre `data/`.
 - `data/models/` (~3,5 GB) es una copia del host de las pruebas; el contenedor usa el volumen `/models`. Se puede borrar si hace falta espacio.
 - No hay remoto git: todo se commitea en `master` local.
@@ -30,8 +30,9 @@ Documentación de referencia (leer antes de cambiar comportamiento):
 - TDD: test primero (sin red; `tests/fakes.py`, `tests/builders.py`, respx), luego código. `uv run pytest -q` debe quedar en verde.
 - Tests de integración solo a mano: `JR_TEST_ROOT_LABEL=... TRILIUM_URL=http://localhost:8750 KARAKEEP_URL=http://localhost:3088 uv run pytest -m integration -k ...`. Requieren una nota con `#jrRootTest` en Trilium (hoy no existe).
 - Cada cambio de comportamiento actualiza su doc de etapa / `operations.md`.
-- Tras cambiar código: `docker compose build` y `docker compose up -d` (recrea el contenedor). La CLI dentro: `docker compose exec japan-reader japan-reader <cmd>`. `run-once` choca con el lock del servicio en marcha: usar `docker compose run --rm` con el servicio parado.
+- Tras cambiar código: `docker compose build` y `docker compose up -d` (recrea el contenedor). La CLI dentro: `docker compose exec tohoku tohoku <cmd>`. `run-once` choca con el lock del servicio en marcha: usar `docker compose run --rm` con el servicio parado.
 - Acciones sobre servicios reales (Trilium, Karakeep, importaciones, llamadas de pago) se confirman con el usuario antes; trabaja paso a paso y se detiene para revisión manual entre bloques.
+- El prefijo `jr` (Karakeep `jr:*`, Trilium `#jr*`, raíces `jrRoot<Destino>`, adjunto `japan-reader.json`) es intencionado (Japan Reader / JR, Tohoku Shinkansen) y no se renombra.
 - Commits terminan con `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
 ## Estado (2026-09-28)
@@ -56,9 +57,9 @@ Documentación de referencia (leer antes de cambiar comportamiento):
 
 - Fichero: `data/instagram/saved_collections.json` (en el contenedor: `/data/instagram/saved_collections.json`). Colección a importar: **"Cosas de Japon"** = 2.288 enlaces (2.166 Reels, 122 posts). Otras colecciones (Recetas, Para la casa, Boda) no se importan.
 - Comando de cada tanda (relanzarlo importa la siguiente; `--dry-run` primero para ver qué entraría):
-  `docker compose exec japan-reader japan-reader import-instagram /data/instagram/saved_collections.json --collection "Cosas de Japon" --limit N`
+  `docker compose exec tohoku tohoku import-instagram /data/instagram/saved_collections.json --collection "Cosas de Japon" --limit N`
 - Plan: primera tanda de 20 → revisar tiempos, coste, Bandeja de revisión y calidad → tandas de 50-100/día ajustando `OPENROUTER_DAILY_BUDGET_USD` y `PLACES_DAILY_LIMIT`. Estimación total: ~75-80 h de CPU, 3-5 $ de LLM, 2.000-4.000 búsquedas de Places.
-- Progreso: consultar con `--dry-run` (línea `Ya existían / Pendientes`) y `docker compose exec japan-reader japan-reader status`.
+- Progreso: consultar con `--dry-run` (línea `Ya existían / Pendientes`) y `docker compose exec tohoku tohoku status`.
   - 2026-09-28: dry-run de la primera tanda → 20 nuevos, 0 existentes, 2.268 pendientes.
   - 2026-09-28 ~23:55: **tanda 1 importada** (20 creados, 2.268 pendientes). Revisión prevista a la mañana siguiente: `status`, logs, Bandeja de revisión, coste del día, calidad de notas.
   - 2026-09-29: revisión tanda 1 → 16 procesados, 7 revisar, 1 no-Japón. El único post falló (gallery-dl exige login) → arreglado con `659102c` y reprocesado (6 torres, 4 nuevas + 2 fusionadas). Revisar: 1 baja confianza, 4 ciudades sin punto exacto (aceptable para el usuario), 1 cosa genérica ("Comida preparada refrigerada", el usuario la borrará si no se enriquece), 1 geocodificación ambigua.
@@ -80,7 +81,7 @@ Documentación de referencia (leer antes de cambiar comportamiento):
 
 - **Duplicados por URL con parámetros**: Karakeep guarda la URL compartida (`?igsh=`, `?stkn=`) y `check-url` compara exacto; un post guardado en Karakeep y también en la exportación no se detecta como existente. Solo afecta a posts recientes (final de la importación). Mejora propuesta: comparar contra URLs canónicas de toda la lista.
 - `TNote` (cliente Trilium) no filtra atributos heredados de plantillas (ETAPI los devuelve con otro `noteId`). Hoy sin efecto porque no hay nombres en común; conviene filtrar por `noteId`.
-- Fotogramas: con `KEYFRAMES_MAX=6` se pueden perder carteles breves. Decidir con `japan-reader eval` (rellenar `eval/cases.yaml` con casos reales) si subirlo o bajar el umbral de escena; también para comparar modelos.
+- Fotogramas: con `KEYFRAMES_MAX=6` se pueden perder carteles breves. Decidir con `tohoku eval` (rellenar `eval/cases.yaml` con casos reales) si subirlo o bajar el umbral de escena; también para comparar modelos.
 - **Reprocesar desde `geocode` puede dejar huérfanas**: si Google devuelve otro `placeId` para el mismo lugar, la identidad `#jrItem` cambia y se crea otra nota; la anterior queda con la misma fuente. Revisar títulos repetidos tras un reprocesado.
 - **Reels con restricción de audiencia** ("This content isn't available to everyone"): corregido para que sea error permanente → respaldo de Karakeep o `jr:error` directo. El caso `pxf0p8pbuma24g7fqxtgsos5` queda pendiente: el usuario lo procesará a mano más adelante.
 - **Con la cuota de Places agotada se para toda la cola**: la pasada se detiene al primer `QuotaExceeded`, así que fetch/transcribe/extract (CPU, sin Places) tampoco avanzan de noche. Mejora propuesta: seguir con las etapas previas a `geocode` de otros jobs mientras la cuota está agotada.

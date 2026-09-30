@@ -19,4 +19,4 @@
 
 **Fallos:** 401/402/403 → `ConfigError` (clave inválida o sin saldo); 400/404 que hablan del modelo ("not a valid model", "No endpoints found"...) → `ConfigError` (el servicio se pausa y avisa una vez; no se marca `jr:error`); otros 4xx → `jr:error`; 429/5xx/timeout → reintento.
 
-**Cómo probarla:** `uv run pytest tests/unit/test_extract.py tests/unit/test_openrouter_client.py`. Con modelos reales: `japan-reader eval` (ver `docs/operations.md`).
+**Cómo probarla:** `uv run pytest tests/unit/test_extract.py tests/unit/test_openrouter_client.py`. Con modelos reales: `tohoku eval` (ver `docs/operations.md`).

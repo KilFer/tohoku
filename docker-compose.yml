@@ -28,4 +28,4 @@ networks:
     external: true
 
 volumes:
-  whisper-models:   # → tohoku_whisper-models (antes japan-reader_whisper-models; ver docs/operations.md)
+  whisper-models:   # → tohoku_whisper-models (antes japan-reader_whisper-models)

@@ -15,4 +15,4 @@
 
 **Fallos:** lista inexistente → `ConfigError` (se detiene y avisa por ntfy); 401/403 → `ConfigError`; red/5xx → se reintenta en el siguiente sondeo.
 
-**Cómo probarla:** `uv run pytest tests/unit/test_ingest_mark.py -k ingest`. En real: `japan-reader run-once` y `japan-reader status`.
+**Cómo probarla:** `uv run pytest tests/unit/test_ingest_mark.py -k ingest`. En real: `tohoku run-once` y `tohoku status`.

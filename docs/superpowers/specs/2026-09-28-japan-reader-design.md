@@ -3,6 +3,7 @@
 - **Fecha:** 2026-09-28
 - **Estado:** Aprobado
 - **Autor:** Fernando + Claude
+- **Nota (2026-09-30):** el proyecto se renombró a Tohoku; ver `2026-09-30-multi-destino-design.md` §11.
 
 ## 1. Propósito
 

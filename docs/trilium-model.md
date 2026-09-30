@@ -2,6 +2,8 @@
 
 La raíz es la nota **`Home › Viajes › Ideas de Japón`**, marcada a mano una vez con `#jrRoot`. El servicio encuentra todo por atributos, así que puedes mover o renombrar las notas.
 
+El prefijo `jr` de todos los atributos y del adjunto `japan-reader.json` viene del nombre original del proyecto (*japan-reader*, hoy Tohoku) y se mantiene a propósito.
+
     Ideas de Japón                    #jrRoot
      ├── Mapa de lugares              #jrMapa   (book + ~template=_template_geo_map → Geo Map)
      ├── Comprar y comer              #jrComprar
@@ -12,7 +14,7 @@ La raíz es la nota **`Home › Viajes › Ideas de Japón`**, marcada a mano un
           ├── Lugar                   #template (+ definiciones promovidas: visitado, prioridad, ciudad, categoria)
           └── Cosa                    #template (+ comprado, categoria)
 
-`japan-reader init-trilium` crea lo que falte (idempotente).
+`tohoku init-trilium` crea lo que falte (idempotente).
 
 ## Nota Lugar (hija de "Mapa de lugares")
 

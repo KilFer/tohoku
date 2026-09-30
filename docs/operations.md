@@ -1,4 +1,4 @@
-# Operación de japan-reader
+# Operación de Tohoku
 
 ## Día a día
 - Guarda el enlace (Short, Reel o post) en la lista **Japón** de Karakeep. Nada más.
@@ -14,19 +14,19 @@ En Trilium, `Ideas de Japón › Bandeja de revisión`. Cada nota lleva `#revisa
 Al terminar: quita `#revisar` y quita el clon de la bandeja (clic derecho → "Eliminar" solo en la rama de la bandeja).
 
 ## Comandos
-    docker compose exec japan-reader japan-reader status
-    docker compose run --rm japan-reader japan-reader run-once   # solo con el servicio parado (candado)
-    docker compose exec japan-reader japan-reader reprocess <bookmarkId> [<bookmarkId>...] --from extract
-    docker compose exec japan-reader japan-reader reprocess --all-errors --from fetch
-    docker compose logs -f japan-reader
+    docker compose exec tohoku tohoku status
+    docker compose run --rm tohoku tohoku run-once   # solo con el servicio parado (candado)
+    docker compose exec tohoku tohoku reprocess <bookmarkId> [<bookmarkId>...] --from extract
+    docker compose exec tohoku tohoku reprocess --all-errors --from fetch
+    docker compose logs -f tohoku
 
-`run` y `run-once` toman un candado exclusivo en `DATA_DIR/japan-reader.lock`: si ya hay otra instancia en marcha (p. ej. el contenedor), `run-once` sale con código 3 y un mensaje claro, y `run` lo registra en el log y sale con código 3. El resto de comandos (`status`, `reprocess`...) no lo necesitan.
+`run` y `run-once` toman un candado exclusivo en `DATA_DIR/tohoku.lock`: si ya hay otra instancia en marcha (p. ej. el contenedor), `run-once` sale con código 3 y un mensaje claro, y `run` lo registra en el log y sale con código 3. El resto de comandos (`status`, `reprocess`...) no lo necesitan.
 
 `reprocess --from`: `fetch` (vuelve a descargar), `extract` (nuevo prompt o modelo, sin re-transcribir), `geocode`, `resolve`, `publish`. El bookmarkId está en la URL del bookmark en Karakeep. Admite varios ids a la vez; `--all-errors` vuelve a poner en cola **todos** los jobs en error (útil tras corregir cookies o el modelo).
 
 ## Cambiar de modelo
 1. Rellena `eval/cases.yaml` con 10-15 casos reales.
-2. `docker compose run --rm -v ./eval:/app/eval japan-reader japan-reader eval --model <modelo>` y lo mismo con `--no-keyframes`.
+2. `docker compose run --rm -v ./eval:/app/eval tohoku tohoku eval --model <modelo>` y lo mismo con `--no-keyframes`.
 3. Elige por aciertos (columna Lugares) y coste; cambia `OPENROUTER_MODEL` en `.env` y `docker compose up -d`.
 Al arrancar se comprueba que `OPENROUTER_MODEL` y `OPENROUTER_TEXT_MODEL` existen en OpenRouter y admiten salida JSON estructurada (`response_format`/`structured_outputs`), y que `OPENROUTER_MODEL` admite imágenes. Si un modelo deja de estar disponible (p. ej. "not a valid model", "No endpoints found"), el servicio se pausa y avisa por ntfy una vez, sin marcar `jr:error` en los enlaces.
 Si el coste de visión es alto: `REEL_KEYFRAMES_ENABLED=false`.
@@ -38,7 +38,7 @@ Para no disparar los límites de ritmo de Instagram, entre dos descargas de Inst
 ## Importar el historial de Instagram
 1. Instagram → Centro de cuentas → Tu información y permisos → Descargar tu información → solo "Guardado", formato **JSON**.
 2. Copia al servidor el .zip, la carpeta o solo `saved_collections.json`, p. ej. en `data/instagram/`.
-3. Simulación (solo lee Karakeep, no escribe): `docker compose exec japan-reader japan-reader import-instagram /data/instagram/saved_collections.json --collection "Cosas de Japon" --limit 20 --dry-run`
+3. Simulación (solo lee Karakeep, no escribe): `docker compose exec tohoku tohoku import-instagram /data/instagram/saved_collections.json --collection "Cosas de Japon" --limit 20 --dry-run`
 4. Importa por tandas: el mismo comando sin `--dry-run`. `--limit N` cuenta solo enlaces **nuevos**, del **más antiguo al más reciente**; relanzarlo importa la siguiente tanda (los ya importados se detectan con `check-url` y se saltan). La línea final indica `Pendientes`.
 5. Ritmo recomendado: una tanda de 50-100 al día, ajustando `OPENROUTER_DAILY_BUDGET_USD` y `PLACES_DAILY_LIMIT`. Cada Reel ocupa ~2 min de CPU (Whisper large-v3).
 
