@@ -47,6 +47,6 @@ def test_japan_decision(conf, expected):
 def test_decide_outcome():
     ok = PublishedNote(key="lugar:0", note_id="n1", action="create", review_reasons=[])
     review = PublishedNote(key="cosa:0", note_id="n2", action="create", review_reasons=["baja-confianza"])
-    assert decide_outcome("no", []) == Outcome.NO_JAPON
+    assert decide_outcome("no", []) == Outcome.DESCARTADO
     assert decide_outcome("yes", [ok]) == Outcome.PROCESADO
     assert decide_outcome("yes", [ok, review]) == Outcome.REVISAR

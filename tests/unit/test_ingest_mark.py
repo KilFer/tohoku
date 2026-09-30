@@ -72,7 +72,7 @@ def test_ingest_skips_bookmarks_already_tagged_when_state_was_lost(state):
     [
         (Outcome.PROCESADO, "jr:procesado", True),
         (Outcome.REVISAR, "jr:revisar", True),
-        (Outcome.NO_JAPON, "jr:no-japon", True),
+        (Outcome.DESCARTADO, "jr:descartado", True),
         (Outcome.ERROR, "jr:error", False),
     ],
 )
@@ -86,3 +86,24 @@ def test_mark_tags_and_archives(outcome, tag, archived):
     assert bookmark.archived is archived
     assert tag in bookmark.tags and "viaje" in bookmark.tags
     assert [t for t in bookmark.tags if t.startswith("jr:")] == [tag]
+
+
+def test_legacy_no_japon_outcome_is_read_as_descartado():
+    assert Outcome("no-japon") is Outcome.DESCARTADO
+
+
+def test_mark_adds_destination_tag_and_replaces_old_jr_tags():
+    karakeep = FakeKarakeep([Bookmark(id="b1", url="https://youtu.be/a", tags=["jr:no-japon", "jr:destino:recetas", "viaje"])])
+
+    result = MarkStage(karakeep).run("b1", Outcome.PROCESADO, destination="japon")
+
+    tags = karakeep.bookmarks["b1"].tags
+    assert sorted(t for t in tags if t.startswith("jr:")) == ["jr:destino:japon", "jr:procesado"]
+    assert "viaje" in tags and result.destination_tag == "jr:destino:japon"
+
+
+def test_mark_without_destination_adds_no_destination_tag():
+    karakeep = FakeKarakeep([Bookmark(id="b1", url="https://youtu.be/a")])
+    result = MarkStage(karakeep).run("b1", Outcome.DESCARTADO)
+    assert [t for t in karakeep.bookmarks["b1"].tags if t.startswith("jr:")] == ["jr:descartado"]
+    assert result.destination_tag is None

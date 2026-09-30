@@ -140,8 +140,13 @@ class ResolveResult(BaseModel):
 class Outcome(StrEnum):
     PROCESADO = "procesado"
     REVISAR = "revisar"
-    NO_JAPON = "no-japon"
+    DESCARTADO = "descartado"
     ERROR = "error"
+
+    @classmethod
+    def _missing_(cls, value: object) -> "Outcome | None":
+        # Antes de la fase 3 el contenido ajeno al destino se guardaba como "no-japon".
+        return cls.DESCARTADO if value == "no-japon" else None
 
 
 class PublishedNote(BaseModel):
@@ -159,6 +164,7 @@ class PublishResult(BaseModel):
 class MarkResult(BaseModel):
     tag: str
     archived: bool
+    destination_tag: str | None = None
 
 
 class MergeOutput(BaseModel):

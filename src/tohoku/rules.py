@@ -17,7 +17,7 @@ def destination_decision(extraction: Extraction, th: Thresholds) -> DestinationD
 
 def decide_outcome(decision: DestinationDecision, notes: list[PublishedNote]) -> Outcome:
     if decision == "no":
-        return Outcome.NO_JAPON
+        return Outcome.DESCARTADO
     if any(note.review_reasons for note in notes):
         return Outcome.REVISAR
     return Outcome.PROCESADO

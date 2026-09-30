@@ -113,4 +113,4 @@ def test_real_not_japan_result_publishes_nothing(tmp_path, settings):
     ctx.results["resolve"] = ResolveStage(trilium, lambda: layout, Thresholds()).run(ctx)
     state = StateStore(tmp_path / "state.db")
     result = PublishStage(trilium, lambda: layout, FakeLLM([]), settings, DailyQuota(state, "openrouter_usd", 10), state).run(ctx)
-    assert result.notes == [] and result.outcome == Outcome.NO_JAPON
+    assert result.notes == [] and result.outcome == Outcome.DESCARTADO

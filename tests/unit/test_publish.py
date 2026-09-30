@@ -186,7 +186,7 @@ def test_failed_extraction_creates_review_note(env):
 
 def test_not_japan(env):
     result = _stage(env).run(_ctx(env, "b1", make_extraction(0.1), [], []))
-    assert result.notes == [] and result.outcome == Outcome.NO_JAPON
+    assert result.notes == [] and result.outcome == Outcome.DESCARTADO
 
 
 def test_resume_skips_already_published_items(env):

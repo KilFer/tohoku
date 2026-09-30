@@ -263,7 +263,11 @@ class StateStore:
         rows = self._db.execute("SELECT status, outcome, COUNT(*) AS n FROM jobs GROUP BY status, outcome").fetchall()
         counts: dict[str, int] = {}
         for row in rows:
-            key = "pendiente" if row["status"] == JobStatus.PENDING else row["outcome"]
+            if row["status"] == JobStatus.PENDING:
+                key = "pendiente"
+            else:
+                # "no-japon" (filas anteriores a la fase 3) se agrupa como "descartado".
+                key = Outcome(row["outcome"]).value if row["outcome"] else row["outcome"]
             counts[key] = counts.get(key, 0) + row["n"]
         return counts
 

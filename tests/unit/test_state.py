@@ -151,3 +151,14 @@ def test_review_reasons_for_note_joins_other_sources(state):
     assert state.review_reasons_for_note("n1", exclude=("b2", "lugar:3")) == ["baja-confianza"]
     assert sorted(state.review_reasons_for_note("n1")) == ["baja-confianza", "geocodificacion-ambigua"]
     assert state.review_reasons_for_note("n9") == []
+
+
+def test_legacy_no_japon_jobs_are_counted_as_descartado(state):
+    state.add_job("b1", "u1", Platform.YOUTUBE, ContentHint.VIDEO)
+    state.finish("b1", Outcome.DESCARTADO)
+    state._db.execute("UPDATE jobs SET outcome = 'no-japon' WHERE bookmark_id = 'b1'")  # fila de antes de la fase 3
+    state.add_job("b2", "u2", Platform.YOUTUBE, ContentHint.VIDEO)
+    state.finish("b2", Outcome.DESCARTADO)
+
+    assert state.status_counts() == {"descartado": 2}
+    assert state.get_job("b1").outcome is Outcome.DESCARTADO
