@@ -1537,7 +1537,7 @@ Run: `uv run pytest tests/unit/test_service.py tests/unit/test_wiring_cli.py tes
 Expected: FAIL. Errores esperados:
 - todos los tests de `test_service.py` que usan `_service`, y el nuevo: `TypeError: Service.__init__() got an unexpected keyword argument 'list_ids'`;
 - `test_cli_init_trilium_rejects_unknown_destination`: el código de salida es 2 por `No such option: --destino`. El test pasaría por el motivo equivocado, así que el implementador comprueba en la salida que el error es ese y lo anota; tras el Step 2 debe seguir en 2, pero por el destino desconocido;
-- `test_cli_init_trilium_uses_the_configured_destination`: `AttributeError: 'Settings' object has no attribute 'trilium_root_label'` no ocurre todavía (el campo existe). Falla porque el `init_layout` actual usa `loaded.settings.trilium_root_label`, pero la aserción `trilium.search("#jrMapa")` pasa igual. Si pasa ya, es caracterización y se anota;
+- `test_cli_init_trilium_uses_the_configured_destination` puede pasar ya: la raíz de `settings` y la del YAML son la misma, `jrRoot`. Es caracterización y se anota;
 - `test_settings_read_from_environment_with_defaults`: `ValidationError` (falta `KARAKEEP_LIST_ID`, que todavía es obligatorio).
 
 `test_cli_import_uses_the_only_configured_list` puede pasar ya (la lista de `settings` y la del YAML son la misma, `L1`): es caracterización. **Anotar en el ledger qué tests fallaron y con qué error.**
