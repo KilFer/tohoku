@@ -10,8 +10,9 @@
 
 **Reglas:**
 - Extracción fallida → un único elemento `fallo` con `extraccion-fallida`.
-- `confianza_japon` < 0.4 → sin elementos (resultado `no-japon`).
-- 0.4 ≤ `confianza_japon` < 0.7 → todos los elementos con `clasificacion-incierta`.
+- `confianza_destino` < 0.4 → sin elementos (resultado `no-japon`).
+- 0.4 ≤ `confianza_destino` < 0.7 → todos los elementos con `clasificacion-incierta`.
+- Los resultados guardados con el nombre antiguo (`confianza_japon` / `relacionado_japon`) se siguen aceptando al leerlos; al guardar se escriben `confianza_destino` / `relacionado_destino`.
 - Elemento con `confianza` < 0.7 → `baja-confianza`.
 - Lugar: busca `#googlePlaceId` bajo la raíz; si no hay, un lugar con el mismo `#jrNombreNorm` cuyo `#geolocation` esté a menos de 300 m (Google a veces tiene dos fichas para el mismo sitio: "Omoide Yokocho", dos placeId a 45 m) → `merge` (conserva la ficha de la nota existente) o `create`. Sin coordenadas → busca `#jrTipo=lugar #jrNombreNorm="<normalizado>"` bajo la raíz → `merge` o `create`, siempre con el motivo de geocodificación (así un lugar que Google no encuentra no se repite en cada fuente). Mismo `place_id` (o, sin ficha, mismo nombre normalizado) dos veces en la misma fuente → `alias` del primero.
 - Cosa: busca `#jrTipo=cosa #jrNombreNorm="<normalizado>"` en "Comprar y comer" → `merge`; si no, compara con todas las cosas y, si alguna tiene similitud ≥ 0.85, `create` + `posible-duplicado`. Mismo nombre normalizado dos veces → `alias`.

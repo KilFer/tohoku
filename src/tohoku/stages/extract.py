@@ -74,7 +74,7 @@ class ExtractStage:
                 ]
                 continue
             log.info(
-                "bookmark=%s extraccion japon=%.2f lugares=%d cosas=%d otros=%d coste=%.4f",
+                "bookmark=%s extraccion relevancia=%.2f lugares=%d cosas=%d otros=%d coste=%.4f",
                 ctx.job.bookmark_id, extraction.confianza_destino, len(extraction.lugares),
                 len(extraction.cosas), len(extraction.otros), cost,
             )
