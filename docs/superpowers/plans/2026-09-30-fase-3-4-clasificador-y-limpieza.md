@@ -32,10 +32,9 @@
   3. Se añade la etiqueta `jr:destino:<d>` en Karakeep.
   4. Los ficheros del job se borran al terminar (fase 4).
 - **Aserciones:** los tests existentes no cambian ninguna, salvo las que la Task 1 lista (`NO_JAPON` → `DESCARTADO`) y las que la Task 7 lista (orden de etapas con `classify`, varios destinos ya admitidos). Cualquier otra que haya que cambiar es una regresión: se para y se reporta.
-- **Compatibilidad con `state.db` real** (unos 900 jobs, 427 pendientes aparcados a mitad):
+- **Compatibilidad con `state.db` real** (unos 2.300 jobs al desplegar, todos terminados: el usuario despliega Tohoku con la importación acabada):
   - los jobs sin `candidates` son de Japón (el `destino_legado`);
   - `outcome='no-japon'` se lee como `DESCARTADO`;
-  - un job aparcado en `geocode` reanuda sin rehacer `extract`.
 - **Prefijo `jr`** para todo lo generado (`jr:descartado`, `jr:destino:<d>`).
 - Commits en `feat/tohoku`, con el mensaje terminado en `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - No tocar `data/` salvo **leer** una copia de `state.db` en las verificaciones. No construir la imagen de producción ni tocar contenedores (solo `tohoku:fase34` de prueba en las Tasks 9 y 11).
@@ -61,7 +60,7 @@
 
 ## Review Focus
 
-1. **Jobs aparcados de la importación** (pendientes con `extract` hecho y sin `candidates`): al desplegar deben pasar por `classify` sin coste y seguir en `geocode`, sin rehacer nada. Test con fixture real en la Task 7 y verificación sobre una copia en la Task 9.
+1. **Jobs antiguos ya terminados** (sin `candidates`) que se reprocesan: `classify` los asigna a `destino_legado` sin coste. Test en la Task 6. (Decisión del usuario, 2026-09-30: el cambio a Tohoku se despliega con la importación actual terminada, así que no habrá jobs aparcados a mitad al desplegar y no hace falta una prueba específica para ellos.)
 2. **El clasificador devuelve un destino que no es candidato, o texto irreconocible:** un reintento y luego `TransientError`. Nunca se publica en un destino no permitido. Tests en la Task 6.
 3. **El mismo bookmark en dos listas con destinos distintos:** un solo job con la unión de candidatos, y se clasifica. Test en la Task 4.
 4. **`reprocess --destino` sobre un job ya publicado en otro destino:** se vuelve a publicar en el nuevo. Las notas viejas del otro destino no se borran, y queda documentado. Test en la Task 8.
@@ -627,36 +626,7 @@ def test_unknown_destination_is_config_error(tmp_path, state):
 
 `FakeMark.run(self, bookmark_id, outcome, destination=None)` registra `(bookmark_id, outcome)` si `destination` es None, para no tocar las aserciones existentes, y `(bookmark_id, outcome, destination)` si no.
 
-`tests/unit/test_baseline.py`, **Review Focus 1** (job aparcado de la importación):
-
-```python
-def test_parked_legacy_job_resumes_after_extract_without_redoing_it(tmp_path, settings):
-    trilium, layout = _japan_trilium()
-    state = StateStore(tmp_path / "state.db")
-    state.add_job("b1", "https://www.instagram.com/reel/x/", Platform.INSTAGRAM, ContentHint.VIDEO)  # sin candidates: anterior a la fase 3
-    state.save_stage("b1", "fetch", make_fetch())
-    state.save_stage("b1", "transcribe", Transcript(text="x", origin="whisper"))
-    state.save_stage("b1", "extract", ExtractResult.model_validate_json(_read(STATE / "rich_extract.json")))
-    config = load_destinations(settings.destinos_file, FLOWS)
-    extract = Step("extract", result=ExtractResult())   # no debe ejecutarse: el resultado ya está guardado
-    geocode = Step("geocode", result=GeocodeResult.model_validate_json(_read(STATE / "rich_geocode.json")))
-    publish = Step("publish", result=PublishResult(outcome=Outcome.PROCESADO))
-    pipeline = Pipeline(
-        state, [Step("fetch"), Step("transcribe"), ClassifyStage(config, None, DailyQuota(state, "openrouter_usd", 1))],
-        FakeMark(), FakeNotifier(), tmp_path / "data",
-        flows={"japon": [extract, geocode, ResolveStage(trilium, lambda: layout, Thresholds()), publish]},
-    )
-
-    pipeline.run_job(state.get_job("b1"))
-
-    assert extract.calls == 0 and geocode.calls == 1
-    assert state.load_stage("b1", "classify", Classification) == Classification(destino="japon", omitido=True)
-    plan = state.load_stage("b1", "resolve", ResolveResult)
-    assert [[i.key, i.kind.value, i.action, i.alias_of] for i in plan.items] == json.loads(_read(BASELINE / "rich_plan.json"))
-    assert state.get_job("b1").destination == "japon"
-```
-
-(`Step`, `FakeMark` y `FakeNotifier` se mueven de `tests/unit/test_pipeline.py` a `tests/fakes.py` para poder reutilizarlos; es un cambio de ubicación, no de aserciones. `Step("fetch")` y `Step("transcribe")` no se ejecutan porque sus resultados ya están guardados; si se ejecutaran, devolverían `Dummy` y el test fallaría al usarlos.)
+(Sin test de jobs aparcados: ver Review Focus 1.)
 
 Run: `uv run pytest tests/unit/test_pipeline.py tests/unit/test_wiring_cli.py tests/unit/test_baseline.py -q`
 Expected: FAIL con `TypeError: Pipeline.__init__() got an unexpected keyword argument 'flows'`, `ImportError: Classification` o `AttributeError: runtimes`.
