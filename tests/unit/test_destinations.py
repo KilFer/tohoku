@@ -174,3 +174,30 @@ def test_cleanup_retention_is_read(tmp_path):
 def test_cleanup_errors_name_limpieza(tmp_path, prefix):
     with pytest.raises(ConfigError, match="limpieza"):
         load_destinations(_write(tmp_path, prefix + JAPON), FLOWS)
+
+
+SPLIT = JAPON.replace("  L1: [japon]\n", "  L1: [japon]\n  L2: [recetas]\n") + """
+  recetas:
+    flujo: viaje
+    raiz: jrRootRecetas
+    descripcion: "Recetas"
+    prompt: prompts/japon.md
+destino_legado: japon
+"""
+
+
+def test_classifier_needed_when_lists_point_to_different_destinations(tmp_path):
+    """Un bookmark en L1 y L2 recibe los dos candidatos (la ingesta los une): hace falta clasificador."""
+    config = load_destinations(_write(tmp_path, SPLIT), FLOWS)
+    assert config.needs_classifier()
+
+
+def test_classifier_not_needed_when_every_list_points_to_the_same_destination(tmp_path):
+    config = load_destinations(_write(tmp_path, JAPON.replace("  L1: [japon]\n", "  L1: [japon]\n  L2: japon\n")), FLOWS)
+    assert not config.needs_classifier()
+
+
+def test_destination_names_equivalent_for_the_classifier_are_rejected(tmp_path):
+    text = TWO.replace("  recetas:\n", "  Japón:\n").replace("[japon, recetas]", "[japon, Japón]")
+    with pytest.raises(ConfigError, match="'Japón'.*'japon'|'japon'.*'Japón'"):
+        load_destinations(_write(tmp_path, "destino_legado: japon\n" + text), FLOWS)

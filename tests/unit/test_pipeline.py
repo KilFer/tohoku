@@ -619,3 +619,93 @@ def test_refetch_failing_permanently_marks_the_job_error_without_running_extract
     assert "El Reel ya no existe" in job.last_error
     assert fetch.calls == 1 and extract.calls == 0 and publish.calls == 0
     assert mark.calls == [("b1", Outcome.ERROR)]
+
+
+# --- C1: classify solo re-descarga si va a mandar imágenes ------------------------------
+
+
+class _ViewClassifier:
+    def __init__(self):
+        self.calls = []
+
+    def classify(self, text, images, candidates, feedback=None):
+        from tohoku.classify.base import Verdict
+
+        self.calls.append(images)
+        return Verdict(destino="japon", confianza=0.9)
+
+
+def _real_classify(state):
+    from tohoku.destinations import ClassifierConfig, Destination, DestinationsConfig
+    from tohoku.quota import DailyQuota
+    from tohoku.stages.classify import ClassifyStage
+
+    dest = {n: Destination(nombre=n, flujo="viaje", raiz="r", descripcion=n, prompt="p", params=Dummy())
+            for n in ("japon", "recetas")}
+    config = DestinationsConfig(listas={}, destinos=dest, clasificador=ClassifierConfig(), destino_legado="japon")
+    text, vision = _ViewClassifier(), _ViewClassifier()
+    return ClassifyStage(config, text, DailyQuota(state, "openrouter_usd", 10.0), vision_classifier=vision), text, vision
+
+
+def _reprocess_from_geocode(tmp_path, state, candidates, caption, transcript_text):
+    from tohoku.models import Transcript
+
+    state.add_job("b1", "https://youtu.be/b1", Platform.YOUTUBE, ContentHint.VIDEO, candidates=candidates)
+    meta = make_fetch().meta.model_copy(update={"description": caption})
+    state.save_stage("b1", "fetch", make_fetch(files_purged=True, meta=meta))
+    state.save_stage("b1", "transcribe", Transcript(text=transcript_text, origin="whisper"))
+    state.save_stage("b1", "extract", Dummy())  # sin classify: job anterior a la fase 3 (o classify borrado)
+    log = []
+    fetch = LoggedStep("fetch", log, result=make_fetch(images=["images/00.jpg"], meta=meta))
+    transcribe = LoggedStep("transcribe", log, result=Transcript(), needs_files=True)
+    classify, text, vision = _real_classify(state)
+    extract = LoggedStep("extract", log, needs_files=True)
+    geocode = LoggedStep("geocode", log)
+    publish = _publish_step(log)
+    pipeline = Pipeline(state, [fetch, transcribe, classify], FakeMark(), FakeNotifier(), tmp_path / "data",
+                        clock=lambda: NOW, flows={"japon": [extract, geocode, publish], "recetas": [publish]})
+    pipeline.run_due()
+    return fetch, text, vision, log
+
+
+def test_old_job_reprocessed_from_geocode_is_not_redownloaded_for_classify(tmp_path, state):
+    fetch, text, vision, log = _reprocess_from_geocode(tmp_path, state, None, "", "")
+    assert fetch.calls == 0
+    assert log == ["geocode", "publish"]
+    assert state.load_stage("b1", "classify", Classification) == Classification(destino="japon", omitido=True)
+    assert state.load_stage("b1", "fetch", FetchResult).files_purged is True
+    assert state.get_job("b1").outcome == Outcome.PROCESADO
+
+
+def test_classify_with_images_redownloads_once(tmp_path, state):
+    fetch, text, vision, log = _reprocess_from_geocode(tmp_path, state, ["japon", "recetas"], "", "")
+    assert fetch.calls == 1
+    assert log == ["fetch", "geocode", "publish"]
+    assert len(vision.calls) == 1 and text.calls == []
+    assert state.load_stage("b1", "fetch", FetchResult).files_purged is False
+
+
+def test_classify_with_text_is_not_redownloaded(tmp_path, state):
+    fetch, text, vision, log = _reprocess_from_geocode(tmp_path, state, ["japon", "recetas"], "Un caption", "")
+    assert fetch.calls == 0
+    assert text.calls == [[]] and vision.calls == []
+    assert state.load_stage("b1", "fetch", FetchResult).files_purged is True
+
+
+# --- I2: DESCARTADO nunca lleva jr:destino ----------------------------------------------
+
+
+def test_flow_descartado_is_marked_without_destination(tmp_path, state):
+    """El flujo viaje descarta contenido ajeno al destino: sin `jr:destino:<d>` (spec §6.4)."""
+    _add(state)
+    fetch = Step("fetch")
+    classify = Step("classify", result=Classification(destino="japon"))
+    publish = Step("publish", result=PublishResult(outcome=Outcome.DESCARTADO))
+    mark = FakeMark()
+    pipeline = Pipeline(state, [fetch, classify], mark, FakeNotifier(), tmp_path / "data", clock=lambda: NOW,
+                        flows={"japon": [publish]})
+
+    pipeline.run_due()
+
+    assert mark.calls == [("b1", Outcome.DESCARTADO)]
+    assert state.get_job("b1").outcome == Outcome.DESCARTADO

@@ -12,6 +12,16 @@ def fold(text: str) -> str:
     return "".join(ch for ch in decomposed if not unicodedata.combining(ch))
 
 
+def label_key(text: str) -> str:
+    """Clave de un nombre de destino: sin acentos/mayúsculas, espacios, guiones y guiones bajos equivalentes.
+
+    La usan el clasificador (para reconocer la respuesta del LLM) y la carga de destinos.yaml (nombres que
+    colisionan).
+    """
+    cleaned = fold(text).strip().strip("\"'`«»“”").strip().rstrip(".").strip().strip("\"'`«»“”").strip()
+    return re.sub(r"[\s_-]+", "_", cleaned).strip("_")
+
+
 def normalize_name(text: str) -> str:
     """Minúsculas, sin acentos ni puntuación y sin palabras genéricas (clave de deduplicación)."""
     cleaned = re.sub(r"[^\w\s]", " ", fold(text))

@@ -9,6 +9,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from tohoku.errors import ConfigError
+from tohoku.text import label_key
 
 _BASE_KEYS = ("flujo", "raiz", "descripcion", "prompt")
 _TOP_KEYS = {"listas", "destinos", "clasificador", "destino_legado", "limpieza"}
@@ -54,7 +55,11 @@ class DestinationsConfig:
         return list(self.listas.get(list_id, []))
 
     def needs_classifier(self) -> bool:
-        return any(len(names) > 1 for names in self.listas.values())
+        """Hay clasificador si un bookmark puede tener varios candidatos: una lista con varios destinos, o
+        listas con destinos distintos (la ingesta une los candidatos de todas las listas del bookmark)."""
+        if any(len(names) > 1 for names in self.listas.values()):
+            return True
+        return len({name for names in self.listas.values() for name in names}) > 1
 
 
 def load_destinations(path: Path, flows: Mapping[str, HasParams]) -> DestinationsConfig:
@@ -75,6 +80,14 @@ def load_destinations(path: Path, flows: Mapping[str, HasParams]) -> Destination
     if not destinos_raw:
         raise ConfigError(f"{path}: no hay ningún destino en 'destinos'")
     destinos = {str(name): _destination(path, str(name), spec, flows) for name, spec in destinos_raw.items()}
+    seen: dict[str, str] = {}
+    for name in destinos:
+        other = seen.setdefault(label_key(name), name)
+        if other != name:
+            raise ConfigError(
+                f"{path}: los destinos '{other}' y '{name}' son el mismo nombre para el clasificador"
+                " (mayúsculas, acentos, espacios, guiones y guiones bajos no cuentan); renombra uno"
+            )
     listas_raw = raw.get("listas") or {}
     if not isinstance(listas_raw, dict):
         raise ConfigError(f"{path}: 'listas' debe ser un mapa")

@@ -325,3 +325,26 @@ def test_cli_import_uses_the_only_configured_list(monkeypatch, settings, tmp_pat
 
     assert result.exit_code == 0, result.output
     assert seen["list"] == "L1"
+
+
+def test_build_app_builds_the_classifier_when_lists_point_to_different_destinations(settings, tmp_path):
+    """L1: [japon] y L2: [nz]: un bookmark en las dos tiene dos candidatos (I1)."""
+    split = _several_destinations(settings, tmp_path)
+    path = split.destinos_file
+    path.write_text(path.read_text(encoding="utf-8").replace("L1: [japon]", "L1: [japon]\n  L2: [nz]"), encoding="utf-8")
+    app = build_app(split)
+    assert app.destinations.listas == {"L1": ["japon"], "L2": ["nz"]}
+    assert app.classifier is not None
+
+
+def test_build_app_builds_a_vision_classifier_with_the_multimodal_model(settings, tmp_path):
+    """Las imágenes van a OPENROUTER_MODEL (multimodal comprobado en preflight), no al modelo de texto (I3)."""
+    app = build_app(_several_destinations(settings, tmp_path, shared_list=True))
+    classify = next(s for s in app.stages if s.name == "classify")
+    assert app.classifier._model == "text/model"
+    assert app.vision_classifier is not None and app.vision_classifier._model == "vision/model"
+    assert classify._vision_classifier is app.vision_classifier
+
+
+def test_build_app_single_destination_has_no_vision_classifier(settings):
+    assert build_app(settings).vision_classifier is None

@@ -45,7 +45,8 @@ class App:
     destinations: DestinationsConfig
     destination: Destination  # el destino legado
     runtimes: dict[str, FlowRuntime]
-    classifier: Classifier | None  # None si ninguna lista tiene varios destinos
+    classifier: Classifier | None  # None si ningún bookmark puede tener varios candidatos
+    vision_classifier: Classifier | None = None  # mismo modo con OPENROUTER_MODEL: solo cuando se mandan imágenes
 
 
 def preflight(
@@ -106,8 +107,12 @@ def build_app(settings: Settings) -> App:
     cfg = destinations.clasificador
     classifier_model = (cfg.modelo or settings.text_model) if destinations.needs_classifier() else None
     classifier = CLASSIFIERS[cfg.modo](llm, classifier_model) if classifier_model else None
+    # Sin caption ni transcripción se clasifica con imágenes: con el modelo multimodal (preflight lo comprueba),
+    # porque clasificador.modelo / OPENROUTER_TEXT_MODEL puede ser solo de texto.
+    vision_classifier = CLASSIFIERS[cfg.modo](llm, settings.openrouter_model) if classifier_model else None
     common: list[Stage] = [
-        FetchStage(settings, ytdlp, gallery, karakeep), transcribe, ClassifyStage(destinations, classifier, llm_budget),
+        FetchStage(settings, ytdlp, gallery, karakeep), transcribe,
+        ClassifyStage(destinations, classifier, llm_budget, vision_classifier=vision_classifier),
     ]
     cleaner = Cleaner(state, settings.data_dir, destinations.limpieza.retencion_dias)
     pipeline = Pipeline(state, common, MarkStage(karakeep), notifier, settings.data_dir,
@@ -123,4 +128,5 @@ def build_app(settings: Settings) -> App:
         layout=legacy.layout, llm_budget=llm_budget, ytdlp=ytdlp, gallery=gallery, transcribe=transcribe,
         stages=[*common, *legacy.stages], pipeline=pipeline, service=service,
         destinations=destinations, destination=destination, runtimes=runtimes, classifier=classifier,
+        vision_classifier=vision_classifier,
     )

@@ -116,12 +116,24 @@ class StateStore:
         self._clock = clock
 
     def _migrate(self) -> None:
-        """Columnas añadidas después de la primera versión (idempotente)."""
+        """Columnas añadidas después de la primera versión (idempotente).
+
+        Si otro proceso (p. ej. la CLI con el servicio arrancando) añade la columna entre el PRAGMA y el ALTER,
+        SQLite responde "duplicate column name": la columna ya está, así que se sigue.
+        """
         columns = {row["name"] for row in self._db.execute("PRAGMA table_info(jobs)")}
-        if "candidates" not in columns:
-            self._db.execute("ALTER TABLE jobs ADD COLUMN candidates TEXT")  # JSON; NULL = anterior a la fase 3
-        if "destination" not in columns:
-            self._db.execute("ALTER TABLE jobs ADD COLUMN destination TEXT")
+        added = (
+            ("candidates", "ALTER TABLE jobs ADD COLUMN candidates TEXT"),  # JSON; NULL = anterior a la fase 3
+            ("destination", "ALTER TABLE jobs ADD COLUMN destination TEXT"),
+        )
+        for column, sql in added:
+            if column in columns:
+                continue
+            try:
+                self._db.execute(sql)
+            except sqlite3.OperationalError as exc:
+                if "duplicate column" not in str(exc):
+                    raise
 
     def _now(self) -> str:
         return _iso(self._clock())
@@ -161,6 +173,8 @@ class StateStore:
             return
         old = json.loads(row["candidates"]) if row["candidates"] else []
         merged = list(dict.fromkeys(old + list(names)))
+        if merged == old:
+            return  # nada nuevo: no se toca `updated_at`
         self._db.execute(
             "UPDATE jobs SET candidates = ?, updated_at = ? WHERE bookmark_id = ?",
             (json.dumps(merged), self._now(), bookmark_id),
@@ -353,4 +367,9 @@ class StateStore:
             " GROUP BY outcome",
             (self.today(),),
         ).fetchall()
-        return {row["outcome"]: row["n"] for row in rows}
+        counts: dict[str, int] = {}
+        for row in rows:
+            # "no-japon" (filas anteriores a la fase 3) se agrupa como "descartado", como en status_counts.
+            key = Outcome(row["outcome"]).value if row["outcome"] else row["outcome"]
+            counts[key] = counts.get(key, 0) + row["n"]
+        return counts

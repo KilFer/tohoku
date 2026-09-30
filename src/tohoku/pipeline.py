@@ -97,7 +97,8 @@ class Pipeline:
                 self._state.set_destination(job.bookmark_id, destination)
                 self._run_stages(ctx, self._flows[destination])
             outcome = ctx.result("publish", PublishResult).outcome
-            self._finish(job.bookmark_id, outcome, destination)
+            # Spec §6.4: DESCARTADO nunca lleva jr:destino:<d> (el flujo lo descartó: no es de ese destino).
+            self._finish(job.bookmark_id, outcome, None if outcome == Outcome.DESCARTADO else destination)
         except ConfigError:
             raise
         except QuotaExceeded as exc:
@@ -121,12 +122,20 @@ class Pipeline:
         for stage in stages:
             result = self._state.load_stage(bookmark_id, stage.name, stage.result_model)
             if result is None:
-                if getattr(stage, "needs_files", False):
+                if self._needs_files(stage, ctx):
                     self._refetch_if_purged(ctx)
                 log.info("bookmark=%s etapa=%s", bookmark_id, stage.name)
                 result = stage.run(ctx)
                 self._state.save_stage(bookmark_id, stage.name, result)
             ctx.results[stage.name] = result
+
+    @staticmethod
+    def _needs_files(stage: Stage, ctx: JobContext) -> bool:
+        """`needs_files_for(ctx)` si la etapa lo tiene (depende del job, p. ej. classify); si no, `needs_files`."""
+        needs_files_for = getattr(stage, "needs_files_for", None)
+        if callable(needs_files_for):
+            return bool(needs_files_for(ctx))
+        return bool(getattr(stage, "needs_files", False))
 
     def _refetch_if_purged(self, ctx: JobContext) -> None:
         """Si la limpieza borró los ficheros de fetch, vuelve a descargar antes de una etapa que los necesita.

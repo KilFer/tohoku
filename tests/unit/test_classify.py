@@ -48,7 +48,7 @@ def state(tmp_path):
 
 
 def _run(tmp_path, state, replies, candidates=("japon", "cocina"), destination=None, caption="Un caption",
-         text="Hablan de ramen", limit=10.0, images=2):
+         text="Hablan de ramen", limit=10.0, images=2, vision="same"):
     job = make_job(candidates=list(candidates) if candidates is not None else None, destination=destination)
     ctx = make_ctx(tmp_path, job)
     rels = [f"images/{i:02}.jpg" for i in range(images)]
@@ -58,7 +58,8 @@ def _run(tmp_path, state, replies, candidates=("japon", "cocina"), destination=N
     ctx.results["transcribe"] = Transcript(text=text, origin="whisper")
     fake = FakeClassifier(replies)
     quota = DailyQuota(state, "openrouter_usd", limit)
-    stage = ClassifyStage(_config(), fake, quota)
+    # Por defecto el mismo falso hace de clasificador de texto y de imágenes.
+    stage = ClassifyStage(_config(), fake, quota, vision_classifier=fake if vision == "same" else vision)
     return stage, ctx, fake, quota
 
 
@@ -181,3 +182,48 @@ def test_forced_destination_missing_from_config_passes_through(tmp_path, state):
     ctx = make_ctx(tmp_path, make_job(candidates=["japon"], destination="borrado"))
     result = ClassifyStage(_config(), FakeClassifier([]), DailyQuota(state, "openrouter_usd", 10.0)).run(ctx)
     assert result.destino == "borrado" and result.omitido
+
+
+# --- I3: con imágenes, el clasificador multimodal ---------------------------------
+
+
+def test_images_go_to_the_vision_classifier(tmp_path, state):
+    vision = FakeClassifier([Verdict(destino="japon", confianza=0.9, cost_usd=0.003)])
+    stage, ctx, fake, _ = _run(tmp_path, state, [], caption="", text="", vision=vision)
+    r = stage.run(ctx)
+    assert r.destino == "japon" and r.cost_usd == 0.003
+    assert fake.calls == []
+    assert vision.calls[0]["images"] == [ctx.workdir / "images/00.jpg", ctx.workdir / "images/01.jpg"]
+
+
+def test_text_goes_to_the_text_classifier(tmp_path, state):
+    vision = FakeClassifier([])
+    stage, ctx, fake, _ = _run(tmp_path, state, [Verdict(destino="japon", confianza=0.9)], vision=vision)
+    stage.run(ctx)
+    assert vision.calls == [] and len(fake.calls) == 1 and fake.calls[0]["images"] == []
+
+
+def test_without_vision_classifier_no_images_are_sent(tmp_path, state):
+    stage, ctx, fake, _ = _run(tmp_path, state, [Verdict(destino="japon", confianza=0.9)], caption="", text="", vision=None)
+    stage.run(ctx)
+    assert fake.calls[0]["images"] == []
+
+
+# --- C1: la etapa solo necesita los ficheros si va a mandar imágenes ------------------
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected"),
+    [
+        ({}, False),  # hay texto
+        ({"caption": "", "text": ""}, True),  # sin texto: manda imágenes
+        ({"caption": "", "text": "", "vision": None}, False),  # sin clasificador multimodal no manda imágenes
+        ({"caption": "", "text": "", "candidates": ("cocina",)}, False),  # un solo candidato
+        ({"caption": "", "text": "", "candidates": ("cocina", "borrado")}, False),  # queda uno tras quitar el borrado
+        ({"caption": "", "text": "", "candidates": None}, False),  # job anterior a la fase 3 → legado
+        ({"caption": "", "text": "", "destination": "cocina"}, False),  # destino forzado
+    ],
+)
+def test_needs_files_only_when_images_will_be_sent(tmp_path, state, kwargs, expected):
+    stage, ctx, _, _ = _run(tmp_path, state, [], **kwargs)
+    assert stage.needs_files_for(ctx) is expected

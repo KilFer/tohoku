@@ -228,3 +228,41 @@ def test_candidates_and_destination_roundtrip(state):
     assert job.destination == "recetas"
     state.set_destination("b1", None)
     assert state.get_job("b1").destination is None
+
+
+def test_legacy_no_japon_jobs_finished_today_count_as_descartado(state):
+    state.add_job("b1", "u1", Platform.YOUTUBE, ContentHint.VIDEO)
+    state.finish("b1", Outcome.DESCARTADO)
+    state._db.execute("UPDATE jobs SET outcome = 'no-japon' WHERE bookmark_id = 'b1'")  # fila de antes de la fase 3
+    state.add_job("b2", "u2", Platform.YOUTUBE, ContentHint.VIDEO)
+    state.finish("b2", Outcome.DESCARTADO)
+
+    assert state.finished_today() == {"descartado": 2}
+
+
+def test_add_candidates_without_new_names_does_not_touch_the_job(state, clock):
+    state.add_job("b1", "u1", Platform.YOUTUBE, ContentHint.VIDEO, candidates=["japon", "recetas"])
+    before = state.get_job("b1").updated_at
+    clock.now += timedelta(minutes=5)
+
+    state.add_candidates("b1", ["recetas", "japon"])
+
+    job = state.get_job("b1")
+    assert job.candidates == ["japon", "recetas"] and job.updated_at == before
+
+
+class _NoColumnsYet:
+    """Conexión que no ve las columnas nuevas en PRAGMA: como otro proceso que migró entre medias."""
+
+    def __init__(self, db):
+        self._db = db
+
+    def execute(self, sql, *args):
+        if sql.startswith("PRAGMA table_info"):
+            return iter([])
+        return self._db.execute(sql, *args)
+
+
+def test_migration_tolerates_a_concurrent_migration(state):
+    state._db = _NoColumnsYet(state._db)
+    state._migrate()  # las columnas ya existen: "duplicate column name" no es un error

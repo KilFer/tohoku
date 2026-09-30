@@ -1,5 +1,4 @@
 import json
-import re
 from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
@@ -7,16 +6,13 @@ from pydantic import BaseModel, ValidationError
 from tohoku.classify.base import Candidate, ClassifierError, Verdict
 from tohoku.clients.openrouter import OpenRouterClient, image_part
 from tohoku.prompts import load_prompt
-from tohoku.text import strip_fences, fold
+from tohoku.text import label_key, strip_fences
 
 NINGUNO = "ninguno"
 _LABEL_SUFFIX = "Responde únicamente con el nombre del destino (o `ninguno`), sin nada más."
 
 
-def _key(text: str) -> str:
-    """Clave de comparación: sin acentos/mayúsculas, espacios, guiones y guiones bajos equivalentes."""
-    cleaned = fold(text).strip().strip("\"'`«»“”").strip().rstrip(".").strip().strip("\"'`«»“”").strip()
-    return re.sub(r"[\s_-]+", "_", cleaned).strip("_")
+_key = label_key  # clave de comparación compartida con destinations.py
 
 
 def _resolve(raw: str, candidates: list[Candidate]) -> tuple[str | None, bool]:
