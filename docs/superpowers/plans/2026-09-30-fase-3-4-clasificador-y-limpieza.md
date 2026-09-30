@@ -758,3 +758,53 @@ Expected: FAIL con `ModuleNotFoundError: No module named 'tohoku.cleanup'` e `Im
   - un `Cleaner` con `retencion_dias=30` ejecuta `purge()` sobre la copia: `du -sh` antes y después, número de directorios borrados (≈ jobs DONE), ningún directorio de `pending`/`error` borrado y ningún resultado de etapa purgado (todos tienen menos de 30 días);
   - borrar la copia.
 - [ ] **Step 3: Commit** `docs: phase 4 (cleanup)`. **Parada para el usuario** antes de la revisión final de la rama.
+
+---
+
+## Anexo (2026-09-30, tarde): lógica definitiva de `reprocess` y nombres en el clasificador
+
+Pedido por el usuario tras la Task 11. Estamos en fase de pruebas y se puede fijar ya la lógica exacta. Sustituye la decisión 8 en lo que respecta a `fetch`.
+
+### Task 12: No volver a descargar si no hace falta
+
+**Decisión:**
+- Al limpiar un job **no se borra el resultado de `fetch`**: se conservan sus metadatos (título, autor, caption, URL, que usa `publish`) y se marca `files_purged=True`.
+- El pipeline vuelve a ejecutar `fetch` **solo** si va a ejecutar una etapa que necesita los ficheros (`needs_files = True`: `transcribe`, `classify` y `extract`) y el `fetch` guardado tiene `files_purged`.
+
+**Resultado para el operador:**
+
+| Comando | Qué descarga o repite |
+|---|---|
+| `reprocess --from geocode`, `--from resolve` o `--from publish` | No descarga nada ni falla si el Reel ya no existe (dentro de la retención) |
+| `--from extract` o `--from classify` | Vuelve a descargar (necesita fotogramas) |
+| `--from fetch` | Como siempre |
+| Pasada la retención, o con `retencion_dias: 0` | Se rehace todo: descarga, Whisper, LLM y Places |
+
+**Files:**
+- `src/tohoku/models.py` (`FetchResult.files_purged: bool = False`)
+- `src/tohoku/state.py` (`mark_fetch_purged(bookmark_id)` con `json_set`; `delete_stage` se queda)
+- `src/tohoku/cleanup.py` (marca en lugar de borrar, en `job_finished` y en `purge`)
+- `src/tohoku/pipeline.py` (`_run_stages` vuelve a descargar si hace falta)
+- `src/tohoku/stages/transcribe.py`, `stages/extract.py` y `stages/classify.py` (`needs_files = True`)
+- Tests: `tests/unit/test_cleanup.py`, `tests/unit/test_pipeline.py`, `tests/unit/test_state.py`
+- Docs:
+  - `docs/operations.md` ("Limpieza" y reprocesado; reescribir el bloque "Atención" según la tabla de arriba, incluido el caso `retencion_dias: 0`);
+  - `docs/pipeline/02-fetch.md` (bloque **Atención** con la misma información);
+  - hoja de ruta (la decisión 8 queda sustituida por esta);
+  - `CLAUDE.md` (Estado).
+
+**Tests (RED primero):**
+- `test_cleanup.py`: las aserciones "el resultado de `fetch` se borra" de esta misma fase pasan a "el resultado de `fetch` sigue, con `files_purged=True` y los mismos `meta`". Es un cambio de esta fase, no de Japón.
+- `test_state.py`: `mark_fetch_purged` pone `files_purged=True` y conserva el resto. Sin resultado de `fetch`, no hace nada.
+- `test_pipeline.py` (con `Step`, con `needs_files` como atributo del Step):
+  - `fetch` guardado con `files_purged`, `transcribe`/`extract` guardados y `geocode` sin resultado → `fetch.calls == 0`, y `geocode` se ejecuta;
+  - `fetch` guardado con `files_purged` y `extract` (`needs_files`) sin resultado → `fetch` se ejecuta **una vez** antes de `extract`; el nuevo `fetch` guardado ya no tiene `files_purged`;
+  - dos etapas con `needs_files` sin resultado → `fetch` se ejecuta una sola vez;
+  - `fetch` sin `files_purged` → no se vuelve a ejecutar (el comportamiento de siempre).
+
+### Task 13: Nombres de destino equivalentes en el clasificador
+
+- La normalización del clasificador (los dos modos) compara `re.sub(r"[\s_-]+", "_", fold(x)).strip("_")` en la respuesta y en cada candidato. Así, "Nueva Zelanda", "nueva-zelanda" y "NUEVA_ZELANDA." corresponden a `nueva_zelanda`.
+- En `json_schema` se aplica a `destino` y a `alternativa`, porque un modelo no estricto puede salirse del `enum`.
+- `alternativa: "ninguno"` pasa a `None`.
+- Tests en `tests/unit/test_classifiers.py`, parametrizados por los dos modos, con el caso negativo `"zelanda"` → `ClassifierError` (etiqueta) o destino no reconocido.
