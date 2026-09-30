@@ -126,3 +126,10 @@ def test_other_400_is_api_error():
     respx.post(host=HOST, path="/v1/places:searchText").mock(return_value=httpx.Response(400, json={"error": {"message": "bad query"}}))
     with pytest.raises(ApiError):
         PlacesClient("gkey").search("x")
+
+
+@respx.mock
+def test_search_region_can_be_changed():
+    route = respx.post(host=HOST, path="/v1/places:searchText").mock(return_value=httpx.Response(200, json={}))
+    PlacesClient("gkey").search("Sky Tower Auckland", region="NZ")
+    assert json.loads(route.calls[0].request.content)["regionCode"] == "NZ"

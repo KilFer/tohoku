@@ -23,8 +23,8 @@ class PlacesClient:
         self._http = http or httpx.Client(timeout=30)
         self._headers = {"X-Goog-Api-Key": api_key, "X-Goog-FieldMask": FIELD_MASK}
 
-    def search(self, query: str) -> list[GeoMatch]:
-        body = {"textQuery": query, "regionCode": "JP", "languageCode": "es", "pageSize": 5}
+    def search(self, query: str, region: str = "JP") -> list[GeoMatch]:
+        body = {"textQuery": query, "regionCode": region, "languageCode": "es", "pageSize": 5}
         try:
             resp = send(self._http, "POST", SEARCH_URL, self.SERVICE, headers=self._headers, json=body)
         except ApiError as exc:

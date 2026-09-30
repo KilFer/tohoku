@@ -1,11 +1,9 @@
 import math
+from collections.abc import Mapping, Sequence
 
 from tohoku.models import GeoMatch, Lugar
 from tohoku.text import fold, normalize_name, similarity
 
-_LAT_RANGE = (20.0, 46.0)
-_LNG_RANGE = (122.0, 154.0)
-_JAPAN_WORDS = ("japon", "japan", "日本")
 CITY_ALIASES: dict[str, list[str]] = {
     "tokio": ["tokyo", "東京"],
     "kioto": ["kyoto", "京都"],
@@ -51,50 +49,49 @@ _NAME_EQUIVALENTS = {
 _NAME_STOPWORDS = {"de", "del", "la", "el", "los", "las", "of"}
 
 
-def in_japan(match: GeoMatch) -> bool:
-    inside = _LAT_RANGE[0] <= match.lat <= _LAT_RANGE[1] and _LNG_RANGE[0] <= match.lng <= _LNG_RANGE[1]
+def in_country(match: GeoMatch, code: str, names: Sequence[str], lat: tuple[float, float], lng: tuple[float, float]) -> bool:
+    """El resultado está en el país del destino: dentro de sus límites y con su código (o su nombre en la dirección)."""
+    inside = lat[0] <= match.lat <= lat[1] and lng[0] <= match.lng <= lng[1]
     if not inside:
         return False
     if match.country_code:
-        return match.country_code.upper() == "JP"
+        return match.country_code.upper() == code.upper()
     # Sin postalAddress: el país tiene que aparecer en la dirección.
     # fold y no normalize_name: normalize_name elimina "japon"/"japan" por ser palabras genéricas.
     address = fold(match.address)
-    return any(word in address for word in _JAPAN_WORDS)
+    return any(fold(word) in address for word in names)
 
 
-def city_matches(match: GeoMatch, ciudad: str | None) -> bool:
+def city_matches(match: GeoMatch, ciudad: str | None, aliases: Mapping[str, Sequence[str]] = CITY_ALIASES) -> bool:
     if not ciudad:
         return True
     city = fold(ciudad).strip()
     address = fold(f"{match.address} {match.area}")
-    return any(fold(name) in address for name in [city, *CITY_ALIASES.get(city, [])])
+    return any(fold(name) in address for name in [city, *aliases.get(city, [])])
 
 
-def _canonical_words() -> dict[str, str]:
-    words = {alias: canon for canon, aliases in _NAME_EQUIVALENTS.items() for alias in aliases}
-    words |= {fold(alias): city for city, aliases in CITY_ALIASES.items() for alias in aliases}
+def _canonical_words(aliases: Mapping[str, Sequence[str]]) -> dict[str, str]:
+    words = {alias: canon for canon, alias_list in _NAME_EQUIVALENTS.items() for alias in alias_list}
+    words |= {fold(alias): city for city, alias_list in aliases.items() for alias in alias_list}
     return words
 
 
-_CANONICAL = _canonical_words()
+def _name_words(text: str, canonical: Mapping[str, str]) -> list[str]:
+    return [canonical.get(w, w) for w in normalize_name(text).split() if w not in _NAME_STOPWORDS]
 
 
-def _name_words(text: str) -> list[str]:
-    return [_CANONICAL.get(w, w) for w in normalize_name(text).split() if w not in _NAME_STOPWORDS]
-
-
-def name_score(match: GeoMatch, lugar: Lugar) -> float:
+def name_score(match: GeoMatch, lugar: Lugar, aliases: Mapping[str, Sequence[str]] = CITY_ALIASES) -> float:
     """Parecido entre el nombre de Google y el extraído: 2 = igual, 1 = uno contiene al otro, si no la similitud.
 
     "Igual" admite otro orden y palabras traducidas o alias de ciudad ("Torre de Kioto" = "Kyoto Tower").
     """
-    found_words = _name_words(match.name)
+    canonical = _canonical_words(aliases)
+    found_words = _name_words(match.name, canonical)
     found = " ".join(found_words)
     names = [lugar.nombre] + ([lugar.nombre_local] if lugar.nombre_local else [])
     best = 0.0
     for name in names:
-        words = _name_words(name)
+        words = _name_words(name, canonical)
         w = " ".join(words)
         if not w or not found:
             continue
@@ -132,5 +129,5 @@ def near_notes(notes: list, match: GeoMatch) -> list:
     return near
 
 
-def name_matches(match: GeoMatch, lugar: Lugar) -> bool:
-    return name_score(match, lugar) >= NAME_SIMILARITY
+def name_matches(match: GeoMatch, lugar: Lugar, aliases: Mapping[str, Sequence[str]] = CITY_ALIASES) -> bool:
+    return name_score(match, lugar, aliases) >= NAME_SIMILARITY

@@ -25,9 +25,11 @@ class FakePlaces:
     def __init__(self, answers: dict[str, list]):
         self.answers = answers
         self.queries: list[str] = []
+        self.regions: list[str] = []
 
-    def search(self, query):
+    def search(self, query, region="JP"):
         self.queries.append(query)
+        self.regions.append(region)
         return self.answers.get(query, [])
 
 
@@ -235,3 +237,59 @@ def test_cache_hit_needs_no_quota(tmp_path, state):
     outcome = _run(tmp_path, state, places, [make_lugar()], limit=150).outcomes[0]
 
     assert outcome.match.place_id == "P1"
+
+
+from tohoku.flows.viaje.params import ViajeParams
+from tohoku.geo import city_matches, in_country
+
+NZ = ViajeParams(
+    pais="NZ", nombres_pais=["new zealand", "nueva zelanda"], latitud=(-48.0, -34.0), longitud=(166.0, 179.0),
+    categorias_lugar=["naturaleza", "otro"], alias_ciudad={"auckland": ["tamaki makaurau"]},
+)
+# La dirección usa el nombre maorí de la ciudad: solo casa con "Auckland" gracias a los alias del destino.
+SKY_TOWER = make_geo("NZ1", "Sky Tower", "Victoria St W, Tāmaki Makaurau 1010, Nueva Zelanda", lat=-36.85, lng=174.76,
+                     country_code="NZ", area="")
+
+
+def _run_nz(tmp_path, state, places, lugar):
+    ctx = make_ctx(tmp_path, extract=ExtractResult(extraction=make_extraction(0.95, lugares=[lugar])))
+    return GeocodeStage(places, DailyQuota(state, "places_calls", 150), Thresholds(), cache=state, params=NZ).run(ctx)
+
+
+def test_destination_country_and_region(tmp_path, state):
+    places = FakePlaces({"Sky Tower Auckland": [SKY_TOWER]})
+    lugar = make_lugar("Sky Tower", consulta_busqueda="Sky Tower Auckland", ciudad="Auckland", categoria="otro")
+
+    outcome = _run_nz(tmp_path, state, places, lugar).outcomes[0]
+
+    assert outcome.match.place_id == "NZ1" and outcome.review_reason is None
+    assert places.regions == ["NZ"]
+
+
+def test_result_in_japan_is_rejected_for_a_new_zealand_destination(tmp_path, state):
+    places = FakePlaces({"Ichiran Shibuya Tokyo": [SHIBUYA]})
+    outcome = _run_nz(tmp_path, state, places, make_lugar()).outcomes[0]
+    assert outcome.match is None and outcome.review_reason == "geocodificacion-fallida"
+
+
+def test_places_cache_is_per_country_and_japan_keeps_its_entries(tmp_path, state):
+    state.put_places_cache("Ichiran Shibuya Tokyo", [SHIBUYA.model_dump()])  # entrada anterior al multidestino
+    jp, nz = FakePlaces({"Ichiran Shibuya Tokyo": [SHIBUYA]}), FakePlaces({})
+
+    _run(tmp_path, state, jp, [make_lugar()])
+    _run_nz(tmp_path, state, nz, make_lugar())
+
+    assert jp.queries == []  # Japón reutiliza su caché de siempre
+    assert nz.queries == ["Ichiran Shibuya Tokyo"]  # Nueva Zelanda no la comparte
+
+
+def test_in_country_uses_code_bounds_and_names():
+    assert in_country(SKY_TOWER, "NZ", NZ.nombres_pais, NZ.latitud, NZ.longitud)
+    assert not in_country(SKY_TOWER, "JP", ["japon"], (20.0, 46.0), (122.0, 154.0))
+    no_code = make_geo("X", "Hobbiton", "Matamata 3472, Nueva Zelanda", lat=-37.87, lng=175.68)
+    assert in_country(no_code, "NZ", NZ.nombres_pais, NZ.latitud, NZ.longitud)
+
+
+def test_city_aliases_come_from_the_destination():
+    assert city_matches(SKY_TOWER, "Auckland", NZ.alias_ciudad)
+    assert not city_matches(SKY_TOWER, "Auckland")  # con los alias de Japón (por defecto) no casa
