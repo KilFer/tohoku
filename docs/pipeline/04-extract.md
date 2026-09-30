@@ -15,7 +15,7 @@
 
 **Validación:** Pydantic. Si el JSON no valida, un reintento con el error incluido. Si vuelve a fallar → `extraction=None` y `resolve` crea una nota de revisión `extraccion-fallida`.
 
-**Coste:** cada llamada suma su coste al contador diario `openrouter_usd`; si se supera `OPENROUTER_DAILY_BUDGET_USD`, el job espera al día siguiente (`QuotaExceeded`), la pasada se detiene (los demás jobs siguen pendientes) y se avisa por ntfy.
+**Coste:** cada llamada suma su coste al contador diario `openrouter_usd`; si se supera `OPENROUTER_DAILY_BUDGET_USD`, el job espera al día siguiente (`QuotaExceeded`), la pasada sigue con los demás jobs (descargas y transcripciones avanzan; las llamadas al LLM se aparcan igual) y se avisa por ntfy una vez al día.
 
 **Fallos:** 401/402/403 → `ConfigError` (clave inválida o sin saldo); 400/404 que hablan del modelo ("not a valid model", "No endpoints found"...) → `ConfigError` (el servicio se pausa y avisa una vez; no se marca `jr:error`); otros 4xx → `jr:error`; 429/5xx/timeout → reintento.
 

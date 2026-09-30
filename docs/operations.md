@@ -46,7 +46,7 @@ Formatos admitidos de `saved_collections.json`: el clásico (cabecera de colecci
 Nota: si un enlace ya estaba en Karakeep con otra forma de URL (p. ej. con `?igsh=`), puede crearse un segundo bookmark; la nota de Trilium no se duplica.
 
 ## Avisos (ntfy)
-Llegan avisos por: error definitivo de un enlace, error de configuración (el servicio se pausa hasta que se corrija), límite diario alcanzado (en cuanto se alcanza, la pasada se detiene y el resto de enlaces siguen pendientes hasta la siguiente). Con `NTFY_DAILY_SUMMARY=true`, resumen a partir de las 21:00.
+Llegan avisos por: error definitivo de un enlace, error de configuración (el servicio se pausa hasta que se corrija), límite diario alcanzado (un aviso por cuota y día). Con una cuota agotada la cola no se para: solo esperan los jobs que la necesitan, y el resto sigue descargando, transcribiendo y publicando. Con `NTFY_DAILY_SUMMARY=true`, resumen a partir de las 21:00.
 
 ## Costes y cuotas
 - Google Cloud Console → APIs → Places API (New) → Cuotas: limita "SearchTextRequest per day" al mismo valor que `PLACES_DAILY_LIMIT` como red de seguridad. Google cuenta el día y el mes en hora del Pacífico; el servicio también (contadores de cuota y reintentos por cuota). El cupo gratuito de Text Search Pro es de 5.000 al mes.

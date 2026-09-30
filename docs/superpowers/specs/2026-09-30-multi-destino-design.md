@@ -123,9 +123,9 @@ final:  mark
 
 ### Cuotas por clave (la cola no se para)
 
-- Cada etapa declara la cuota que consume: `geocode` → `places_calls`; `classify`, `extract` y `publish` → `openrouter_usd`.
-- `QuotaExceeded` lleva su clave. El job afectado se aparca hasta el siguiente reinicio de cuota, sin gastar un intento. Durante **esa pasada**, a cualquier otro job que llegue a una etapa con esa clave se le aparca antes de ejecutarla, sin llamar a la API. Todo lo demás sigue.
-- El aviso por ntfy se manda una vez al día por clave, como hoy.
+- `QuotaExceeded` lleva la clave de su cuota (`places_calls`, `openrouter_usd`). El job afectado se aparca hasta el siguiente reinicio de cuota, sin gastar un intento, y **la pasada continúa**.
+- No hace falta que las etapas declaren sus cuotas: `DailyQuota.check()` lee un contador local, así que un job que llega a una etapa con la cuota agotada se aparca sin llamar a la API, y uno que no la necesita (búsquedas en caché, etapas sin cuota) avanza.
+- El aviso por ntfy se manda una vez al día por clave.
 
 ## 5. Estado (`state.db`)
 
