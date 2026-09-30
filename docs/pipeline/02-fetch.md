@@ -7,7 +7,7 @@
 
 **Atención (limpieza y reprocesado):** cuando el job termina (salvo `error`, que conserva los ficheros hasta que un reprocesado lo termine) se borra `data/jobs/<id>/`, pero el resultado de `fetch` **se conserva** con sus metadatos (título, autor, caption, URL, que usa `publish`) y la marca `files_purged: true` (los resultados antiguos sin la clave se leen como `false`). El pipeline vuelve a ejecutar `fetch` solo si va a ejecutar una etapa que necesita los ficheros (`needs_files`: `transcribe`, `classify` y `extract`) y el `fetch` guardado tiene `files_purged`; como mucho una vez por job.
 - `reprocess --from geocode`, `--from resolve` o `--from publish`: no descarga nada ni falla si el Reel ya no existe (dentro de la retención).
-- `--from extract`, `--from classify` o `--from transcribe`: vuelve a descargar (necesita audio o fotogramas); falla si el original ya no está disponible.
+- `--from extract` o `--from classify`: vuelve a descargar (necesita fotogramas); falla si el original ya no está disponible. (`transcribe` también necesita los ficheros; se repite con `--from fetch`.)
 - `--from fetch`: como siempre.
 - Pasada la retención (`retencion_dias`), o con `retencion_dias: 0`: no quedan resultados de etapa y se rehace todo (descarga, Whisper, LLM y Places).
 

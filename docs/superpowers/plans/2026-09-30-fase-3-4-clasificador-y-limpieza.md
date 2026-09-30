@@ -48,7 +48,7 @@
 2. **`reprocess` de un bookmark que no está en `state.db`:** usa `destino_legado`, salvo que se pase `--destino`. Karakeep no dice en qué listas está un bookmark sin recorrerlas todas.
 3. **Destino forzado:**
    - `reprocess --destino X` guarda `destination=X` y borra desde `classify`. `classify` respeta el destino guardado y no llama al LLM.
-   - `reprocess --from fetch|transcribe|classify` **sin** `--destino` borra `destination`, así que el destino se vuelve a decidir.
+   - `reprocess --from fetch|classify` **sin** `--destino` borra `destination`, así que el destino se vuelve a decidir.
    - `reprocess --from extract` o posterior sin `--destino` conserva el destino y el resultado de `classify`.
 4. **Modo `etiqueta`:** la confianza es 1,0 y no hay alternativa (sin logprobs; YAGNI). Los adaptadores específicos (JEV) quedan como punto abierto: hay un registro `CLASSIFIERS` listo para añadirlos.
 5. **Modelo del clasificador:** `clasificador.modelo` del YAML. Si no se indica, se usa `OPENROUTER_TEXT_MODEL` (o `OPENROUTER_MODEL`). El preflight solo lo comprueba si alguna lista tiene más de un destino.

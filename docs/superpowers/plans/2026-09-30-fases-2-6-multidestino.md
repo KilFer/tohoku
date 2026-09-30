@@ -186,7 +186,7 @@ Prevalecen sobre lo que digan las tareas de más abajo.
 
 1. **Jobs anteriores:** la migración deja `candidates` y `destination` a NULL (no asigna `japon`). `classify` los trata como `[destino_legado]`, clave opcional del YAML: por defecto el único destino; con varios y sin la clave, `ConfigError`.
 2. **`reprocess` de un bookmark que no está en `state.db`:** usa `destino_legado`, salvo `--destino`.
-3. **Destino forzado:** `reprocess --destino X` guarda `destination=X` y repite desde `classify` (que no llama al LLM). `--from fetch|transcribe|classify` sin `--destino` olvida el destino; `--from extract` o posterior lo conserva. Las notas viejas de Trilium no se borran.
+3. **Destino forzado:** `reprocess --destino X` guarda `destination=X` y repite desde `classify` (que no llama al LLM). `--from fetch|classify` sin `--destino` olvida el destino; `--from extract` o posterior lo conserva. Las notas viejas de Trilium no se borran.
 4. **Modo `etiqueta`:** confianza 1,0 y sin alternativa; adaptadores específicos (JEV) abiertos vía registro `CLASSIFIERS`.
 5. **Modelo del clasificador:** `clasificador.modelo`, o `OPENROUTER_TEXT_MODEL`/`OPENROUTER_MODEL`. El preflight solo lo comprueba si alguna lista tiene varios destinos.
 6. **`clasificacion-dudosa`:** la calcula `classify` (`Classification.dudosa`) y la añade el `resolve` del flujo `viaje`.
@@ -292,7 +292,7 @@ class ClassifyStage:                     # name = "classify", result_model = Cla
 **Rulings de la fase 4 (ejecución 2026-09-30):**
 - Ruling 8 del plan: al limpiar un job terminado se borran su directorio y el resultado de `fetch`; un reprocesado vuelve a descargar; la purga se hace en cada pasada del servicio.
 - El implementador decidió: `purge` también borra el resultado `fetch` de los directorios que elimina (los que quedaban de antes del despliegue), y con `retencion_dias: 0` se usa `delete_stages` (todos los resultados) al terminar.
-- **Consecuencia (I-1):** todo `reprocess` de un job limpiado, incluso `--from geocode|resolve|publish`, vuelve a descargar el medio; si el Reel ya no existe acaba en `jr:error` aunque `transcribe`/`extract` sigan en caché. Documentado en `docs/operations.md` (Limpieza) y `docs/pipeline/02-fetch.md`.
+- **Consecuencia (I-1):** todo `reprocess` de un job limpiado, incluso `--from geocode|resolve|publish`, vuelve a descargar el medio; si el Reel ya no existe acaba en `jr:error` aunque `transcribe`/`extract` sigan en caché. Documentado en `docs/operations.md` (Limpieza) y `docs/pipeline/02-fetch.md`. **Sustituida por Task 12:** `--from geocode|resolve|publish` ya no descargan; solo `--from classify|extract` (o `fetch`).
 - **Mejora futura propuesta:** conservar los metadatos de `fetch` cuando se purgan los ficheros y volver a descargar solo si debe ejecutarse una etapa que necesite los ficheros (`transcribe`, `extract`).
 
 ---

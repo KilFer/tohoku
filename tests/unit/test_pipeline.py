@@ -598,3 +598,24 @@ def test_stages_that_need_files_are_marked():
     assert ClassifyStage.needs_files is True
     assert ExtractStage.needs_files is True
     assert getattr(FetchStage, "needs_files", False) is False
+
+
+def test_refetch_failing_permanently_marks_the_job_error_without_running_extract(tmp_path, state):
+    """Caracterización: la re-descarga sigue la política de errores de siempre (p. ej. el Reel ya no existe)."""
+    _add(state)
+    state.save_stage("b1", "fetch", make_fetch(files_purged=True))
+    log = []
+    fetch = LoggedStep("fetch", log, result=make_fetch())
+    fetch.error = PermanentError("El Reel ya no existe")
+    extract = LoggedStep("extract", log, needs_files=True)
+    publish = _publish_step(log)
+    mark = FakeMark()
+    pipeline = Pipeline(state, [fetch, extract, publish], mark, FakeNotifier(), tmp_path / "data", clock=lambda: NOW)
+
+    pipeline.run_due()
+
+    job = state.get_job("b1")
+    assert job.status == JobStatus.ERROR
+    assert "El Reel ya no existe" in job.last_error
+    assert fetch.calls == 1 and extract.calls == 0 and publish.calls == 0
+    assert mark.calls == [("b1", Outcome.ERROR)]

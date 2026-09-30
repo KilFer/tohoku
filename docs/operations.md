@@ -99,11 +99,11 @@ Clave opcional del YAML `config/destinos.yaml`: `limpieza: {retencion_dias: N}` 
 | Comando sobre un job limpiado | Qué descarga o repite |
 |---|---|
 | `reprocess --from geocode`, `--from resolve` o `--from publish` (dentro de la retención) | No descarga nada, y no falla aunque el Reel ya no exista: usa la transcripción y la extracción guardadas |
-| `reprocess --from extract`, `--from classify` o `--from transcribe` | Vuelve a descargar (necesita audio, fotogramas o imágenes); si el Reel se ha borrado o restringido, acaba en `jr:error` |
+| `reprocess --from extract` o `--from classify` | Vuelve a descargar (necesita fotogramas e imágenes); si el Reel se ha borrado o restringido, acaba en `jr:error` |
 | `reprocess --from fetch` | Como siempre: descarga y lo repite todo |
 | Pasada la retención (`retencion_dias`), o con `retencion_dias: 0` | No queda ningún resultado de etapa: se rehace todo (descarga, Whisper, LLM y Places, con su cuota y su coste) |
 
-Los jobs en `error` conservan sus ficheros (no se limpian) hasta que un reprocesado los termina. Recomendación: reprocesar desde `extract`/`classify` en tandas pequeñas, para no chocar con los límites de ritmo de Instagram (`INSTAGRAM_MIN_INTERVAL_SECONDS`).
+`transcribe` también necesita los ficheros, pero no es un `--from` válido: se repite con `--from fetch`. Los jobs en `error` conservan sus ficheros (no se limpian) hasta que un reprocesado los termina. Recomendación: reprocesar desde `extract`/`classify` en tandas pequeñas, para no chocar con los límites de ritmo de Instagram (`INSTAGRAM_MIN_INTERVAL_SECONDS`).
 
 ## Copias de seguridad
 `data/state.db` guarda el estado de la cola. Si se pierde, no se reprocesan los bookmarks ya etiquetados `jr:*`; las notas de Trilium tienen su propio adjunto `japan-reader.json`.
