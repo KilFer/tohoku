@@ -86,7 +86,8 @@ def build_app(settings: Settings) -> App:
     runtime = FLOWS[destination.flujo].build(destination, deps)
     stages: list[Stage] = [FetchStage(settings, ytdlp, gallery, karakeep), transcribe, *runtime.stages]
     pipeline = Pipeline(state, stages, MarkStage(karakeep), notifier, settings.data_dir)
-    service = Service(karakeep, state, pipeline, notifier, settings, lambda: preflight(settings, trilium, llm, runtime))
+    service = Service(karakeep, state, pipeline, notifier, settings, lambda: preflight(settings, trilium, llm, runtime),
+                      list_ids=list(destinations.listas))
     return App(
         settings=settings, state=state, karakeep=karakeep, trilium=trilium, llm=llm, notifier=notifier,
         layout=runtime.layout, llm_budget=llm_budget, ytdlp=ytdlp, gallery=gallery, transcribe=transcribe,

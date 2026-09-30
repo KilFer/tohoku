@@ -53,7 +53,7 @@ def state(tmp_path):
 def _service(state, settings, pipeline, preflight=lambda: None, clock=None, notifier=None):
     karakeep = FakeKarakeep([Bookmark(id="b1", url="https://youtu.be/a")])
     return Service(karakeep, state, pipeline, notifier or FakeNotifier(), settings, preflight,
-                   clock=clock or (lambda: datetime(2026, 9, 28, 10, tzinfo=UTC)))
+                   list_ids=("L1",), clock=clock or (lambda: datetime(2026, 9, 28, 10, tzinfo=UTC)))
 
 
 def test_tick_runs_preflight_once_ingests_and_processes(state, settings):
@@ -151,3 +151,14 @@ def test_format_status(state):
     assert "pendiente: 1" in text and "error: 1" in text
     assert "OpenRouter 0.1234 USD" in text and "Places 3 llamadas" in text
     assert "b2 https://youtu.be/b — Private video" in text
+
+
+def test_tick_ingests_every_configured_list(state, settings):
+    karakeep = FakeKarakeep([Bookmark(id="a1", url="https://youtu.be/a1"), Bookmark(id="b1", url="https://youtu.be/b1")])
+    karakeep.lists["L1"] = ["a1"]
+    karakeep.add_to_list("L2", "b1")
+    service = Service(karakeep, state, FakePipeline(), FakeNotifier(), settings, lambda: None, list_ids=("L1", "L2"))
+
+    service.tick()
+
+    assert state.has_job("a1") and state.has_job("b1")

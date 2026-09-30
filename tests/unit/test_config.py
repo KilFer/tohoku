@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -6,7 +8,6 @@ from tohoku.config import Settings, Thresholds
 REQUIRED = {
     "KARAKEEP_URL": "http://kk",
     "KARAKEEP_API_KEY": "k",
-    "KARAKEEP_LIST_ID": "L",
     "TRILIUM_URL": "http://tr",
     "TRILIUM_ETAPI_TOKEN": "t",
     "OPENROUTER_API_KEY": "o",
@@ -33,7 +34,7 @@ def test_settings_read_from_environment_with_defaults(monkeypatch):
     assert s.max_video_duration_min == 15
     assert s.poll_interval_minutes == 10
     assert s.places_daily_limit == 150
-    assert s.trilium_root_label == "jrRoot"
+    assert s.destinos_file == Path("config/destinos.yaml")
     assert s.text_model == "vision/model"
     assert s.thresholds == Thresholds(
         japan_min=0.4, japan_review=0.7, item_review=0.7, cosa_duplicate=0.85

@@ -23,7 +23,7 @@ def ingest(karakeep: KarakeepClient, state: StateStore, list_id: str) -> IngestR
         bookmarks = list(karakeep.list_bookmarks(list_id))
     except ApiError as exc:
         if exc.status == 404:
-            raise ConfigError(f"No existe la lista de Karakeep {list_id} (KARAKEEP_LIST_ID)") from exc
+            raise ConfigError(f"No existe la lista de Karakeep {list_id} (config/destinos.yaml)") from exc
         raise
 
     report = IngestReport()

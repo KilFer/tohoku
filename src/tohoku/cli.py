@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from tohoku.config import Settings
 from tohoku.errors import ConfigError
 from tohoku.evaluation import EvalRunner, format_table, load_cases
+from tohoku.flows.registry import FLOWS
 from tohoku.flows.viaje.prompt import render_extract_prompt
 from tohoku.instagram_export import filter_collection, format_import_report, import_items, parse_export
 from tohoku.lock import AlreadyRunning, single_instance
@@ -15,7 +16,6 @@ from tohoku.log import setup_logging
 from tohoku.service import REPROCESS_FROM, format_status, reprocess
 from tohoku.stages.extract import ExtractStage
 from tohoku.stages.fetch import FetchStage
-from tohoku.trilium_layout import init_layout
 from tohoku.wiring import App, build_app
 
 app = typer.Typer(no_args_is_help=True, help="tohoku: de Karakeep a Trilium (notas a partir de Shorts, Reels y posts).")
@@ -28,6 +28,8 @@ def _load() -> App:
     except ValidationError as exc:
         typer.echo(f"Configuración incompleta (revisa .env):\n{exc}", err=True)
         raise typer.Exit(2) from exc
+    except ConfigError as exc:
+        raise _config_exit(exc) from exc
 
 
 def _config_exit(exc: ConfigError) -> typer.Exit:
@@ -66,14 +68,19 @@ def run_once() -> None:
 
 
 @app.command("init-trilium")
-def init_trilium() -> None:
-    """Crea bajo la nota #jrRoot la estructura que falte (idempotente)."""
+def init_trilium(
+    destino: Annotated[str | None, typer.Option(help="Destino de config/destinos.yaml (por defecto, el único)")] = None,
+) -> None:
+    """Crea bajo la nota raíz del destino la estructura que falte (idempotente)."""
     loaded = _load()
     try:
-        layout = init_layout(loaded.trilium, loaded.settings.trilium_root_label)
+        dest = loaded.destinations.destinos.get(destino) if destino else loaded.destination
+        if dest is None:
+            raise ConfigError(f"No existe el destino '{destino}' en {loaded.settings.destinos_file}")
+        summary = FLOWS[dest.flujo].init_trilium(loaded.trilium, dest)
     except ConfigError as exc:
         raise _config_exit(exc) from exc
-    typer.echo(f"Estructura lista. Mapa={layout.mapa} Comprar={layout.comprar} Revisión={layout.revision}")
+    typer.echo(summary)
 
 
 @app.command()
@@ -113,13 +120,19 @@ def import_instagram(
     collection: Annotated[str | None, typer.Option(help="Importar solo esta colección (p. ej. 'Japón')")] = None,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Solo contar, sin crear nada")] = False,
     limit: Annotated[int | None, typer.Option(help="Máximo de enlaces NUEVOS en esta tanda (relanzar = siguiente tanda)")] = None,
+    lista: Annotated[str | None, typer.Option(help="Lista de Karakeep destino (por defecto, la única de config/destinos.yaml)")] = None,
 ) -> None:
     """Importa a la lista de Karakeep los enlaces de la exportación de Instagram, del más antiguo al más reciente."""
     loaded = _load()
     items = parse_export(path)
     if collection:
         items = filter_collection(items, collection)
-    report = import_items(items, loaded.karakeep, loaded.settings.karakeep_list_id, dry_run, limit)
+    listas = list(loaded.destinations.listas)
+    list_id = lista or (listas[0] if len(listas) == 1 else None)
+    if list_id is None:
+        typer.echo(f"Hay {len(listas)} listas configuradas: indica una con --lista ({', '.join(listas)})", err=True)
+        raise typer.Exit(2)
+    report = import_items(items, loaded.karakeep, list_id, dry_run, limit)
     typer.echo(format_import_report(report, dry_run))
 
 

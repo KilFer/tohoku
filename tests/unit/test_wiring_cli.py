@@ -201,3 +201,38 @@ def test_build_app_rejects_several_destinations_for_now(settings, tmp_path):
     path.write_text(text, encoding="utf-8")
     with pytest.raises(ConfigError, match="fase 3"):
         build_app(settings.model_copy(update={"destinos_file": path}))
+
+
+def test_cli_init_trilium_uses_the_configured_destination(monkeypatch, settings):
+    trilium = FakeTrilium()
+    trilium.add_note("root", "Ideas de Japón", labels={"jrRoot": ""})
+    app = build_app(settings)
+    monkeypatch.setattr(cli, "_load", lambda: SimpleNamespace(**{**app.__dict__, "trilium": trilium}))
+
+    result = CliRunner().invoke(cli.app, ["init-trilium"])
+
+    assert result.exit_code == 0, result.output
+    assert "Estructura lista" in result.output
+    assert trilium.search("#jrMapa")
+
+
+def test_cli_init_trilium_rejects_unknown_destination(monkeypatch, settings):
+    app = build_app(settings)
+    monkeypatch.setattr(cli, "_load", lambda: app)
+    result = CliRunner().invoke(cli.app, ["init-trilium", "--destino", "nz"])
+    assert result.exit_code == 2
+    assert "nz" in result.output
+
+
+def test_cli_import_uses_the_only_configured_list(monkeypatch, settings, tmp_path):
+    app = build_app(settings)
+    seen = {}
+    monkeypatch.setattr(cli, "_load", lambda: app)
+    monkeypatch.setattr(cli, "parse_export", lambda path: [])
+    monkeypatch.setattr(cli, "import_items", lambda items, karakeep, list_id, dry_run, limit: seen.setdefault("list", list_id) and None)
+    monkeypatch.setattr(cli, "format_import_report", lambda report, dry_run: "ok")
+
+    result = CliRunner().invoke(cli.app, ["import-instagram", str(tmp_path / "x.json"), "--dry-run"])
+
+    assert result.exit_code == 0, result.output
+    assert seen["list"] == "L1"

@@ -1,6 +1,6 @@
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import datetime
 
 from tohoku.clients.karakeep import KarakeepClient
@@ -33,6 +33,7 @@ class Service:
         notifier: Notifier,
         settings: Settings,
         preflight: Callable[[], None],
+        list_ids: Sequence[str],
         clock: Callable[[], datetime] = _local_now,
     ) -> None:
         self._karakeep = karakeep
@@ -41,6 +42,7 @@ class Service:
         self._notifier = notifier
         self._settings = settings
         self._preflight = preflight
+        self._list_ids = list(list_ids)
         self._clock = clock
         self._ready = False
 
@@ -48,10 +50,15 @@ class Service:
         if not self._ready:
             self._preflight()
             self._ready = True
-        report = ingest(self._karakeep, self._state, self._settings.karakeep_list_id)
+        new: list[str] = []
+        unsupported: list[str] = []
+        for list_id in self._list_ids:
+            report = ingest(self._karakeep, self._state, list_id)
+            new += report.new
+            unsupported += report.unsupported
         processed = self._pipeline.run_due()
-        if report.new or report.unsupported or processed:
-            log.info("sondeo nuevos=%d no_soportados=%d procesados=%d", len(report.new), len(report.unsupported), processed)
+        if new or unsupported or processed:
+            log.info("sondeo nuevos=%d no_soportados=%d procesados=%d", len(new), len(unsupported), processed)
         self._maybe_daily_summary()
 
     def run_forever(self, sleep: Callable[[float], None] = time.sleep) -> None:

@@ -22,11 +22,9 @@ class Settings(BaseSettings):
 
     karakeep_url: str
     karakeep_api_key: str
-    karakeep_list_id: str
 
     trilium_url: str
     trilium_etapi_token: str
-    trilium_root_label: str = "jrRoot"
 
     openrouter_api_key: str
     openrouter_model: str

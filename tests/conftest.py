@@ -11,7 +11,6 @@ def settings(tmp_path) -> Settings:
         _env_file=None,
         karakeep_url="http://karakeep.test",
         karakeep_api_key="kk",
-        karakeep_list_id="L1",
         trilium_url="http://trilium.test",
         trilium_etapi_token="tt",
         openrouter_api_key="or",
