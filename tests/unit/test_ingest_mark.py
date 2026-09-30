@@ -20,7 +20,7 @@ def test_ingest_creates_jobs_for_new_supported_bookmarks(state):
         Bookmark(id="b2", url="https://www.instagram.com/p/XYZ/"),
     ])
 
-    report = ingest(karakeep, state, "L1")
+    report = ingest(karakeep, state, "L1", candidates=["japon"])
 
     assert report.new == ["b1", "b2"]
     assert state.get_job("b2").platform == Platform.INSTAGRAM
@@ -29,14 +29,14 @@ def test_ingest_creates_jobs_for_new_supported_bookmarks(state):
 
 def test_ingest_is_idempotent(state):
     karakeep = FakeKarakeep([Bookmark(id="b1", url="https://youtu.be/abc")])
-    ingest(karakeep, state, "L1")
-    assert ingest(karakeep, state, "L1").new == []
+    ingest(karakeep, state, "L1", candidates=["japon"])
+    assert ingest(karakeep, state, "L1", candidates=["japon"]).new == []
 
 
 def test_ingest_registers_unsupported_without_platform(state):
     karakeep = FakeKarakeep([Bookmark(id="b1", url="https://www.tiktok.com/@u/video/1"), Bookmark(id="b2", url=None)])
 
-    report = ingest(karakeep, state, "L1")
+    report = ingest(karakeep, state, "L1", candidates=["japon"])
 
     # Final review minor d: un bookmark que no es un enlace (nota, imagen suelta) se ignora.
     assert report.unsupported == ["b1"]
@@ -46,7 +46,7 @@ def test_ingest_registers_unsupported_without_platform(state):
 def test_ingest_ignores_bookmarks_that_are_not_links(state):
     karakeep = FakeKarakeep([Bookmark(id="b2", url=None)])
 
-    report = ingest(karakeep, state, "L1")
+    report = ingest(karakeep, state, "L1", candidates=["japon"])
 
     assert report.new == [] and report.unsupported == []
     assert not state.has_job("b2")
@@ -61,7 +61,7 @@ def test_ingest_skips_bookmarks_already_tagged_when_state_was_lost(state):
         Bookmark(id="b3", url="https://youtu.be/c", tags=["viaje"]),
     ])
 
-    report = ingest(karakeep, state, "L1")
+    report = ingest(karakeep, state, "L1", candidates=["japon"])
 
     assert report.new == ["b3"]
     assert not state.has_job("b1") and not state.has_job("b2")
@@ -107,3 +107,29 @@ def test_mark_without_destination_adds_no_destination_tag():
     result = MarkStage(karakeep).run("b1", Outcome.DESCARTADO)
     assert [t for t in karakeep.bookmarks["b1"].tags if t.startswith("jr:")] == ["jr:descartado"]
     assert result.destination_tag is None
+
+
+def test_ingest_stores_the_list_candidates(state):
+    karakeep = FakeKarakeep([Bookmark(id="b1", url="https://youtu.be/a")])
+    ingest(karakeep, state, "L1", candidates=["japon", "recetas"])
+    assert state.get_job("b1").candidates == ["japon", "recetas"]
+
+
+def test_same_bookmark_in_two_lists_gets_the_union_of_candidates(state):
+    """Review Focus 3."""
+    karakeep = FakeKarakeep([Bookmark(id="b1", url="https://youtu.be/a")])
+    karakeep.add_to_list("L2", "b1")
+
+    ingest(karakeep, state, "L1", candidates=["japon"])
+    ingest(karakeep, state, "L2", candidates=["recetas"])
+
+    assert state.get_job("b1").candidates == ["japon", "recetas"]
+
+
+def test_candidates_are_not_extended_once_the_destination_is_decided(state):
+    karakeep = FakeKarakeep([Bookmark(id="b1", url="https://youtu.be/a")])
+    karakeep.add_to_list("L2", "b1")
+    ingest(karakeep, state, "L1", candidates=["japon"])
+    state.set_destination("b1", "japon")
+    ingest(karakeep, state, "L2", candidates=["recetas"])
+    assert state.get_job("b1").candidates == ["japon"]

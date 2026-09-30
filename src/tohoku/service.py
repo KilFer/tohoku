@@ -1,6 +1,6 @@
 import logging
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 
 from tohoku.clients.karakeep import KarakeepClient
@@ -33,7 +33,7 @@ class Service:
         notifier: Notifier,
         settings: Settings,
         preflight: Callable[[], None],
-        list_ids: Sequence[str],
+        lists: Mapping[str, Sequence[str]],
         clock: Callable[[], datetime] = _local_now,
     ) -> None:
         self._karakeep = karakeep
@@ -42,7 +42,7 @@ class Service:
         self._notifier = notifier
         self._settings = settings
         self._preflight = preflight
-        self._list_ids = list(list_ids)
+        self._lists = {list_id: list(names) for list_id, names in lists.items()}
         self._clock = clock
         self._ready = False
 
@@ -52,8 +52,8 @@ class Service:
             self._ready = True
         new: list[str] = []
         unsupported: list[str] = []
-        for list_id in self._list_ids:
-            report = ingest(self._karakeep, self._state, list_id)
+        for list_id, candidates in self._lists.items():
+            report = ingest(self._karakeep, self._state, list_id, candidates)
             new += report.new
             unsupported += report.unsupported
         processed = self._pipeline.run_due()
