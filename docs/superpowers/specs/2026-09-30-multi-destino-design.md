@@ -1,4 +1,4 @@
-# japan-reader multidestino — Diseño
+# Tohoku (antes japan-reader): multidestino — Diseño
 
 - **Fecha:** 2026-09-30
 - **Estado:** Borrador (pendiente de revisión)
@@ -33,7 +33,6 @@ Ejemplos que guían el diseño:
 - Varios destinos para un mismo enlace: un job = un destino.
 - Un flujo genérico declarativo ("ficha" con campos en YAML). Puede añadirse más adelante como un flujo más.
 - Presupuestos o cuotas por destino: siguen siendo globales.
-- Renombrar el paquete, el contenedor o la CLI (`japan-reader`).
 
 ## 2. Configuración: `config/destinos.yaml`
 
@@ -246,6 +245,7 @@ Cada fase se puede desplegar sola, deja `uv run pytest -q` en verde, actualiza s
 
 | Fase | Contenido | Efecto visible |
 |---|---|---|
+| 0 | Renombrado a **Tohoku** (§11) | Nombre del contenedor, la CLI y los avisos |
 | 1 | Cuotas por clave: la cola no se detiene | La importación avanza aunque Places esté agotado |
 | 2 | `destinos.yaml` + refactor a `flows/viaje`; Japón como único destino | Ninguno (equivalencia) |
 | 3 | Varias listas, `candidates`/`destination`, `classify` con modos, `reprocess --destino`, `DESCARTADO` | Solo al configurar una lista con varios destinos |
@@ -254,7 +254,7 @@ Cada fase se puede desplegar sola, deja `uv run pytest -q` en verde, actualiza s
 | 6 | Nueva Zelanda solo con configuración (valida el criterio 1) | Nota NZ en Trilium |
 
 **Convivencia con la importación de Instagram en curso:**
-- La fase 1 puede desplegarse ya.
+- Las fases 0 y 1 pueden desplegarse ya (entre tandas).
 - Las fases 2-4 tocan el núcleo: se despliegan entre tandas y se comprueba antes, con una copia de `state.db`, que los jobs pendientes reanudan en la etapa correcta.
 
 ## 10. Riesgos
@@ -264,3 +264,33 @@ Cada fase se puede desplegar sola, deja `uv run pytest -q` en verde, actualiza s
 - **Clasificador con formato de salida no estándar (JEV):** interfaz con modos y adaptadores; punto abierto en §3.
 - **Reprocesar tras la purga cuesta Whisper + LLM:** es aceptable. `retencion_dias` permite ajustarlo.
 - **La vista Tabla de Trilium depende de los atributos promovidos de la plantilla:** se comprueba en integración manual con `#rcRootTest`.
+
+## 11. Renombrado a Tohoku (fase 0)
+
+`japan-reader` era un nombre ligado a un único destino. El proyecto pasa a llamarse **Tohoku**.
+
+**Cambia:**
+- el paquete `japan_reader` → `tohoku` (`git mv`);
+- `pyproject.toml` (nombre, descripción, script `tohoku`);
+- el servicio, la imagen (`tohoku:local`) y el contenedor (`tohoku`) de Docker;
+- los títulos de ntfy y los mensajes de log;
+- README, `CLAUDE.md`, `docs/*` y la especificación original (nota de renombrado).
+
+**Se mantiene** (identificadores ya escritos en datos reales; renombrarlos exigiría migrar ~500 notas y ~2.300 bookmarks sin ganancia funcional):
+- las etiquetas `jr:*` de Karakeep;
+- los atributos `#jr*` de Trilium (`jrRoot`, `jrItem`, `jrNombreNorm`, `jrTipo`…);
+- el adjunto `japan-reader.json`;
+- el contenido de `state.db`.
+
+`jr` queda documentado como prefijo interno.
+
+**Volumen de modelos:** Compose antepone el nombre del proyecto al del volumen (`japan-reader_whisper-models`). El compose declara `name: japan-reader_whisper-models` para reutilizarlo y no volver a descargar large-v3.
+
+**Directorio del repositorio:** `/media/1tb-disk/japan-reader` → `/media/1tb-disk/tohoku`, al final de la fase, con el contenedor parado y entre tandas. Se mueve también la memoria de Claude del proyecto (su ruta depende del directorio).
+
+**Verificación:**
+- `uv run pytest -q` en verde;
+- `docker compose build` y `up -d`;
+- `tohoku status` dentro del contenedor muestra los mismos jobs;
+- el modelo se carga desde el volumen existente sin descargar nada;
+- los jobs pendientes reanudan.
