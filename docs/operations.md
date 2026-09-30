@@ -86,5 +86,15 @@ Llegan avisos por: error definitivo de un enlace, error de configuración (el se
 - Google Cloud Console → APIs → Places API (New) → Cuotas: limita "SearchTextRequest per day" al mismo valor que `PLACES_DAILY_LIMIT` como red de seguridad. Google cuenta el día y el mes en hora del Pacífico; el servicio también (contadores de cuota y reintentos por cuota). El cupo gratuito de Text Search Pro es de 5.000 al mes.
 - OpenRouter: `OPENROUTER_DAILY_BUDGET_USD`. `status` muestra el consumo del día.
 
+## Limpieza
+Clave opcional del YAML `config/destinos.yaml`: `limpieza: {retencion_dias: N}` (por defecto 30; entero >= 0; 0 = borrar todos los resultados de etapa nada más terminar).
+
+- **Al terminar un job** con cualquier resultado salvo `error`: se borra su directorio `data/jobs/<id>/` (audio, fotogramas, imágenes) y su resultado de `fetch`. Con `retencion_dias: 0` se borran además todos sus resultados de etapa.
+- **En cada pasada del servicio** (`purge`): se borran los resultados de etapa de jobs terminados (`done`) cuya última actualización (`jobs.updated_at`) es anterior a `retencion_dias`; y los directorios de jobs `done` que sigan en disco (con su `fetch`). Nunca se tocan los jobs pendientes ni los `error` (sus ficheros se conservan para diagnosticar hasta que un reprocesado los termine), ni la tabla `jobs`, ni `published`.
+- Seguridad: solo ids simples, solo hijos directos de `data/jobs`, sin seguir enlaces simbólicos.
+- **Primera pasada tras desplegar**: elimina de golpe todos los directorios de jobs terminados y escribe una línea `limpieza jobs=N`. Con la copia de prueba del 2026-09-30: 969 directorios borrados, `data/jobs` de 230 MB a 12 MB (quedan los de pendientes y error). Al desplegar habrá bastantes más (~2.300). Comprobar con `du -sh data/jobs` antes y después.
+
+**Atención: consecuencias para `reprocess`.** Un job ya limpiado no tiene resultado de `fetch`, y el pipeline repite cualquier etapa sin resultado. Por tanto **todo `reprocess` de un job limpiado, incluso `--from geocode`, `--from resolve` o `--from publish`, vuelve a descargar el medio**. Si el Reel se ha borrado o restringido entretanto, el reprocesado acaba en `jr:error` aunque la transcripción y la extracción sigan en caché (dentro de la retención). Pasada la retención, además se repiten la transcripción (Whisper), la extracción (LLM) y la geocodificación (Places, con su cuota y su coste). Recomendación: reprocesar los jobs recientes dentro de la ventana de retención y en tandas pequeñas, para no chocar con los límites de ritmo de Instagram (`INSTAGRAM_MIN_INTERVAL_SECONDS`).
+
 ## Copias de seguridad
 `data/state.db` guarda el estado de la cola. Si se pierde, no se reprocesan los bookmarks ya etiquetados `jr:*`; las notas de Trilium tienen su propio adjunto `japan-reader.json`.

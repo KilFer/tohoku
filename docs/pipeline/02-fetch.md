@@ -3,7 +3,9 @@
 **Qué hace:** descarga el contenido y sus metadatos y prepara los medios para las etapas siguientes.
 
 **Entrada:** job (`url`, `platform`, `hint`).
-**Salida:** `FetchResult {meta, audio_files, subtitles, images, keyframes}`; ficheros en `data/jobs/<bookmark_id>/` (`audio/NN.wav`, `images/NN.jpg`, `frames/VV_NN.jpg`). El vídeo original se borra al terminar.
+**Salida:** `FetchResult {meta, audio_files, subtitles, images, keyframes}`; ficheros en `data/jobs/<bookmark_id>/` (`audio/NN.wav`, `images/NN.jpg`, `frames/VV_NN.jpg`). El vídeo original se borra al terminar la etapa.
+
+**Limpieza:** cuando el job termina (salvo `error`, que conserva los ficheros para diagnóstico) se borra `data/jobs/<id>/` y el resultado de `fetch`; ver la sección "Limpieza" de `docs/operations.md`. Consecuencia: reprocesar un job ya terminado, desde cualquier etapa, vuelve a descargar el medio (y falla si el original ya no está disponible).
 
 | Tipo | Herramienta | Qué se obtiene |
 |---|---|---|

@@ -6,7 +6,7 @@
 
 **Salida:** `Classification {destino | None, confianza, alternativa, confianza_alternativa, dudosa, omitido, cost_usd}`. Se guarda el resultado de la etapa y `jobs.destination`. `destino=None` significa `ninguno` y el job termina como `descartado`.
 
-**Dependencias:** OpenRouter (solo si hay varios candidatos), contador diario `openrouter_usd`, `prompts/classify.md`, `src/tohoku/classify/` (clasificadores `json_schema` y `etiqueta`, registro `CLASSIFIERS`).
+**Dependencias:** OpenRouter (solo si hay varios candidatos), contador diario `openrouter_usd`, `src/tohoku/prompts/classify.md`, `src/tohoku/classify/` (clasificadores `json_schema` y `etiqueta`, registro `CLASSIFIERS`).
 
 **Configuración:** en `config/destinos.yaml`:
 - `clasificador.modelo` (por defecto `OPENROUTER_TEXT_MODEL`, o `OPENROUTER_MODEL`), `clasificador.modo` (`json_schema` | `etiqueta`, por defecto `json_schema`), `clasificador.confianza_minima` (0,5), `clasificador.margen_revision` (0,15).

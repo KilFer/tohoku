@@ -287,6 +287,12 @@ class ClassifyStage:                     # name = "classify", result_model = Cla
 
 **Despliegue:** la primera pasada limpia los ~800+ directorios de jobs terminados. Hay que avisar al usuario del espacio liberado (`du -sh data/jobs` antes y después).
 
+**Rulings de la fase 4 (ejecución 2026-09-30):**
+- Ruling 8 del plan: al limpiar un job terminado se borran su directorio y el resultado de `fetch`; un reprocesado vuelve a descargar; la purga se hace en cada pasada del servicio.
+- El implementador decidió: `purge` también borra el resultado `fetch` de los directorios que elimina (los que quedaban de antes del despliegue), y con `retencion_dias: 0` se usa `delete_stages` (todos los resultados) al terminar.
+- **Consecuencia (I-1):** todo `reprocess` de un job limpiado, incluso `--from geocode|resolve|publish`, vuelve a descargar el medio; si el Reel ya no existe acaba en `jr:error` aunque `transcribe`/`extract` sigan en caché. Documentado en `docs/operations.md` (Limpieza) y `docs/pipeline/02-fetch.md`.
+- **Mejora futura propuesta:** conservar los metadatos de `fetch` cuando se purgan los ficheros y volver a descargar solo si debe ejecutarse una etapa que necesite los ficheros (`transcribe`, `extract`).
+
 ---
 
 ## Fase 5: flujo `receta`
