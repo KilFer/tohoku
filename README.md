@@ -10,18 +10,19 @@ Convierte YouTube Shorts, Instagram Reels y posts de Instagram guardados en Kara
 
 ## Puesta en marcha
 1. `cp .env.example .env` y rellénalo.
-2. En Trilium, añade la etiqueta `#jrRoot` a `Home › Viajes › Ideas de Japón`.
-3. `docker compose build && docker compose run --rm tohoku tohoku init-trilium`
-4. `docker compose up -d` y `docker compose logs -f tohoku`.
+2. Revisa `config/destinos.yaml` (listas de Karakeep, destino, raíz de Trilium, prompt). Ya no hay `KARAKEEP_LIST_ID` ni `TRILIUM_ROOT_LABEL` en `.env`.
+3. En Trilium, añade la etiqueta `#jrRoot` a `Home › Viajes › Ideas de Japón` (la que indique `raiz` en el YAML).
+4. `docker compose build && docker compose run --rm tohoku tohoku init-trilium [--destino japon]`
+5. `docker compose up -d` y `docker compose logs -f tohoku`.
 
 ## Comandos
-`run` · `run-once` · `init-trilium` · `status` · `reprocess <id>... | --all-errors [--from <etapa>]` · `import-instagram <export> [--collection] [--limit N] [--dry-run]` · `eval [--model] [--keyframes/--no-keyframes]`
+`run` · `run-once` · `init-trilium [--destino X]` · `status` · `reprocess <id>... | --all-errors [--from <etapa>]` · `import-instagram <export> [--collection] [--lista ID] [--limit N] [--dry-run]` · `eval [--model] [--keyframes/--no-keyframes]`
 
 ## Documentación
 - Diseño: `docs/superpowers/specs/2026-09-28-japan-reader-design.md`
 - Etapas: `docs/pipeline/01-ingest.md` … `08-mark.md`
 - Modelo de Trilium: `docs/trilium-model.md`
-- Operación: `docs/operations.md`
+- Operación y destinos: `docs/operations.md`
 - Estado actual, entorno y pendientes (para retomar el trabajo): `CLAUDE.md`
 
 ## Desarrollo

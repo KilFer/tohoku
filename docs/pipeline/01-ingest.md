@@ -1,11 +1,11 @@
 # Etapa 1 — ingest
 
-**Qué hace:** lee la lista de Karakeep configurada y crea un *job* en `state.db` por cada bookmark nuevo.
+**Qué hace:** lee las listas de Karakeep configuradas en `config/destinos.yaml` (clave `listas`) y crea un *job* en `state.db` por cada bookmark nuevo.
 
-**Entrada:** `KARAKEEP_LIST_ID` (lista "Japón").
+**Entrada:** las listas de `config/destinos.yaml` (hoy una: la lista "Japón", que apunta al destino `japon`).
 **Salida:** filas en la tabla `jobs` (`bookmark_id`, `url`, `platform`, `hint`, `status=pending`).
 **Dependencias:** API de Karakeep (`GET /api/v1/lists/{id}/bookmarks`, paginada con `cursor`).
-**Configuración:** `KARAKEEP_URL`, `KARAKEEP_API_KEY`, `KARAKEEP_LIST_ID`, `POLL_INTERVAL_MINUTES`.
+**Configuración:** `KARAKEEP_URL`, `KARAKEEP_API_KEY`, `POLL_INTERVAL_MINUTES`, `DESTINOS_FILE` (por defecto `config/destinos.yaml`). `KARAKEEP_LIST_ID` ya no se lee de `.env`: se ignora si sigue ahí.
 
 **Reglas:**
 - Se ignoran los bookmarks que ya tienen job o que ya llevan una etiqueta `jr:*` (protege frente a pérdida de `state.db`).

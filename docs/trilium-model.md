@@ -1,6 +1,6 @@
 # Modelo de datos en Trilium
 
-La raíz es la nota **`Home › Viajes › Ideas de Japón`**, marcada a mano una vez con `#jrRoot`. El servicio encuentra todo por atributos, así que puedes mover o renombrar las notas.
+La raíz es la nota **`Home › Viajes › Ideas de Japón`**, marcada a mano una vez con `#jrRoot`. La etiqueta de la raíz de cada destino es la clave `raiz` de `config/destinos.yaml` (Japón: `jrRoot`; un destino nuevo usaría `jrRoot<Destino>`, p. ej. `jrRootNZ`). La estructura de debajo se crea con `tohoku init-trilium [--destino X]`. El servicio encuentra todo por atributos, así que puedes mover o renombrar las notas.
 
 El prefijo `jr` de todos los atributos y del adjunto `japan-reader.json` viene del nombre original del proyecto (*japan-reader*, hoy Tohoku) y se mantiene a propósito.
 

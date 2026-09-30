@@ -20,6 +20,7 @@ Documentación de referencia (leer antes de cambiar comportamiento):
 - Desde el contenedor: Karakeep `http://karakeep-web:3000`, Trilium `http://trilium:8080`.
 - Desde el host (scripts/tests): Karakeep `http://localhost:3088`, Trilium `http://localhost:8750`.
 - Volúmenes: `./data → /data` (state.db, jobs, `data/instagram/`), `tohoku_whisper-models → /models` (large-v3; antes `japan-reader_whisper-models`), `./secrets → /secrets:ro`.
+- Configuración de destinos: `config/destinos.yaml` (+ `config/prompts/`), copiada a la imagen y montada `./config:/app/config:ro` (ver `docs/operations.md`).
 - `data/state.db` lo crea el contenedor como root: usar la CLI dentro del contenedor, no `uv run` sobre `data/`.
 - `data/models/` (~3,5 GB) es una copia del host de las pruebas; el contenedor usa el volumen `/models`. Se puede borrar si hace falta espacio.
 - No hay remoto git. `master` = lo desplegado o desplegable. El trabajo multidestino (fases 2-6 de `docs/superpowers/plans/2026-09-30-fases-2-6-multidestino.md`) va en la rama `feat/tohoku` y se integra en `master` con fast-forward al terminar cada fase.
@@ -39,6 +40,7 @@ Documentación de referencia (leer antes de cambiar comportamiento):
 ## Estado (2026-09-28)
 
 - En producción: `docker compose up -d`, sondeo cada 10 min. Prueba de humo con 3 enlaces OK (2 lugares en el mapa, 4 cosas, 1 otro; todos `jr:procesado` y archivados).
+- 2026-09-30: fase 2 (destinos configurables, flujo viaje) terminada en `feat/tohoku`; pendiente de integrar en `master` y desplegar (tras el despliegue de las fases 0+1). Config en `config/destinos.yaml` (prompt en `config/prompts/japon.md`); `KARAKEEP_LIST_ID` y `TRILIUM_ROOT_LABEL` ya no se leen de `.env`; editar `config/` solo pide `docker compose restart tohoku`.
 - `.env` completo: Karakeep (lista "Japón" = `seo5xdpquppqfy4hmzzeekfh`), Trilium v0.106, OpenRouter `openai/gpt-6-luna` (key con límite 8 $, presupuesto 2 $/día), Google Places (desde 2026-09-29: cuota diaria 2.200 en Cloud Console, `PLACES_DAILY_LIMIT=2000` (se mantiene; el usuario lo ajustará según el recuento exacto de la consola cuando se vuelva a llegar al límite), presupuesto con alertas de 5 $; el límite real es el cupo gratuito de 5.000/mes, que se renueva el día 1 en hora del Pacífico), ntfy `https://ntfy.belaza.me` topic `kamo`. Sin cookies de Instagram (de momento no hacen falta).
 - Medidas reales: ~2 min por Reel (Whisper large-v3 ~90 s), ~0,001 $ de LLM por enlace. `small` de Whisper no basta (confundió "Miki Jet" con "Mickey Jet").
 

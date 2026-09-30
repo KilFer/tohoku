@@ -39,6 +39,22 @@
 
 ## Fase 2: configuración de destinos y refactor a `flows/viaje` (sin cambio visible)
 
+> **Estado: ejecutada (2026-09-30) en `feat/tohoku`, con el plan `2026-09-30-fase-2-destinos-y-flujo-viaje.md`.** Donde las tareas 2.1-2.5 de abajo difieren de lo que sigue, manda esto. Decisiones (rulings) del plan de la fase 2:
+>
+> 1. **Prompt completo por destino** (clave `prompt:` en el YAML, p. ej. `config/prompts/japon.md`) en lugar de `viaje.md` base + `contexto`. El prompt de Japón queda idéntico texto a texto; solo se renderizan `{{categorias_lugar}}` y `{{categorias_cosa}}`. Coste: dos destinos de viaje duplican texto de prompt (es contenido, no código). Por tanto no existe `src/tohoku/prompts/viaje.md` ni el campo `contexto`.
+> 2. **`palabras_genericas` por destino se aplaza a la fase 6.** `normalize_name` sigue con su lista global, así que las claves `#jrNombreNorm` de Japón no cambian. Nueva Zelanda decidirá si lo necesita.
+> 3. **Mover los módulos a `flows/viaje/` y extraer utilidades comunes (Task 2.3) se aplaza a la fase 5**, cuando el segundo flujo muestre qué es común de verdad. En la fase 2, `flows/viaje/` solo contiene los parámetros, el prompt y el adaptador `Flow`; `stages/*`, `geo.py`, `trilium_layout.py` y `rules.py` no se han movido.
+> 4. **El pipeline no cambia en la fase 2.** `wiring` monta la lista de etapas; el destino por job y `resolve_destination` llegan en la fase 3.
+> 5. **Interfaz `Flow`:** `build(dest, deps) -> FlowRuntime` (con `.stages` y `.refresh()`) e `init_trilium(trilium, dest) -> str`. `refresh()` sustituye al `layout.refresh()` del preflight y mantiene el contrato duck-typed de los tests de `preflight`. Sustituye a `stages/init_trilium/check` de la Task 2.2.
+> 6. **Caché de Places:** las entradas existentes son de Japón y siguen sin prefijo; otros países usan el prefijo `"<PAIS>|"`.
+> 7. **Sin iconos por destino:** una categoría sin icono usa el pin genérico (`ICONS["otro"]`). No hay campo `iconos` en `ViajeParams`.
+> 8. **`Thresholds` y sus variables de entorno** (`JAPAN_MIN_CONFIDENCE`...) no se renombran en la fase 2.
+>
+> Otros ajustes ya aplicados: el compose monta `./config:/app/config:ro` (no `/config`) y la imagen lleva `config/` (`COPY config ./config`); `KARAKEEP_LIST_ID` y `TRILIUM_ROOT_LABEL` se eliminan de `Settings`; `ClassifierConfig` y `CleanupConfig` no existen todavía (fases 3 y 4).
+>
+> **Aplazado a otras fases:** a la **fase 5**, mover módulos a `flows/viaje/` y extraer las utilidades comunes de publicación (Task 2.3), y la interfaz definitiva de `Flow` cuando haya dos flujos; a la **fase 6**, `palabras_genericas` por destino, los iconos por destino si NZ los necesita y el renombrado de `Thresholds`/`JAPAN_*` si procede.
+
+
 ### Task 2.1: Modelo de configuración y carga del YAML
 
 **Files:**
@@ -260,6 +276,8 @@ class ClassifyStage:                     # name = "classify", result_model = Cla
 
 ## Fase 5: flujo `receta`
 
+> **Recibe de la fase 2** (rulings 3 y 5): mover los módulos del viaje a `flows/viaje/`, extraer las utilidades comunes (Task 2.3) y fijar la interfaz `Flow` (`build`/`init_trilium`) con dos flujos reales.
+
 ### Task 5.1: Parámetros, estructura en Trilium e `init-trilium --destino recetas`
 
 **Files:** `src/tohoku/flows/receta/{__init__,params,layout}.py`, `tests/unit/test_receta_layout.py`
@@ -349,6 +367,8 @@ class CoverResult(BaseModel):
 ---
 
 ## Fase 6: Nueva Zelanda solo con configuración
+
+> **Recibe de la fase 2** (rulings 2, 7 y 8): decidir si NZ necesita `palabras_genericas` propias (hoy global), iconos propios (hoy pin genérico) y si se renombran `Thresholds`/`JAPAN_*`.
 
 ### Task 6.1: Destino NZ
 

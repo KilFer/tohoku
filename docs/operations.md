@@ -1,7 +1,7 @@
 # Operación de Tohoku
 
 ## Día a día
-- Guarda el enlace (Short, Reel o post) en la lista **Japón** de Karakeep. Nada más.
+- Guarda el enlace (Short, Reel o post) en una lista de Karakeep que figure en `config/destinos.yaml` (hoy, la lista **Japón**). Nada más.
 - En ≤10 minutos se procesa. Los Reels tardan unos minutos más (Whisper en CPU).
 - Resultado en Karakeep: `jr:procesado` / `jr:revisar` / `jr:no-japon` (archivados) o `jr:error` (visible en la Home).
 
@@ -12,6 +12,27 @@ En Trilium, `Ideas de Japón › Bandeja de revisión`. Cada nota lleva `#revisa
 - `baja-confianza` / `clasificacion-incierta`: comprueba que el contenido tiene sentido.
 - `extraccion-fallida`: la nota trae caption y transcripción; crea la nota a mano o reprocesa.
 Al terminar: quita `#revisar` y quita el clon de la bandeja (clic derecho → "Eliminar" solo en la rama de la bandeja).
+
+## Destinos: `config/destinos.yaml`
+Qué listas de Karakeep se procesan y cómo se publica cada una. La fase 2 admite **un único destino** (Japón); varios destinos con clasificador llegan en la fase 3. Estructura:
+
+    listas:
+      seo5xdpquppqfy4hmzzeekfh: [japon]   # id de la lista de Karakeep → destinos candidatos
+    destinos:
+      japon:
+        flujo: viaje                      # único flujo por ahora
+        raiz: jrRoot                      # etiqueta de la nota raíz en Trilium
+        descripcion: "Viaje a Japón: ..."
+        prompt: prompts/japon.md          # relativo a config/
+        pais: JP                          # ISO 3166-1; regionCode de Places
+        # opcionales (por defecto, los de Japón): nombres_pais, latitud, longitud,
+        # categorias_lugar, categorias_cosa, alias_ciudad
+
+- El servicio sondea **todas** las listas del YAML. `KARAKEEP_LIST_ID` y `TRILIUM_ROOT_LABEL` ya no se leen de `.env` (si siguen ahí, se ignoran). La ruta del YAML es `DESTINOS_FILE` (por defecto `config/destinos.yaml`).
+- Un fichero inválido (YAML mal formado, clave desconocida o mal escrita, `#` en la raíz, prompt inexistente, lista que apunta a un destino que no existe) da `Error de configuración` con el nombre de la clave y sale con código 2.
+- La imagen lleva `config/` dentro (`COPY config ./config`) y el compose lo monta de solo lectura (`./config:/app/config:ro`): **editar `config/` no requiere reconstruir**, basta `docker compose restart tohoku`.
+- El prompt de Japón es `config/prompts/japon.md`. Solo se sustituyen los marcadores `{{categorias_lugar}}` y `{{categorias_cosa}}` (las categorías del destino); el resto del texto es tuyo. Si el LLM devuelve una categoría que no es del destino, se reintenta una vez con el error.
+- `init-trilium [--destino X]` crea la estructura bajo la raíz de ese destino (por defecto, el único). `import-instagram ... [--lista ID]` elige la lista de Karakeep destino (por defecto, la única del YAML; con varias hay que indicarla).
 
 ## Comandos
     docker compose exec tohoku tohoku status

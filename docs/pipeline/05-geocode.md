@@ -7,7 +7,7 @@
 
 **Dependencias:** Google Places API (New) — Text Search Pro; contador diario `places_calls` en `state.db`.
 
-**Configuración:** `GOOGLE_PLACES_API_KEY`, `PLACES_DAILY_LIMIT` (150 por defecto).
+**Configuración:** `GOOGLE_PLACES_API_KEY`, `PLACES_DAILY_LIMIT` (150 por defecto). Del destino (`config/destinos.yaml`, flujo `viaje`): `pais` (código ISO, `JP`; es también el `regionCode` de la petición), `nombres_pais`, `latitud`/`longitud` (caja de coordenadas) y `alias_ciudad`; si no se indican, valen los de Japón. Los ejemplos de esta página describen Japón.
 
 **Petición:** `POST places:searchText` con `regionCode=JP`, `languageCode=es`, `pageSize=5` y `X-Goog-FieldMask` limitado a campos Pro (`id, displayName, formattedAddress, location, googleMapsUri, types, postalAddress, addressComponents`). No se piden horarios ni valoraciones (Enterprise).
 
@@ -21,7 +21,7 @@
 
 **Cuota:** contador diario `places_calls` limitado por `PLACES_DAILY_LIMIT` (150 por defecto ≈ 4.500/mes, por debajo de las 5.000 gratis). El "día" de los contadores de cuota es el de **hora del Pacífico**, como el de Google (renueva a medianoche PT = 09:00 en España en verano): así el servicio no llama a Google cuando su cuota del día ya está agotada. Al llegar al límite el job se reprograma a la siguiente medianoche del Pacífico + 5 min y la pasada sigue con los demás jobs: los que lleguen a `geocode` con búsquedas nuevas se aparcan igual sin llamar a Google; los que lo tengan todo en caché, o estén en etapas anteriores, avanzan. Configura además una cuota diaria en Google Cloud Console (APIs → Places API (New) → Cuotas) igual a `PLACES_DAILY_LIMIT`.
 
-**Caché de búsquedas:** cada consulta a Places (normalizada: minúsculas y espacios) se guarda en la tabla `places_cache` de `state.db` durante 30 días (`CACHE_MAX_AGE`), también las que no devuelven nada. Una consulta repetida ("dotonbori osaka" aparece en 18 vídeos) se resuelve sin llamar a Google ni gastar cuota. Medido el 2026-09-29: el 31 % de las consultas eran repetidas. Si cambia el cliente de Places (campos pedidos o su interpretación), vaciar la tabla: `DELETE FROM places_cache`.
+**Caché de búsquedas:** la clave incluye el país del destino: las de Japón van sin prefijo (las entradas anteriores a la fase 2 siguen valiendo) y las de otro país con el prefijo `<PAIS>|`, así que una búsqueda de Nueva Zelanda nunca reutiliza una de Japón. Cada consulta a Places (normalizada: minúsculas y espacios) se guarda en la tabla `places_cache` de `state.db` durante 30 días (`CACHE_MAX_AGE`), también las que no devuelven nada. Una consulta repetida ("dotonbori osaka" aparece en 18 vídeos) se resuelve sin llamar a Google ni gastar cuota. Medido el 2026-09-29: el 31 % de las consultas eran repetidas. Si cambia el cliente de Places (campos pedidos o su interpretación), vaciar la tabla: `DELETE FROM places_cache`.
 
 **Fallos:** API key inválida → `ConfigError`; 429/5xx → reintento.
 

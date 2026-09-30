@@ -6,7 +6,7 @@
 **Salida:** `PublishResult {notes: [PublishedNote], outcome}`. `outcome`: `no-japon` si se descartó; `revisar` si algún elemento tiene motivos de revisión; si no, `procesado`.
 
 **Dependencias:** Trilium ETAPI (notas, atributos, ramas y adjuntos), OpenRouter (solo para reescribir al fusionar), tabla `published` de `state.db`.
-**Configuración:** `OPENROUTER_TEXT_MODEL` (o `OPENROUTER_MODEL`), `OPENROUTER_DAILY_BUDGET_USD`, `TRILIUM_URL`, `TRILIUM_ETAPI_TOKEN`, `TRILIUM_ROOT_LABEL`.
+**Configuración:** `OPENROUTER_TEXT_MODEL` (o `OPENROUTER_MODEL`), `OPENROUTER_DAILY_BUDGET_USD`, `TRILIUM_URL`, `TRILIUM_ETAPI_TOKEN`. La raíz (`#jrRoot`) es la clave `raiz` del destino en `config/destinos.yaml`; `TRILIUM_ROOT_LABEL` ya no se lee de `.env`.
 
 **Crear:** nota de texto en su sitio (Lugar → Mapa; Cosa → su categoría; Otro → Cultura), atributos gestionados, `~template` y adjunto `japan-reader.json`.
 **Fusionar:** lee el adjunto, añade la fuente (o la actualiza si es el mismo bookmark; si además es la única fuente de la nota, la nota se regenera con la extracción nueva sin llamar al LLM), una llamada al LLM (`OPENROUTER_TEXT_MODEL`, prompt `prompts/merge.md`) reescribe Resumen, Qué hacer y Consejos, y se regenera el HTML conservando "Mis notas". Si el LLM devuelve algo inválido, se conservan los textos y se unen los consejos.
