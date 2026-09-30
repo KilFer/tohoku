@@ -97,3 +97,42 @@ def test_classifiers_registry():
     assert set(CLASSIFIERS) == {"json_schema", "etiqueta"}
     assert CLASSIFIERS["json_schema"] is JsonSchemaClassifier
     assert CLASSIFIERS["etiqueta"] is LabelClassifier
+
+
+NZ_CANDIDATES = [*CANDIDATES, Candidate(nombre="nueva_zelanda", descripcion="Viaje a Nueva Zelanda")]
+
+
+@pytest.mark.parametrize("raw", ["Nueva Zelanda", "nueva-zelanda", "NUEVA_ZELANDA."])
+def test_label_equivalent_names(raw):
+    verdict = LabelClassifier(FakeLLM([raw]), "m").classify("x", [], NZ_CANDIDATES)
+
+    assert verdict.destino == "nueva_zelanda"
+
+
+@pytest.mark.parametrize("raw", ["Nueva Zelanda", "nueva-zelanda", "NUEVA_ZELANDA."])
+def test_json_schema_equivalent_destino(raw):
+    llm = FakeLLM([_json(destino=raw)])
+
+    verdict = JsonSchemaClassifier(llm, "m").classify("x", [], NZ_CANDIDATES)
+
+    assert verdict.destino == "nueva_zelanda"
+
+
+@pytest.mark.parametrize("alt,expected", [("Nueva Zelanda", "nueva_zelanda"), ("ninguno", None), ("inventado", None)])
+def test_json_schema_alternativa_mapped(alt, expected):
+    llm = FakeLLM([_json(alternativa=alt)])
+
+    verdict = JsonSchemaClassifier(llm, "m").classify("x", [], NZ_CANDIDATES)
+
+    assert verdict.alternativa == expected
+
+
+def test_label_partial_name_raises():
+    with pytest.raises(ClassifierError):
+        LabelClassifier(FakeLLM(["zelanda"]), "m").classify("x", [], NZ_CANDIDATES)
+
+
+def test_json_schema_unrecognised_destino_passes_through():
+    verdict = JsonSchemaClassifier(FakeLLM([_json(destino="zelanda")]), "m").classify("x", [], NZ_CANDIDATES)
+
+    assert verdict.destino == "zelanda"

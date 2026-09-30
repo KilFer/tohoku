@@ -19,6 +19,7 @@
 - Con varios candidatos: se pasa al clasificador la descripción de cada destino, el texto (caption, hashtags, transcripción) y, si no hay texto, hasta 2 imágenes. Si la respuesta no es válida o nombra un destino que no es candidato, un reintento con el error; si vuelve a fallar, `TransientError`.
 - `ninguno` o `confianza` < `confianza_minima` → `destino=None` (`descartado`, etiqueta `jr:descartado`).
 - Si hay una alternativa candidata distinta y `confianza - confianza_alternativa` < `margen_revision` → `dudosa=true`; el `resolve` del flujo `viaje` añade el motivo de revisión `clasificacion-dudosa`.
+- Los nombres de destino se comparan sin distinguir mayúsculas, acentos ni separadores: espacios, guiones y guiones bajos son equivalentes (`Nueva Zelanda` = `nueva-zelanda` = `nueva_zelanda`); una `alternativa` desconocida se ignora.
 - Modo `etiqueta`: confianza 1,0 y sin alternativa (no hay logprobs). Los adaptadores específicos quedan abiertos (registro `CLASSIFIERS`).
 
 **Fallos:** varios candidatos sin clasificador → `ConfigError`; respuesta inválida tras el reintento o 429/5xx → reintento del job; presupuesto agotado → `QuotaExceeded` (espera al día siguiente). Un destino decidido o forzado que ya no existe en el YAML hace fallar solo ese job (`jr:error`), no la cola.
