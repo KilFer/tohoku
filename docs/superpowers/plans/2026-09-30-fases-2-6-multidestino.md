@@ -191,7 +191,7 @@ Prevalecen sobre lo que digan las tareas de más abajo.
 5. **Modelo del clasificador:** `clasificador.modelo`, o `OPENROUTER_TEXT_MODEL`/`OPENROUTER_MODEL`. El preflight solo lo comprueba si alguna lista tiene varios destinos.
 6. **`clasificacion-dudosa`:** la calcula `classify` (`Classification.dudosa`) y la añade el `resolve` del flujo `viaje`.
 7. **`App.stages`:** tramo común + etapas del destino legado; solo para el test de orden y `eval`.
-8. **Fase 4:** al limpiar un job terminado se borran su directorio y el resultado de `fetch`; un reprocesado vuelve a descargar. La limpieza se hace en cada pasada del servicio.
+8. **Fase 4:** al limpiar un job terminado se borran su directorio y el resultado de `fetch`; un reprocesado vuelve a descargar. La limpieza se hace en cada pasada del servicio. **Sustituida (Task 12, "No volver a descargar si no hace falta"):** el resultado de `fetch` se conserva (metadatos) con `files_purged: true`, y el pipeline solo vuelve a descargar antes de una etapa con `needs_files` (`transcribe`, `classify`, `extract`); `--from geocode`/`resolve`/`publish` no descargan.
 9. **Destino retirado del YAML:** no para la cola. `classify` descarta los candidatos obsoletos (respaldo `destino_legado`); un job cuyo destino decidido o forzado ya no existe falla solo (`PermanentError` → `jr:error`), no `ConfigError`.
 10. **Despliegue:** Tohoku (fases 0-4) se despliega solo cuando termine la importación de Instagram en curso; no habrá jobs legados aparcados en ese momento.
 
@@ -284,6 +284,8 @@ class ClassifyStage:                     # name = "classify", result_model = Cla
 - Job `PENDING` (reprocesándose) → nada purgado.
 - Tras la purga, `reprocess --from geocode` rehace `fetch`/`transcribe`/`extract`: los Steps falsos cuentan las llamadas.
 - `published` y el registro de `jobs` no se tocan nunca.
+
+**Nota (Task 12):** la decisión 8 y los tests de aceptación "sin `fetch`" y "`reprocess --from geocode` rehace `fetch`" quedan sustituidos: `fetch` se conserva con `files_purged: true` y solo se vuelve a descargar para las etapas con `needs_files` (`transcribe`, `classify`, `extract`). Ver `docs/operations.md`, "Limpieza".
 
 **Despliegue:** la primera pasada limpia los ~800+ directorios de jobs terminados. Hay que avisar al usuario del espacio liberado (`du -sh data/jobs` antes y después).
 

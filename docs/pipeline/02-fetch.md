@@ -5,7 +5,13 @@
 **Entrada:** job (`url`, `platform`, `hint`).
 **Salida:** `FetchResult {meta, audio_files, subtitles, images, keyframes}`; ficheros en `data/jobs/<bookmark_id>/` (`audio/NN.wav`, `images/NN.jpg`, `frames/VV_NN.jpg`). El vídeo original se borra al terminar la etapa.
 
-**Limpieza:** cuando el job termina (salvo `error`, que conserva los ficheros para diagnóstico) se borra `data/jobs/<id>/` y el resultado de `fetch`; ver la sección "Limpieza" de `docs/operations.md`. Consecuencia: reprocesar un job ya terminado, desde cualquier etapa, vuelve a descargar el medio (y falla si el original ya no está disponible).
+**Atención (limpieza y reprocesado):** cuando el job termina (salvo `error`, que conserva los ficheros hasta que un reprocesado lo termine) se borra `data/jobs/<id>/`, pero el resultado de `fetch` **se conserva** con sus metadatos (título, autor, caption, URL, que usa `publish`) y la marca `files_purged: true` (los resultados antiguos sin la clave se leen como `false`). El pipeline vuelve a ejecutar `fetch` solo si va a ejecutar una etapa que necesita los ficheros (`needs_files`: `transcribe`, `classify` y `extract`) y el `fetch` guardado tiene `files_purged`; como mucho una vez por job.
+- `reprocess --from geocode`, `--from resolve` o `--from publish`: no descarga nada ni falla si el Reel ya no existe (dentro de la retención).
+- `--from extract`, `--from classify` o `--from transcribe`: vuelve a descargar (necesita audio o fotogramas); falla si el original ya no está disponible.
+- `--from fetch`: como siempre.
+- Pasada la retención (`retencion_dias`), o con `retencion_dias: 0`: no quedan resultados de etapa y se rehace todo (descarga, Whisper, LLM y Places).
+
+Ver la sección "Limpieza" de `docs/operations.md`.
 
 | Tipo | Herramienta | Qué se obtiene |
 |---|---|---|
