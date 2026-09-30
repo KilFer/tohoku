@@ -9,7 +9,7 @@ from tohoku.errors import ConfigError
 from tohoku.flows.base import FlowDeps
 from tohoku.flows.registry import FLOWS
 from tohoku.flows.viaje.params import ViajeParams
-from tohoku.pipeline import STAGE_ORDER
+from tohoku.pipeline import COMMON_STAGES, STAGE_ORDER
 from tohoku.quota import DailyQuota
 from tohoku.state import StateStore
 
@@ -30,7 +30,7 @@ def test_viaje_is_registered():
 
 def test_build_gives_the_flow_stages_in_order(settings, tmp_path):
     runtime = FLOWS["viaje"].build(_dest(), _deps(settings, tmp_path, FakeTrilium()))
-    assert [s.name for s in runtime.stages] == list(STAGE_ORDER[2:])  # extract, geocode, resolve, publish
+    assert [s.name for s in runtime.stages] == list(STAGE_ORDER[len(COMMON_STAGES):])  # extract, geocode, resolve, publish
 
 
 def test_init_trilium_uses_the_destination_root_and_categories(settings, tmp_path):

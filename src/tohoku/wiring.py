@@ -1,5 +1,8 @@
 from dataclasses import dataclass
 
+from tohoku.classify import CLASSIFIERS
+from tohoku.classify.base import Classifier
+
 from tohoku.clients.karakeep import KarakeepClient
 from tohoku.clients.ntfy import Notifier
 from tohoku.clients.openrouter import OpenRouterClient, supports_images, supports_structured_output
@@ -14,6 +17,7 @@ from tohoku.media.downloaders import GalleryDlDownloader, YtDlpDownloader
 from tohoku.pipeline import Pipeline, Stage
 from tohoku.quota import DailyQuota
 from tohoku.service import Service
+from tohoku.stages.classify import ClassifyStage
 from tohoku.stages.fetch import FetchStage
 from tohoku.stages.mark import MarkStage
 from tohoku.stages.transcribe import TranscribeStage, WhisperTranscriber
@@ -38,23 +42,37 @@ class App:
     pipeline: Pipeline
     service: Service
     destinations: DestinationsConfig
-    destination: Destination
-    runtime: FlowRuntime
+    destination: Destination  # el destino legado
+    runtimes: dict[str, FlowRuntime]
+    classifier: Classifier | None  # None si ninguna lista tiene varios destinos
 
 
-def preflight(settings: Settings, trilium: TriliumClient, llm: OpenRouterClient, layout: FlowRuntime | LayoutCache) -> None:
-    """Comprobaciones antes de procesar: Trilium accesible y estructurado, modelos válidos, cookies."""
+def preflight(
+    settings: Settings,
+    trilium: TriliumClient,
+    llm: OpenRouterClient,
+    *layouts: FlowRuntime | LayoutCache,
+    classifier_model: str | None = None,
+    classifier_mode: str = "json_schema",
+) -> None:
+    """Comprobaciones antes de procesar: Trilium accesible y estructurado, modelos válidos, cookies.
+
+    `classifier_model` solo se indica si alguna lista tiene varios destinos (hay clasificador).
+    """
     trilium.app_info()
-    layout.refresh()
-    models = [("OPENROUTER_MODEL", settings.openrouter_model)]
+    for layout in layouts:
+        layout.refresh()
+    models = [("OPENROUTER_MODEL", settings.openrouter_model, True)]
     if settings.text_model != settings.openrouter_model:
-        models.append(("OPENROUTER_TEXT_MODEL", settings.text_model))
+        models.append(("OPENROUTER_TEXT_MODEL", settings.text_model, True))
+    if classifier_model is not None:
+        models.append(("clasificador.modelo", classifier_model, classifier_mode == "json_schema"))
     infos: dict[str, dict] = {}
-    for variable, model in models:
+    for variable, model, structured in models:
         info = llm.model_info(model)
         if info is None:
             raise ConfigError(f"{variable}={model} no existe en OpenRouter (revisa el nombre del modelo)")
-        if not supports_structured_output(info):
+        if structured and not supports_structured_output(info):
             raise ConfigError(
                 f"{variable}={model} no admite salida JSON estructurada (response_format/structured_outputs); elige otro modelo"
             )
@@ -83,14 +101,24 @@ def build_app(settings: Settings) -> App:
     destination = destinations.destinos[destinations.destino_legado]
     deps = FlowDeps(settings=settings, state=state, trilium=trilium, llm=llm, places=places,
                     llm_budget=llm_budget, places_quota=places_quota)
-    runtime = FLOWS[destination.flujo].build(destination, deps)
-    stages: list[Stage] = [FetchStage(settings, ytdlp, gallery, karakeep), transcribe, *runtime.stages]
-    pipeline = Pipeline(state, stages, MarkStage(karakeep), notifier, settings.data_dir)
-    service = Service(karakeep, state, pipeline, notifier, settings, lambda: preflight(settings, trilium, llm, runtime),
-                      lists=destinations.listas)
+    runtimes = {name: FLOWS[d.flujo].build(d, deps) for name, d in destinations.destinos.items()}
+    cfg = destinations.clasificador
+    classifier_model = (cfg.modelo or settings.text_model) if destinations.needs_classifier() else None
+    classifier = CLASSIFIERS[cfg.modo](llm, classifier_model) if classifier_model else None
+    common: list[Stage] = [
+        FetchStage(settings, ytdlp, gallery, karakeep), transcribe, ClassifyStage(destinations, classifier, llm_budget),
+    ]
+    pipeline = Pipeline(state, common, MarkStage(karakeep), notifier, settings.data_dir,
+                        flows={name: runtime.stages for name, runtime in runtimes.items()})
+    service = Service(
+        karakeep, state, pipeline, notifier, settings,
+        lambda: preflight(settings, trilium, llm, *runtimes.values(), classifier_model=classifier_model, classifier_mode=cfg.modo),
+        lists=destinations.listas,
+    )
+    legacy = runtimes[destinations.destino_legado]
     return App(
         settings=settings, state=state, karakeep=karakeep, trilium=trilium, llm=llm, notifier=notifier,
-        layout=runtime.layout, llm_budget=llm_budget, ytdlp=ytdlp, gallery=gallery, transcribe=transcribe,
-        stages=stages, pipeline=pipeline, service=service,
-        destinations=destinations, destination=destination, runtime=runtime,
+        layout=legacy.layout, llm_budget=llm_budget, ytdlp=ytdlp, gallery=gallery, transcribe=transcribe,
+        stages=[*common, *legacy.stages], pipeline=pipeline, service=service,
+        destinations=destinations, destination=destination, runtimes=runtimes, classifier=classifier,
     )

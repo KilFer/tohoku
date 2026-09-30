@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Protocol
@@ -9,13 +9,14 @@ from pydantic import BaseModel
 from tohoku.clients.ntfy import Notifier
 from tohoku.context import JobContext
 from tohoku.errors import ConfigError, TohokuError, PermanentError, QuotaExceeded
-from tohoku.models import Outcome, PublishResult
+from tohoku.models import Classification, Outcome, PublishResult
 from tohoku.stages.mark import MarkStage
 from tohoku.state import Job, StateStore, next_quota_reset, utcnow
 
 log = logging.getLogger(__name__)
 
-STAGE_ORDER = ("fetch", "transcribe", "extract", "geocode", "resolve", "publish")
+STAGE_ORDER = ("fetch", "transcribe", "classify", "extract", "geocode", "resolve", "publish")
+COMMON_STAGES = ("fetch", "transcribe", "classify")  # tramo común; el resto lo pone el flujo del destino
 BACKOFF = (
     timedelta(minutes=1),
     timedelta(minutes=5),
@@ -33,7 +34,11 @@ class Stage(Protocol):
 
 
 class Pipeline:
-    """Ejecuta las etapas de cada job en orden, persistiendo cada resultado y aplicando la política de errores."""
+    """Ejecuta las etapas de cada job en orden, persistiendo cada resultado y aplicando la política de errores.
+
+    Sin `flows`, `stages` es la lista completa. Con `flows`, `stages` es el tramo común (termina en `classify`) y
+    después se ejecutan las etapas del destino decidido (`flows[destino]`).
+    """
 
     def __init__(
         self,
@@ -43,6 +48,7 @@ class Pipeline:
         notifier: Notifier,
         data_dir: Path,
         clock: Callable[[], datetime] = utcnow,
+        flows: Mapping[str, Sequence[Stage]] | None = None,
     ) -> None:
         self._state = state
         self._stages = list(stages)
@@ -50,6 +56,7 @@ class Pipeline:
         self._notifier = notifier
         self._data_dir = data_dir
         self._clock = clock
+        self._flows = {name: list(stages) for name, stages in flows.items()} if flows is not None else None
 
     def run_due(self) -> int:
         """Procesa los jobs pendientes. Un job que agota una cuota diaria espera a que se renueve; los demás siguen.
@@ -70,17 +77,23 @@ class Pipeline:
         ctx = JobContext(job=job, workdir=self._data_dir / "jobs" / job.bookmark_id)
         try:
             ctx.workdir.mkdir(parents=True, exist_ok=True)
-            for stage in self._stages:
-                result = self._state.load_stage(job.bookmark_id, stage.name, stage.result_model)
-                if result is None:
-                    log.info("bookmark=%s etapa=%s", job.bookmark_id, stage.name)
-                    result = stage.run(ctx)
-                    self._state.save_stage(job.bookmark_id, stage.name, result)
-                ctx.results[stage.name] = result
+            self._run_stages(ctx, self._stages)
+            destination = None
+            if self._flows is not None:
+                decision = ctx.result("classify", Classification)
+                if decision.destino is None:
+                    self._finish(job.bookmark_id, Outcome.DESCARTADO, None)
+                    return
+                if decision.destino not in self._flows:
+                    # Solo este job: un destino borrado del YAML no debe parar la cola entera.
+                    raise PermanentError(
+                        f"El destino '{decision.destino}' del job {job.bookmark_id} ya no existe en config/destinos.yaml"
+                    )
+                destination = decision.destino
+                self._state.set_destination(job.bookmark_id, destination)
+                self._run_stages(ctx, self._flows[destination])
             outcome = ctx.result("publish", PublishResult).outcome
-            self._mark.run(job.bookmark_id, outcome)
-            self._state.finish(job.bookmark_id, outcome)
-            log.info("bookmark=%s terminado resultado=%s", job.bookmark_id, outcome)
+            self._finish(job.bookmark_id, outcome, destination)
         except ConfigError:
             raise
         except QuotaExceeded as exc:
@@ -98,10 +111,32 @@ class Pipeline:
             else:
                 self._state.schedule_retry(job.bookmark_id, self._clock() + BACKOFF[attempt - 1], str(exc))
 
+    def _run_stages(self, ctx: JobContext, stages: Sequence[Stage]) -> None:
+        """Carga el resultado guardado de cada etapa o la ejecuta y lo guarda."""
+        bookmark_id = ctx.job.bookmark_id
+        for stage in stages:
+            result = self._state.load_stage(bookmark_id, stage.name, stage.result_model)
+            if result is None:
+                log.info("bookmark=%s etapa=%s", bookmark_id, stage.name)
+                result = stage.run(ctx)
+                self._state.save_stage(bookmark_id, stage.name, result)
+            ctx.results[stage.name] = result
+
+    def _mark_run(self, bookmark_id: str, outcome: Outcome, destination: str | None) -> None:
+        if destination is None:
+            self._mark.run(bookmark_id, outcome)
+        else:
+            self._mark.run(bookmark_id, outcome, destination)
+
+    def _finish(self, bookmark_id: str, outcome: Outcome, destination: str | None) -> None:
+        self._mark_run(bookmark_id, outcome, destination)
+        self._state.finish(bookmark_id, outcome)
+        log.info("bookmark=%s terminado resultado=%s destino=%s", bookmark_id, outcome, destination)
+
     def mark_failed(self, bookmark_id: str, reason: str) -> None:
         job = self._state.get_job(bookmark_id)
         try:
-            self._mark.run(bookmark_id, Outcome.ERROR)
+            self._mark_run(bookmark_id, Outcome.ERROR, job.destination if job else None)
         except TohokuError as exc:
             log.warning("bookmark=%s no se pudo etiquetar jr:error: %s", bookmark_id, exc)
         self._state.finish(bookmark_id, Outcome.ERROR, reason)

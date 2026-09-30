@@ -14,7 +14,7 @@ from tohoku.state import Job, JobStatus, StateStore
 
 log = logging.getLogger(__name__)
 
-REPROCESS_FROM = ("fetch", "extract", "geocode", "resolve", "publish")
+REPROCESS_FROM = ("fetch", "classify", "extract", "geocode", "resolve", "publish")
 SUMMARY_HOUR = 21
 
 

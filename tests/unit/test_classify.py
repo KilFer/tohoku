@@ -1,3 +1,5 @@
+import dataclasses
+
 import pytest
 from pydantic import BaseModel
 
@@ -153,3 +155,29 @@ def test_sin_clasificador_es_config_error(tmp_path, state):
     stage, ctx, _, quota = _run(tmp_path, state, [])
     with pytest.raises(ConfigError):
         ClassifyStage(_config(), None, quota).run(ctx)
+
+
+def test_stale_candidates_are_dropped_before_deciding(tmp_path, state):
+    """Un candidato borrado de destinos.yaml no cuenta: queda uno solo y no se llama al LLM."""
+    config = _config()
+    config = dataclasses.replace(config, destinos={"japon": config.destinos["japon"]})
+    ctx = make_ctx(tmp_path, make_job(candidates=["japon", "borrado"]))
+    fake = FakeClassifier([])
+    result = ClassifyStage(config, fake, DailyQuota(state, "openrouter_usd", 10.0)).run(ctx)
+    assert result.destino == "japon" and result.omitido
+    assert fake.calls == []
+
+
+def test_all_candidates_stale_falls_back_to_destino_legado(tmp_path, state):
+    ctx = make_ctx(tmp_path, make_job(candidates=["borrado", "otro_borrado"]))
+    fake = FakeClassifier([])
+    result = ClassifyStage(_config(), fake, DailyQuota(state, "openrouter_usd", 10.0)).run(ctx)
+    assert result.destino == "japon" and result.omitido
+    assert fake.calls == []
+
+
+def test_forced_destination_missing_from_config_passes_through(tmp_path, state):
+    """El pipeline se encarga de él (PermanentError solo para ese job)."""
+    ctx = make_ctx(tmp_path, make_job(candidates=["japon"], destination="borrado"))
+    result = ClassifyStage(_config(), FakeClassifier([]), DailyQuota(state, "openrouter_usd", 10.0)).run(ctx)
+    assert result.destino == "borrado" and result.omitido

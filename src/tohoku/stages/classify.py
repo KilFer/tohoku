@@ -27,7 +27,8 @@ class ClassifyStage:
     def run(self, ctx: JobContext) -> Classification:
         if ctx.job.destination:
             return Classification(destino=ctx.job.destination, omitido=True)
-        names = ctx.job.candidates or [self._config.destino_legado]
+        # Los candidatos que ya no están en destinos.yaml no cuentan; si no queda ninguno, el destino legado.
+        names = [n for n in ctx.job.candidates or [] if n in self._config.destinos] or [self._config.destino_legado]
         if len(names) == 1:
             return Classification(destino=names[0], omitido=True)
         if self._classifier is None:

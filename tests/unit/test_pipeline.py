@@ -4,7 +4,7 @@ import pytest
 from pydantic import BaseModel
 
 from tohoku.errors import ConfigError, PermanentError, QuotaExceeded, TransientError
-from tohoku.models import MarkResult, Outcome, PublishResult
+from tohoku.models import Classification, MarkResult, Outcome, PublishResult
 from tohoku.pipeline import BACKOFF, Pipeline
 from tohoku.sources import ContentHint, Platform
 from tohoku.state import JobStatus, StateStore
@@ -51,8 +51,8 @@ class FakeMark:
         self.error = error
         self.calls = []
 
-    def run(self, bookmark_id, outcome):
-        self.calls.append((bookmark_id, outcome))
+    def run(self, bookmark_id, outcome, destination=None):
+        self.calls.append((bookmark_id, outcome) if destination is None else (bookmark_id, outcome, destination))
         if self.error:
             raise self.error
         return MarkResult(tag=f"jr:{outcome.value}", archived=outcome != Outcome.ERROR)
@@ -247,3 +247,73 @@ def test_parked_job_is_logged(tmp_path, state, caplog):
         pipeline.run_due()
 
     assert "bookmark=b1 aparcado por cuota places_calls hasta 2026-09-29T07:05:00+00:00" in caplog.text
+
+
+def _multi(tmp_path, state, verdict_destino):
+    fetch = Step("fetch")
+    classify = Step("classify", result=Classification(destino=verdict_destino))
+    japon_publish = Step("publish", result=PublishResult(outcome=Outcome.PROCESADO))
+    recetas_publish = Step("publish", result=PublishResult(outcome=Outcome.REVISAR))
+    mark = FakeMark()
+    pipeline = Pipeline(state, [fetch, classify], mark, FakeNotifier(), tmp_path / "data", clock=lambda: NOW,
+                        flows={"japon": [japon_publish], "recetas": [recetas_publish]})
+    return pipeline, mark, japon_publish, recetas_publish
+
+
+def test_job_runs_the_stages_of_its_classified_destination(tmp_path, state):
+    _add(state)
+    pipeline, mark, japon, recetas = _multi(tmp_path, state, "recetas")
+    pipeline.run_due()
+    assert (japon.calls, recetas.calls) == (0, 1)
+    assert state.get_job("b1").destination == "recetas" and state.get_job("b1").outcome == Outcome.REVISAR
+    assert mark.calls == [("b1", Outcome.REVISAR, "recetas")]
+
+
+def test_no_destination_is_descartado_without_flow_stages(tmp_path, state):
+    _add(state)
+    pipeline, mark, japon, recetas = _multi(tmp_path, state, None)
+    pipeline.run_due()
+    assert (japon.calls, recetas.calls) == (0, 0)
+    assert state.get_job("b1").outcome == Outcome.DESCARTADO
+    assert mark.calls == [("b1", Outcome.DESCARTADO)]  # sin destino: FakeMark registra el par
+
+
+def test_unknown_destination_fails_only_that_job(tmp_path, state):
+    """Un destino borrado del YAML marca jr:error solo ese job; la cola sigue (ruling del controlador)."""
+    _add(state, "b1")
+    _add(state, "b2")
+    fetch = Step("fetch")
+    classify = ByJobStep("classify", {"b1": Classification(destino="nz"), "b2": Classification(destino="japon")})
+    publish = Step("publish", result=PublishResult(outcome=Outcome.PROCESADO))
+    mark = FakeMark()
+    pipeline = Pipeline(state, [fetch, classify], mark, FakeNotifier(), tmp_path / "data", clock=lambda: NOW,
+                        flows={"japon": [publish]})
+
+    pipeline.run_due()
+
+    failed = state.get_job("b1")
+    assert failed.status == JobStatus.ERROR
+    assert "El destino 'nz' del job b1 ya no existe en config/destinos.yaml" in failed.last_error
+    done = state.get_job("b2")
+    assert done.status == JobStatus.DONE and done.outcome == Outcome.PROCESADO and done.destination == "japon"
+    assert mark.calls[-1] == ("b2", Outcome.PROCESADO, "japon")
+
+
+def test_mark_failed_tags_the_destination_of_the_job(tmp_path, state):
+    _add(state)
+    state.set_destination("b1", "recetas")
+    pipeline, mark, *_ = _multi(tmp_path, state, "recetas")
+    pipeline.mark_failed("b1", "x")
+    assert mark.calls == [("b1", Outcome.ERROR, "recetas")]
+
+
+class ByJobStep(Step):
+    """Devuelve un resultado distinto por bookmark."""
+
+    def __init__(self, name, results):
+        super().__init__(name, result=next(iter(results.values())))
+        self.results = results
+
+    def run(self, ctx):
+        self.calls += 1
+        return self.results[ctx.job.bookmark_id]

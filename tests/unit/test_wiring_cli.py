@@ -193,14 +193,89 @@ def test_build_app_uses_the_destination_from_config(settings):
     assert "Japón" in next(s for s in app.stages if s.name == "extract").system_prompt
 
 
-def test_build_app_rejects_several_destinations_for_now(settings, tmp_path):
+def _several_destinations(settings, tmp_path, shared_list=False):
+    """La fixture de destinos más `nz` (con `destino_legado: japon`); con `shared_list`, L1 lleva los dos."""
     text = (Path(__file__).parents[1] / "fixtures" / "destinos.yaml").read_text(encoding="utf-8")
     text = text.replace("../../config", str(Path(__file__).parents[2] / "config"))
     text += "  nz:\n    flujo: viaje\n    raiz: jrRootNZ\n    descripcion: NZ\n    prompt: " + str(Path(__file__).parents[2] / "config/prompts/japon.md") + "\n    pais: NZ\n"
+    text += "destino_legado: japon\n"
+    if shared_list:
+        text = text.replace("L1: [japon]", "L1: [japon, nz]")
     path = tmp_path / "destinos.yaml"
     path.write_text(text, encoding="utf-8")
-    with pytest.raises(ConfigError, match="destino_legado"):
-        build_app(settings.model_copy(update={"destinos_file": path}))
+    return settings.model_copy(update={"destinos_file": path})
+
+
+def test_build_app_accepts_several_destinations(settings, tmp_path):
+    app = build_app(_several_destinations(settings, tmp_path))
+    assert set(app.runtimes) == {"japon", "nz"}
+    assert app.destination.nombre == "japon"
+    assert [stage.name for stage in app.stages] == list(STAGE_ORDER)
+
+
+def test_build_app_single_destination_needs_no_classifier(settings):
+    app = build_app(settings)
+    assert set(app.runtimes) == {"japon"}
+    assert app.classifier is None
+
+
+def test_build_app_builds_the_classifier_when_a_list_has_several_destinations(settings, tmp_path):
+    app = build_app(_several_destinations(settings, tmp_path, shared_list=True))
+    assert app.classifier is not None
+
+
+class _Layout:
+    def __init__(self):
+        self.refreshed = 0
+
+    def refresh(self):
+        self.refreshed += 1
+
+
+def test_preflight_refreshes_every_layout(settings, trilium):
+    layouts = [_Layout(), _Layout()]
+    preflight(settings, trilium, FakeLLM([]), *layouts)
+    assert [layout.refreshed for layout in layouts] == [1, 1]
+
+
+def test_preflight_checks_the_classifier_model(settings, trilium):
+    models = {m: _info(m) for m in ("vision/model", "text/model")}
+    with pytest.raises(ConfigError, match="clasificador.modelo=clf/model no existe"):
+        preflight(settings, trilium, FakeLLM([], models=models), _Layout(), classifier_model="clf/model")
+
+
+def test_preflight_classifier_json_schema_needs_structured_outputs(settings, trilium):
+    models = {m: _info(m) for m in ("vision/model", "text/model")} | {"clf/model": _info("clf/model", params=("temperature",))}
+    with pytest.raises(ConfigError, match="clasificador.modelo=clf/model.*salida JSON estructurada"):
+        preflight(settings, trilium, FakeLLM([], models=models), _Layout(), classifier_model="clf/model")
+    preflight(settings, trilium, FakeLLM([], models=models), _Layout(), classifier_model="clf/model", classifier_mode="etiqueta")
+
+
+def test_cli_init_trilium_requires_destino_with_several(monkeypatch, settings, tmp_path):
+    app = build_app(_several_destinations(settings, tmp_path))
+    monkeypatch.setattr(cli, "_load", lambda: app)
+    result = CliRunner().invoke(cli.app, ["init-trilium"])
+    assert result.exit_code == 2
+    assert "indica --destino" in result.output and "nz" in result.output
+
+
+def test_cli_eval_rejects_unknown_destination(monkeypatch, settings):
+    app = build_app(settings)
+    monkeypatch.setattr(cli, "_load", lambda: app)
+    result = CliRunner().invoke(cli.app, ["eval", "--destino", "nz"])
+    assert result.exit_code == 2
+    assert "nz" in result.output
+
+
+def test_cli_reprocess_accepts_classify(fake_app):
+    fake_app.state.add_job("b1", "https://youtu.be/b1", Platform.YOUTUBE, ContentHint.VIDEO)
+    for stage in ("transcribe", "classify", "extract"):
+        fake_app.state.save_stage("b1", stage, SimpleModel())
+    result = CliRunner().invoke(cli.app, ["reprocess", "b1", "--from", "classify"])
+    assert result.exit_code == 0, result.output
+    assert fake_app.state.load_stage("b1", "transcribe", SimpleModel) is not None
+    assert fake_app.state.load_stage("b1", "classify", SimpleModel) is None
+    assert fake_app.state.load_stage("b1", "extract", SimpleModel) is None
 
 
 def test_cli_init_trilium_uses_the_configured_destination(monkeypatch, settings):

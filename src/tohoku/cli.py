@@ -6,6 +6,7 @@ import typer
 from pydantic import ValidationError
 
 from tohoku.config import Settings
+from tohoku.destinations import Destination
 from tohoku.errors import ConfigError
 from tohoku.evaluation import EvalRunner, format_table, load_cases
 from tohoku.flows.registry import FLOWS
@@ -30,6 +31,13 @@ def _load() -> App:
         raise typer.Exit(2) from exc
     except ConfigError as exc:
         raise _config_exit(exc) from exc
+
+
+def _destination(loaded: App, name: str) -> Destination:
+    dest = loaded.destinations.destinos.get(name)
+    if dest is None:
+        raise ConfigError(f"No existe el destino '{name}' en {loaded.settings.destinos_file}")
+    return dest
 
 
 def _config_exit(exc: ConfigError) -> typer.Exit:
@@ -69,14 +77,15 @@ def run_once() -> None:
 
 @app.command("init-trilium")
 def init_trilium(
-    destino: Annotated[str | None, typer.Option(help="Destino de config/destinos.yaml (por defecto, el único)")] = None,
+    destino: Annotated[str | None, typer.Option(help="Destino de config/destinos.yaml (obligatorio si hay varios)")] = None,
 ) -> None:
     """Crea bajo la nota raíz del destino la estructura que falte (idempotente)."""
     loaded = _load()
     try:
-        dest = loaded.destinations.destinos.get(destino) if destino else loaded.destination
-        if dest is None:
-            raise ConfigError(f"No existe el destino '{destino}' en {loaded.settings.destinos_file}")
+        names = list(loaded.destinations.destinos)
+        if destino is None and len(names) > 1:
+            raise ConfigError(f"Hay {len(names)} destinos: indica --destino ({', '.join(names)})")
+        dest = _destination(loaded, destino or names[0])
         summary = FLOWS[dest.flujo].init_trilium(loaded.trilium, dest)
     except ConfigError as exc:
         raise _config_exit(exc) from exc
@@ -141,15 +150,20 @@ def eval_cmd(
     cases: Annotated[Path, typer.Option(help="Fichero YAML de casos")] = Path("eval/cases.yaml"),
     model: Annotated[str | None, typer.Option(help="Modelo de OpenRouter a evaluar (por defecto OPENROUTER_MODEL)")] = None,
     keyframes: Annotated[bool, typer.Option("--keyframes/--no-keyframes", help="Enviar fotogramas clave de los vídeos")] = True,
+    destino: Annotated[str | None, typer.Option(help="Destino cuyo prompt se evalúa (por defecto, el destino legado)")] = None,
 ) -> None:
     """Compara modelos y el uso de fotogramas con casos reales (el coste cuenta en el presupuesto diario)."""
     loaded = _load()
+    try:
+        dest = _destination(loaded, destino) if destino else loaded.destination
+    except ConfigError as exc:
+        raise _config_exit(exc) from exc
     updates: dict = {"reel_keyframes_enabled": True}
     if model:
         updates |= {"openrouter_model": model, "openrouter_text_model": model}
     settings = loaded.settings.model_copy(update=updates)
     runner = EvalRunner(FetchStage(settings, loaded.ytdlp, loaded.gallery, loaded.karakeep), loaded.transcribe, Path("eval/.cache"))
-    params = loaded.destination.params
-    extract = ExtractStage(settings, loaded.llm, loaded.llm_budget, render_extract_prompt(loaded.destination.prompt, params), params)
+    params = dest.params
+    extract = ExtractStage(settings, loaded.llm, loaded.llm_budget, render_extract_prompt(dest.prompt, params), params)
     scores = runner.run(load_cases(cases), extract, settings.thresholds, keyframes)
     typer.echo(format_table(scores, settings.openrouter_model, keyframes))
