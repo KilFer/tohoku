@@ -67,7 +67,7 @@ destinos:
     alias_ciudad: {...}                  # hoy CITY_ALIASES en geo.py
   recetas:
     flujo: receta
-    raiz: rcRoot
+    raiz: jrRootRecetas
     descripcion: "Recetas de cocina: cómo preparar un plato paso a paso"
     contexto: prompts/recetas.md
     vista: table                         # table | grid | list
@@ -237,7 +237,7 @@ TDD sin red (`tests/fakes.py`, `tests/builders.py`, respx):
 - **Compatibilidad:** fixtures con JSON reales de `extract`/`geocode`/`resolve` tomados de `state.db` (formato `*_japon`); `outcome='no-japon'`; migración de `jobs`.
 - **Equivalencia de Japón:** la suite actual, adaptada solo para construir el destino `japon` desde configuración, pasa **sin cambiar ninguna aserción**. `#jrNombreNorm` idéntico para una muestra de nombres reales. Antes/después con `japan-reader eval`.
 - **Flujo receta:** extracción, portada, render, atributos, reprocesado con "Mis notas" y `posible-duplicado`.
-- **Integración manual:** raíces de prueba `#jrRootTest` y `#rcRootTest`.
+- **Integración manual:** raíces de prueba `#jrRootTest` y `#jrRootRecetasTest`.
 
 ## 9. Fases de implementación
 
@@ -263,7 +263,7 @@ Cada fase se puede desplegar sola, deja `uv run pytest -q` en verde, actualiza s
 - **`stage_results` antiguos incompatibles:** alias en los modelos y fixtures reales.
 - **Clasificador con formato de salida no estándar (JEV):** interfaz con modos y adaptadores; punto abierto en §3.
 - **Reprocesar tras la purga cuesta Whisper + LLM:** es aceptable. `retencion_dias` permite ajustarlo.
-- **La vista Tabla de Trilium depende de los atributos promovidos de la plantilla:** se comprueba en integración manual con `#rcRootTest`.
+- **La vista Tabla de Trilium depende de los atributos promovidos de la plantilla:** se comprueba en integración manual con `#jrRootRecetasTest`.
 
 ## 11. Renombrado a Tohoku (fase 0)
 
@@ -282,7 +282,7 @@ Cada fase se puede desplegar sola, deja `uv run pytest -q` en verde, actualiza s
 - el adjunto `japan-reader.json`;
 - el contenido de `state.db`.
 
-`jr` queda documentado como prefijo interno.
+**El prefijo `jr` es intencionado y se mantiene para todo lo que genere Tohoku:** etiquetas de Karakeep (`jr:*`) y atributos de Trilium (`#jr*`), incluidos los de destinos y flujos nuevos. Las raíces nuevas siguen la convención `jrRoot<Destino>` (`jrRootRecetas`, `jrRootNZ`). Es un homenaje doble: son las siglas de *Japan Reader*, el nombre original, y de **JR** (Japan Railways), cuya línea **Tohoku Shinkansen** da nombre al proyecto.
 
 **Volumen de modelos:** Compose antepone el nombre del proyecto al del volumen (`japan-reader_whisper-models`). El compose declara `name: japan-reader_whisper-models` para reutilizarlo y no volver a descargar large-v3.
 
