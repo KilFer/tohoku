@@ -1,8 +1,10 @@
+name: tohoku
+
 services:
-  japan-reader:
+  tohoku:
     build: .
-    image: japan-reader:local
-    container_name: japan-reader
+    image: tohoku:local
+    container_name: tohoku
     restart: unless-stopped
     env_file: .env
     environment:
@@ -26,4 +28,4 @@ networks:
     external: true
 
 volumes:
-  whisper-models:
+  whisper-models:   # → tohoku_whisper-models (antes japan-reader_whisper-models; ver docs/operations.md)
