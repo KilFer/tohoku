@@ -1,0 +1,25 @@
+{
+  "extraction": {
+    "relacionado_japon": false,
+    "confianza_japon": 0.0,
+    "idioma": "es",
+    "resumen_fuente": "El vídeo muestra una receta rápida de rollitos de tortilla rellenos con una mezcla de huevo, leche, queso y bacon o jamón. Se cocinan en freidora de aire o en horno.",
+    "lugares": [],
+    "cosas": [
+      {
+        "nombre": "Rollitos de tortilla con huevo, queso y bacon",
+        "categoria": "comida",
+        "que_es": "Preparación horneada hecha con tortillas enrolladas y cortadas en porciones, rellenas de huevo y leche, queso y bacon o jamón cocido.",
+        "consejos": [
+          "En freidora de aire: 12 minutos a 180 °C; en horno: 18 minutos a 180 °C."
+        ],
+        "donde": [],
+        "donde_lugares": [],
+        "confianza": 0.98
+      }
+    ],
+    "otros": []
+  },
+  "error": null,
+  "cost_usd": 0.00051333
+}

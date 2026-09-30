@@ -1,0 +1,248 @@
+{
+  "$defs": {
+    "Cosa": {
+      "properties": {
+        "categoria": {
+          "enum": [
+            "souvenirs",
+            "comida",
+            "cadenas",
+            "cosmetica",
+            "otros"
+          ],
+          "title": "Categoria",
+          "type": "string"
+        },
+        "confianza": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confianza",
+          "type": "number"
+        },
+        "consejos": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Consejos",
+          "type": "array"
+        },
+        "donde": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Donde",
+          "type": "array"
+        },
+        "donde_lugares": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Donde Lugares",
+          "type": "array"
+        },
+        "nombre": {
+          "title": "Nombre",
+          "type": "string"
+        },
+        "que_es": {
+          "title": "Que Es",
+          "type": "string"
+        }
+      },
+      "required": [
+        "nombre",
+        "categoria",
+        "que_es",
+        "confianza"
+      ],
+      "title": "Cosa",
+      "type": "object"
+    },
+    "Lugar": {
+      "properties": {
+        "categoria": {
+          "enum": [
+            "templo",
+            "santuario",
+            "comida",
+            "cafe",
+            "bar",
+            "tienda",
+            "mercado",
+            "mirador",
+            "barrio",
+            "museo",
+            "parque",
+            "onsen",
+            "alojamiento",
+            "transporte",
+            "otro"
+          ],
+          "title": "Categoria",
+          "type": "string"
+        },
+        "ciudad": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ciudad"
+        },
+        "confianza": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confianza",
+          "type": "number"
+        },
+        "consejos": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Consejos",
+          "type": "array"
+        },
+        "consulta_busqueda": {
+          "title": "Consulta Busqueda",
+          "type": "string"
+        },
+        "nombre": {
+          "title": "Nombre",
+          "type": "string"
+        },
+        "nombre_local": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Nombre Local"
+        },
+        "precio_aprox": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Precio Aprox"
+        },
+        "que_es": {
+          "title": "Que Es",
+          "type": "string"
+        },
+        "que_hacer": {
+          "default": "",
+          "title": "Que Hacer",
+          "type": "string"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region"
+        }
+      },
+      "required": [
+        "nombre",
+        "consulta_busqueda",
+        "categoria",
+        "que_es",
+        "confianza"
+      ],
+      "title": "Lugar",
+      "type": "object"
+    },
+    "Otro": {
+      "properties": {
+        "contenido": {
+          "title": "Contenido",
+          "type": "string"
+        },
+        "titulo": {
+          "title": "Titulo",
+          "type": "string"
+        }
+      },
+      "required": [
+        "titulo",
+        "contenido"
+      ],
+      "title": "Otro",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "confianza_japon": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Confianza Japon",
+      "type": "number"
+    },
+    "cosas": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Cosa"
+      },
+      "title": "Cosas",
+      "type": "array"
+    },
+    "idioma": {
+      "title": "Idioma",
+      "type": "string"
+    },
+    "lugares": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Lugar"
+      },
+      "title": "Lugares",
+      "type": "array"
+    },
+    "otros": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Otro"
+      },
+      "title": "Otros",
+      "type": "array"
+    },
+    "relacionado_japon": {
+      "title": "Relacionado Japon",
+      "type": "boolean"
+    },
+    "resumen_fuente": {
+      "title": "Resumen Fuente",
+      "type": "string"
+    }
+  },
+  "required": [
+    "relacionado_japon",
+    "confianza_japon",
+    "idioma",
+    "resumen_fuente"
+  ],
+  "title": "Extraction",
+  "type": "object"
+}

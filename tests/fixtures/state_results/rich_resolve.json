@@ -1,0 +1,58 @@
+{
+  "items": [
+    {
+      "key": "lugar:0",
+      "kind": "lugar",
+      "index": 0,
+      "action": "merge",
+      "existing_note_id": "sjLra3izfkdB",
+      "alias_of": null,
+      "review_reasons": []
+    },
+    {
+      "key": "lugar:1",
+      "kind": "lugar",
+      "index": 1,
+      "action": "create",
+      "existing_note_id": null,
+      "alias_of": null,
+      "review_reasons": []
+    },
+    {
+      "key": "lugar:2",
+      "kind": "lugar",
+      "index": 2,
+      "action": "merge",
+      "existing_note_id": "7M52orv6V7qD",
+      "alias_of": null,
+      "review_reasons": []
+    },
+    {
+      "key": "cosa:0",
+      "kind": "cosa",
+      "index": 0,
+      "action": "create",
+      "existing_note_id": null,
+      "alias_of": null,
+      "review_reasons": []
+    },
+    {
+      "key": "cosa:1",
+      "kind": "cosa",
+      "index": 1,
+      "action": "create",
+      "existing_note_id": null,
+      "alias_of": null,
+      "review_reasons": []
+    },
+    {
+      "key": "otro:0",
+      "kind": "otro",
+      "index": 0,
+      "action": "create",
+      "existing_note_id": null,
+      "alias_of": null,
+      "review_reasons": []
+    }
+  ]
+}

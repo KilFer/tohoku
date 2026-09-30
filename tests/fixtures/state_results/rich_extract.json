@@ -1,0 +1,98 @@
+{
+  "extraction": {
+    "relacionado_japon": true,
+    "confianza_japon": 0.99,
+    "idioma": "inglés",
+    "resumen_fuente": "La publicación comparte consejos para visitar Tokyo DisneySea: comprar entradas con antelación, planificar la jornada y prepararse para las colas. También destaca Arabian Coast y las palomitas y cubos de edición especial del parque.",
+    "lugares": [
+      {
+        "nombre": "Tokyo DisneySea",
+        "nombre_local": "東京ディズニーシー",
+        "consulta_busqueda": "Tokyo DisneySea Urayasu",
+        "ciudad": "Urayasu",
+        "region": "Kanto",
+        "categoria": "parque",
+        "que_es": "Parque temático de Disney situado en el Tokyo Disney Resort. La publicación ofrece consejos para visitarlo y disfrutar de sus atracciones y detalles temáticos.",
+        "que_hacer": "Planificar las atracciones que se quieren visitar, probar sabores especiales de palomitas y explorar sus zonas temáticas.",
+        "consejos": [
+          "Comprar las entradas por internet con antelación; en días concurridos podría no haber entradas disponibles en taquilla.",
+          "Consultar un calendario de afluencia y evitar, si es posible, fines de semana, festivos y días soleados.",
+          "Usar la aplicación de Tokyo Disney Resort para consultar tiempos de espera y reservar restaurantes; la autora menciona pases prioritarios gratuitos durante la celebración del 40.º aniversario.",
+          "Llegar a la apertura y dirigirse primero a una atracción popular; la autora indica que Soaring tuvo esperas de 120 minutos.",
+          "Prepararse para colas largas en atracciones, restaurantes, tiendas y puestos de comida."
+        ],
+        "precio_aprox": null,
+        "confianza": 0.99
+      },
+      {
+        "nombre": "Arabian Coast",
+        "nombre_local": "アラビアンコースト",
+        "consulta_busqueda": "Arabian Coast Tokyo DisneySea Urayasu",
+        "ciudad": "Urayasu",
+        "region": "Kanto",
+        "categoria": "otro",
+        "que_es": "Zona temática de Tokyo DisneySea inspirada en Arabia. La autora la destaca como su parte favorita por su belleza y nivel de detalle.",
+        "que_hacer": "Recorrer la zona y disfrutar de su ambientación y sus detalles.",
+        "consejos": [],
+        "precio_aprox": null,
+        "confianza": 0.98
+      },
+      {
+        "nombre": "Soaring: Fantastic Flight",
+        "nombre_local": "ソアリン：ファンタスティック・フライト",
+        "consulta_busqueda": "Soaring Fantastic Flight Tokyo DisneySea Urayasu",
+        "ciudad": "Urayasu",
+        "region": "Kanto",
+        "categoria": "otro",
+        "que_es": "Atracción de Tokyo DisneySea mencionada como una de las populares del parque.",
+        "que_hacer": "Visitarla temprano si es una de las atracciones prioritarias del día.",
+        "consejos": [
+          "La autora dice que la espera llegó a 120 minutos durante todo el día."
+        ],
+        "precio_aprox": null,
+        "confianza": 0.96
+      }
+    ],
+    "cosas": [
+      {
+        "nombre": "Palomitas de sabores especiales de Tokyo Disney",
+        "categoria": "comida",
+        "que_es": "Palomitas de edición especial con sabores como chocolate blanco y matcha, curry o tarta de queso con frutos rojos. Los sabores disponibles dependen de zonas concretas del parque.",
+        "consejos": [
+          "Consultar la web del parque para localizar los sabores que se quieren probar.",
+          "Puede haber colas de unos 30 minutos."
+        ],
+        "donde": [
+          "Puestos específicos de Tokyo DisneySea y, en general, de los parques de Tokyo Disney"
+        ],
+        "donde_lugares": [
+          "Tokyo DisneySea"
+        ],
+        "confianza": 0.97
+      },
+      {
+        "nombre": "Cubos de palomitas de edición limitada de Tokyo Disney",
+        "categoria": "souvenirs",
+        "que_es": "Cubos de palomitas con diseños especiales, algunos exclusivos de determinados puestos o de uno de los parques.",
+        "consejos": [
+          "Consultar la web del parque para saber dónde se vende el diseño deseado; algunos diseños pueden no estar disponibles tanto en Disneyland como en DisneySea."
+        ],
+        "donde": [
+          "Puestos específicos de los parques de Tokyo Disney"
+        ],
+        "donde_lugares": [
+          "Tokyo DisneySea"
+        ],
+        "confianza": 0.97
+      }
+    ],
+    "otros": [
+      {
+        "titulo": "Planificación y colas en Tokyo DisneySea",
+        "contenido": "Conviene consultar un calendario de afluencia para escoger el día, planificar las atracciones prioritarias y descargar la aplicación de Tokyo Disney Resort, que permite consultar esperas y reservar restaurantes. La autora advierte que muchos visitantes locales están dispuestos a hacer colas de una hora o más."
+      }
+    ]
+  },
+  "error": null,
+  "cost_usd": 0.001005455
+}

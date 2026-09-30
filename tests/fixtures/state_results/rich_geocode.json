@@ -1,0 +1,63 @@
+{
+  "outcomes": [
+    {
+      "lugar_index": 0,
+      "match": {
+        "place_id": "ChIJszdHEQN9GGARJS23SnAdR0E",
+        "name": "Tokyo DisneySea",
+        "address": "1-13 Maihama, Urayasu, Chiba 279-8511",
+        "lat": 35.6267108,
+        "lng": 139.8850779,
+        "maps_url": "https://maps.google.com/?cid=4703760703938833701&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+        "types": [
+          "tourist_attraction",
+          "amusement_park",
+          "amusement_center",
+          "point_of_interest",
+          "establishment"
+        ],
+        "country_code": "JP",
+        "area": "Prefectura de Chiba 1-13 Maihama Urayasu Maihama Chiba"
+      },
+      "review_reason": null
+    },
+    {
+      "lugar_index": 1,
+      "match": {
+        "place_id": "ChIJNSjTCht9GGARLIVn34G4xzk",
+        "name": "Arabian Coast",
+        "address": "Maihama, Urayasu, Chiba 279-0031",
+        "lat": 35.6281818,
+        "lng": 139.8829983,
+        "maps_url": "https://maps.google.com/?cid=4163499248465708332&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+        "types": [
+          "amusement_park",
+          "amusement_center",
+          "point_of_interest",
+          "establishment"
+        ],
+        "country_code": "JP",
+        "area": "Prefectura de Chiba Maihama Urayasu Chiba"
+      },
+      "review_reason": null
+    },
+    {
+      "lugar_index": 2,
+      "match": {
+        "place_id": "ChIJd-id6T99GGAROhl-KITIApg",
+        "name": "Soaring: Fantastic Flight",
+        "address": "1-1 Maihama, Urayasu, Chiba 279-0031",
+        "lat": 35.6274833,
+        "lng": 139.8857684,
+        "maps_url": "https://maps.google.com/?cid=10953537713659058490&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA",
+        "types": [
+          "point_of_interest",
+          "establishment"
+        ],
+        "country_code": "JP",
+        "area": "Prefectura de Chiba 1-1 Maihama Urayasu Maihama Chiba"
+      },
+      "review_reason": null
+    }
+  ]
+}
