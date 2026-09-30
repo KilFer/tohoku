@@ -84,7 +84,9 @@ class Pipeline:
         except ConfigError:
             raise
         except QuotaExceeded as exc:
-            self._state.schedule_retry(job.bookmark_id, self._tomorrow(), str(exc), count_attempt=False)
+            resume_at = self._tomorrow()
+            self._state.schedule_retry(job.bookmark_id, resume_at, str(exc), count_attempt=False)
+            log.info("bookmark=%s aparcado por cuota %s hasta %s", job.bookmark_id, exc.key, resume_at.isoformat())
             self.notify_once(f"quota:{exc.key}", "tohoku: límite diario alcanzado", f"{exc}. Se reanuda mañana.")
         except PermanentError as exc:
             self.mark_failed(job.bookmark_id, str(exc))

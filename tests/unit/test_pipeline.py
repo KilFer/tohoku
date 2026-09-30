@@ -236,3 +236,14 @@ def test_quota_notifies_once_per_key_even_if_every_job_hits_it(tmp_path, state):
 
     assert all(state.get_job(b).status == JobStatus.PENDING for b in ("b1", "b2", "b3"))
     assert [title for title, _ in notifier.sent] == ["tohoku: límite diario alcanzado"]
+
+
+def test_parked_job_is_logged(tmp_path, state, caplog):
+    _add(state, "b1")
+    geocode = QuotaStep("geocode", "places_calls", for_bookmarks={"b1"})
+    pipeline = Pipeline(state, [geocode], FakeMark(), FakeNotifier(), tmp_path / "data", clock=lambda: NOW)
+
+    with caplog.at_level("INFO", logger="tohoku.pipeline"):
+        pipeline.run_due()
+
+    assert "bookmark=b1 aparcado por cuota places_calls hasta 2026-09-29T07:05:00+00:00" in caplog.text
