@@ -1,6 +1,14 @@
 # Destinos de Tohoku: qué listas de Karakeep se procesan, con qué flujo y dónde se publican.
 # Referencia: docs/superpowers/specs/2026-09-30-multi-destino-design.md §2 y docs/operations.md.
-# Fase 2: un único destino. Varios destinos (clasificador) llegan en la fase 3.
+# Con un único destino no hace falta 'clasificador' ni 'destino_legado' (se toma ese destino).
+# Con varios destinos, 'destino_legado' es obligatorio: el destino de los jobs anteriores a la fase 3.
+# destino_legado: japon
+# Ajustes del clasificador (todos opcionales; estos son los valores por defecto):
+# clasificador:
+#   modelo: null            # null = OPENROUTER_TEXT_MODEL
+#   modo: json_schema
+#   confianza_minima: 0.5
+#   margen_revision: 0.15
 listas:
   seo5xdpquppqfy4hmzzeekfh: [japon]   # lista "Japón" de Karakeep
 destinos:

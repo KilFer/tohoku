@@ -199,7 +199,7 @@ def test_build_app_rejects_several_destinations_for_now(settings, tmp_path):
     text += "  nz:\n    flujo: viaje\n    raiz: jrRootNZ\n    descripcion: NZ\n    prompt: " + str(Path(__file__).parents[2] / "config/prompts/japon.md") + "\n    pais: NZ\n"
     path = tmp_path / "destinos.yaml"
     path.write_text(text, encoding="utf-8")
-    with pytest.raises(ConfigError, match="fase 3"):
+    with pytest.raises(ConfigError, match="destino_legado"):
         build_app(settings.model_copy(update={"destinos_file": path}))
 
 

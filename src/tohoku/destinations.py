@@ -6,12 +6,12 @@ from pathlib import Path
 from typing import Any, Protocol
 
 import yaml
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from tohoku.errors import ConfigError
 
 _BASE_KEYS = ("flujo", "raiz", "descripcion", "prompt")
-_TOP_KEYS = {"listas", "destinos"}
+_TOP_KEYS = {"listas", "destinos", "clasificador", "destino_legado"}
 _LABEL = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
 
@@ -29,21 +29,26 @@ class Destination:
     params: BaseModel  # parámetros validados con el `params_model` del flujo
 
 
+class ClassifierConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    modelo: str | None = None  # None → OPENROUTER_TEXT_MODEL
+    modo: str = "json_schema"  # clave de CLASSIFIERS
+    confianza_minima: float = Field(0.5, ge=0, le=1)
+    margen_revision: float = Field(0.15, ge=0, le=1)
+
+
 @dataclass(frozen=True)
 class DestinationsConfig:
     listas: dict[str, list[str]]
     destinos: dict[str, Destination]
+    clasificador: ClassifierConfig
+    destino_legado: str  # destino de los jobs anteriores a la fase 3
 
     def candidates_for(self, list_id: str) -> list[str]:
         return list(self.listas.get(list_id, []))
 
-    def single_destination(self) -> Destination:
-        """Fase 2: un único destino. Varios destinos (clasificador) llegan en la fase 3."""
-        if len(self.destinos) != 1:
-            raise ConfigError(
-                f"Hay {len(self.destinos)} destinos configurados; de momento solo se admite uno (varios destinos: fase 3)"
-            )
-        return next(iter(self.destinos.values()))
+    def needs_classifier(self) -> bool:
+        return any(len(names) > 1 for names in self.listas.values())
 
 
 def load_destinations(path: Path, flows: Mapping[str, HasParams]) -> DestinationsConfig:
@@ -82,7 +87,24 @@ def load_destinations(path: Path, flows: Mapping[str, HasParams]) -> Destination
         if missing:
             raise ConfigError(f"{path}: la lista '{list_id}' apunta a destinos que no existen: {', '.join(missing)}")
         listas[str(list_id)] = names
-    return DestinationsConfig(listas=listas, destinos=destinos)
+    clasificador_raw = raw.get("clasificador")
+    if clasificador_raw is None:
+        clasificador = ClassifierConfig()
+    elif not isinstance(clasificador_raw, dict):
+        raise ConfigError(f"{path}: 'clasificador' debe ser un mapa")
+    else:
+        try:
+            clasificador = ClassifierConfig.model_validate(clasificador_raw)
+        except ValidationError as exc:
+            raise ConfigError(f"{path}: 'clasificador' inválido:\n{exc}") from exc
+    legado = raw.get("destino_legado")
+    if legado is None:
+        if len(destinos) != 1:
+            raise ConfigError(f"{path}: con varios destinos hay que indicar 'destino_legado' (el de los jobs anteriores a la fase 3)")
+        legado = next(iter(destinos))
+    elif not isinstance(legado, str) or legado not in destinos:
+        raise ConfigError(f"{path}: 'destino_legado' apunta a un destino que no existe: {legado}")
+    return DestinationsConfig(listas=listas, destinos=destinos, clasificador=clasificador, destino_legado=legado)
 
 
 def _destination(path: Path, name: str, spec: Any, flows: Mapping[str, HasParams]) -> Destination:

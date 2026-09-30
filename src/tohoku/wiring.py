@@ -80,7 +80,7 @@ def build_app(settings: Settings) -> App:
         WhisperTranscriber(settings.whisper_model, settings.whisper_compute_type, settings.whisper_download_root, settings.whisper_threads)
     )
     destinations = load_destinations(settings.destinos_file, FLOWS)
-    destination = destinations.single_destination()
+    destination = destinations.destinos[destinations.destino_legado]
     deps = FlowDeps(settings=settings, state=state, trilium=trilium, llm=llm, places=places,
                     llm_budget=llm_budget, places_quota=places_quota)
     runtime = FLOWS[destination.flujo].build(destination, deps)

@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tohoku.destinations import load_destinations
+from tohoku.destinations import ClassifierConfig, load_destinations
 from tohoku.errors import ConfigError
 from tohoku.flows.viaje.params import ViajeParams
 from tohoku.geo import CITY_ALIASES
@@ -34,7 +34,7 @@ def _write(tmp_path, text=JAPON, prompt="PROMPT DE JAPÓN"):
 def test_minimal_japan_config(tmp_path):
     config = load_destinations(_write(tmp_path), FLOWS)
 
-    dest = config.single_destination()
+    dest = config.destinos["japon"]
     assert (dest.nombre, dest.flujo, dest.raiz, dest.descripcion) == ("japon", "viaje", "jrRoot", "Viaje a Japón")
     assert dest.prompt == "PROMPT DE JAPÓN"
     assert dest.params == ViajeParams()
@@ -53,7 +53,7 @@ def test_viaje_defaults_are_the_japan_constants():
 
 
 def test_new_zealand_params(tmp_path):
-    text = JAPON + """
+    text = "destino_legado: japon\n" + JAPON + """
   nz:
     flujo: viaje
     raiz: jrRootNZ
@@ -109,14 +109,48 @@ def test_missing_file_mentions_the_setting(tmp_path):
         load_destinations(tmp_path / "no.yaml", FLOWS)
 
 
-def test_more_than_one_destination_is_not_supported_yet(tmp_path):
-    text = JAPON + "  nz:\n    flujo: viaje\n    raiz: jrRootNZ\n    descripcion: NZ\n    prompt: prompts/japon.md\n    pais: NZ\n"
-    config = load_destinations(_write(tmp_path, text), FLOWS)
-    with pytest.raises(ConfigError, match="fase 3"):
-        config.single_destination()
-
-
 def test_empty_nombres_pais_entry_is_rejected(tmp_path):
     text = JAPON.replace("    prompt: prompts/japon.md\n", '    prompt: prompts/japon.md\n    nombres_pais: [""]\n')
     with pytest.raises(ConfigError, match="nombres_pais"):
         load_destinations(_write(tmp_path, text), FLOWS)
+
+
+TWO = JAPON.replace("  L1: [japon]\n", "  L1: [japon]\n  INBOX: [japon, recetas]\n") + """
+  recetas:
+    flujo: viaje
+    raiz: jrRootRecetas
+    descripcion: "Recetas"
+    prompt: prompts/japon.md
+"""
+
+
+def test_classifier_defaults_and_legacy_with_single_destination(tmp_path):
+    config = load_destinations(_write(tmp_path), FLOWS)
+    assert config.clasificador == ClassifierConfig()
+    assert config.destino_legado == "japon"
+    assert not config.needs_classifier()
+
+
+def test_several_destinations_require_destino_legado(tmp_path):
+    with pytest.raises(ConfigError, match="destino_legado"):
+        load_destinations(_write(tmp_path, TWO), FLOWS)
+
+
+def test_several_destinations_with_classifier(tmp_path):
+    text = "destino_legado: japon\nclasificador:\n  modelo: cheap/model\n  modo: etiqueta\n  margen_revision: 0.2\n" + TWO
+    config = load_destinations(_write(tmp_path, text), FLOWS)
+    assert config.needs_classifier() and config.candidates_for("INBOX") == ["japon", "recetas"]
+    assert (config.clasificador.modelo, config.clasificador.modo, config.clasificador.margen_revision) == ("cheap/model", "etiqueta", 0.2)
+
+
+@pytest.mark.parametrize(
+    ("prefix", "message"),
+    [
+        ("destino_legado: nz\n", "destino_legado"),
+        ("clasificador:\n  modello: x\n", "clasificador"),
+        ("clasificador: 3\n", "clasificador"),
+    ],
+)
+def test_classifier_and_legacy_errors(tmp_path, prefix, message):
+    with pytest.raises(ConfigError, match=message):
+        load_destinations(_write(tmp_path, prefix + JAPON), FLOWS)
