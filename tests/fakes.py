@@ -71,6 +71,10 @@ class FakeLLM:
         self.calls.append({"model": model, "messages": messages, "schema": schema, "schema_name": schema_name})
         return ChatResult(content=self.responses.pop(0), cost_usd=self.cost)
 
+    def chat_text(self, model, messages) -> ChatResult:
+        self.calls.append({"model": model, "messages": messages, "schema": None})
+        return ChatResult(content=self.responses.pop(0), cost_usd=self.cost)
+
     def model_supports_images(self, model: str) -> bool:
         return self.images
 

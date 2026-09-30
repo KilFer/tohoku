@@ -125,3 +125,32 @@ def test_other_4xx_stay_api_errors(message):
     with pytest.raises(ApiError) as info:
         OpenRouterClient("key").chat_json("vision/model", [], {}, "x")
     assert not isinstance(info.value, ConfigError)
+
+
+@respx.mock
+def test_chat_text_sends_no_response_format_and_returns_cost():
+    respx.get(host=HOST, path="/api/v1/models").mock(return_value=httpx.Response(200, json=MODELS))
+    route = respx.post(host=HOST, path="/api/v1/chat/completions").mock(
+        return_value=httpx.Response(200, json={"choices": [{"message": {"content": "recetas"}}], "usage": {"cost": 0.004}})
+    )
+
+    result = OpenRouterClient("key").chat_text("vision/model", [{"role": "user", "content": "hola"}])
+
+    assert result.content == "recetas"
+    assert result.cost_usd == 0.004
+    body = json.loads(route.calls[0].request.content)
+    assert "response_format" not in body
+    assert "provider" not in body
+    assert body["usage"] == {"include": True}
+    assert body["temperature"] == 0.2
+
+
+@respx.mock
+def test_chat_text_model_error_is_config_error():
+    respx.get(host=HOST, path="/api/v1/models").mock(return_value=httpx.Response(200, json=MODELS))
+    respx.post(host=HOST, path="/api/v1/chat/completions").mock(
+        return_value=httpx.Response(404, json={"error": {"message": "No endpoints found for vision/model"}})
+    )
+
+    with pytest.raises(ConfigError):
+        OpenRouterClient("key").chat_text("vision/model", [{"role": "user", "content": "hola"}])

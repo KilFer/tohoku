@@ -63,6 +63,13 @@ class OpenRouterClient:
             "provider": {"require_parameters": True},
             "usage": {"include": True},
         }
+        return self._post(model, body)
+
+    def chat_text(self, model: str, messages: list[dict]) -> ChatResult:
+        """Chat sin salida estructurada (ni response_format ni require_parameters)."""
+        return self._post(model, {"model": model, "messages": messages, "usage": {"include": True}})
+
+    def _post(self, model: str, body: dict) -> ChatResult:
         # Con require_parameters, un parámetro que el modelo no admite (p. ej. temperature en modelos
         # de razonamiento) deja la petición sin proveedor (404). Solo se envía si consta como admitido
         # o si no se conoce la ficha del modelo.
