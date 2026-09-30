@@ -6,6 +6,7 @@ from typing import Protocol
 
 from pydantic import BaseModel
 
+from tohoku.cleanup import Cleaner
 from tohoku.clients.ntfy import Notifier
 from tohoku.context import JobContext
 from tohoku.errors import ConfigError, TohokuError, PermanentError, QuotaExceeded
@@ -49,6 +50,7 @@ class Pipeline:
         data_dir: Path,
         clock: Callable[[], datetime] = utcnow,
         flows: Mapping[str, Sequence[Stage]] | None = None,
+        cleaner: Cleaner | None = None,
     ) -> None:
         self._state = state
         self._stages = list(stages)
@@ -57,6 +59,7 @@ class Pipeline:
         self._data_dir = data_dir
         self._clock = clock
         self._flows = {name: list(stages) for name, stages in flows.items()} if flows is not None else None
+        self._cleaner = cleaner
 
     def run_due(self) -> int:
         """Procesa los jobs pendientes. Un job que agota una cuota diaria espera a que se renueve; los demás siguen.
@@ -132,6 +135,16 @@ class Pipeline:
         self._mark_run(bookmark_id, outcome, destination)
         self._state.finish(bookmark_id, outcome)
         log.info("bookmark=%s terminado resultado=%s destino=%s", bookmark_id, outcome, destination)
+        self._cleanup(bookmark_id, outcome)
+
+    def _cleanup(self, bookmark_id: str, outcome: Outcome) -> None:
+        """La limpieza nunca cambia el resultado del job: un fallo de disco solo se registra."""
+        if self._cleaner is None:
+            return
+        try:
+            self._cleaner.job_finished(bookmark_id, outcome)
+        except OSError as exc:
+            log.warning("bookmark=%s no se pudo limpiar: %s", bookmark_id, exc)
 
     def mark_failed(self, bookmark_id: str, reason: str) -> None:
         job = self._state.get_job(bookmark_id)
@@ -140,6 +153,7 @@ class Pipeline:
         except TohokuError as exc:
             log.warning("bookmark=%s no se pudo etiquetar jr:error: %s", bookmark_id, exc)
         self._state.finish(bookmark_id, Outcome.ERROR, reason)
+        self._cleanup(bookmark_id, Outcome.ERROR)  # no borra nada: los ficheros sirven para diagnosticar
         url = job.url if job else bookmark_id
         log.warning("bookmark=%s error definitivo: %s", bookmark_id, reason)
         self._notifier.send("tohoku: error", f"{url}\n{reason}", priority=4, tags=["warning"])

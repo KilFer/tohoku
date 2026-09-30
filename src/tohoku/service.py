@@ -3,6 +3,7 @@ import time
 from collections.abc import Callable, Collection, Mapping, Sequence
 from datetime import datetime
 
+from tohoku.cleanup import Cleaner
 from tohoku.clients.karakeep import KarakeepClient
 from tohoku.clients.ntfy import Notifier
 from tohoku.config import Settings
@@ -35,6 +36,7 @@ class Service:
         preflight: Callable[[], None],
         lists: Mapping[str, Sequence[str]],
         clock: Callable[[], datetime] = _local_now,
+        cleaner: Cleaner | None = None,
     ) -> None:
         self._karakeep = karakeep
         self._state = state
@@ -44,6 +46,7 @@ class Service:
         self._preflight = preflight
         self._lists = {list_id: list(names) for list_id, names in lists.items()}
         self._clock = clock
+        self._cleaner = cleaner
         self._ready = False
 
     def tick(self) -> None:
@@ -59,6 +62,10 @@ class Service:
         processed = self._pipeline.run_due()
         if new or unsupported or processed:
             log.info("sondeo nuevos=%d no_soportados=%d procesados=%d", len(new), len(unsupported), processed)
+        if self._cleaner is not None:
+            purged = self._cleaner.purge()
+            if purged:
+                log.info("limpieza jobs=%d (directorios y resultados de etapa caducados)", purged)
         self._maybe_daily_summary()
 
     def run_forever(self, sleep: Callable[[float], None] = time.sleep) -> None:

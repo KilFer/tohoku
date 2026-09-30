@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from tohoku.errors import ConfigError
 
 _BASE_KEYS = ("flujo", "raiz", "descripcion", "prompt")
-_TOP_KEYS = {"listas", "destinos", "clasificador", "destino_legado"}
+_TOP_KEYS = {"listas", "destinos", "clasificador", "destino_legado", "limpieza"}
 _LABEL = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
 
@@ -37,12 +37,18 @@ class ClassifierConfig(BaseModel):
     margen_revision: float = Field(0.15, ge=0, le=1)
 
 
+class CleanupConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    retencion_dias: int = Field(30, ge=0)  # días que se guardan los resultados de etapa de un job terminado; 0 = borrar al terminar
+
+
 @dataclass(frozen=True)
 class DestinationsConfig:
     listas: dict[str, list[str]]
     destinos: dict[str, Destination]
     clasificador: ClassifierConfig
     destino_legado: str  # destino de los jobs anteriores a la fase 3
+    limpieza: CleanupConfig = CleanupConfig()
 
     def candidates_for(self, list_id: str) -> list[str]:
         return list(self.listas.get(list_id, []))
@@ -97,6 +103,16 @@ def load_destinations(path: Path, flows: Mapping[str, HasParams]) -> Destination
             clasificador = ClassifierConfig.model_validate(clasificador_raw)
         except ValidationError as exc:
             raise ConfigError(f"{path}: 'clasificador' inválido:\n{exc}") from exc
+    limpieza_raw = raw.get("limpieza")
+    if limpieza_raw is None:
+        limpieza = CleanupConfig()
+    elif not isinstance(limpieza_raw, dict):
+        raise ConfigError(f"{path}: 'limpieza' debe ser un mapa")
+    else:
+        try:
+            limpieza = CleanupConfig.model_validate(limpieza_raw)
+        except ValidationError as exc:
+            raise ConfigError(f"{path}: 'limpieza' inválido:\n{exc}") from exc
     legado = raw.get("destino_legado")
     if legado is None:
         if len(destinos) != 1:
@@ -104,7 +120,9 @@ def load_destinations(path: Path, flows: Mapping[str, HasParams]) -> Destination
         legado = next(iter(destinos))
     elif not isinstance(legado, str) or legado not in destinos:
         raise ConfigError(f"{path}: 'destino_legado' apunta a un destino que no existe: {legado}")
-    return DestinationsConfig(listas=listas, destinos=destinos, clasificador=clasificador, destino_legado=legado)
+    return DestinationsConfig(
+        listas=listas, destinos=destinos, clasificador=clasificador, destino_legado=legado, limpieza=limpieza,
+    )
 
 
 def _destination(path: Path, name: str, spec: Any, flows: Mapping[str, HasParams]) -> Destination:

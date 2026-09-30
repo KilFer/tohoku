@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from tohoku.classify import CLASSIFIERS
 from tohoku.classify.base import Classifier
+from tohoku.cleanup import Cleaner
 
 from tohoku.clients.karakeep import KarakeepClient
 from tohoku.clients.ntfy import Notifier
@@ -108,12 +109,13 @@ def build_app(settings: Settings) -> App:
     common: list[Stage] = [
         FetchStage(settings, ytdlp, gallery, karakeep), transcribe, ClassifyStage(destinations, classifier, llm_budget),
     ]
+    cleaner = Cleaner(state, settings.data_dir, destinations.limpieza.retencion_dias)
     pipeline = Pipeline(state, common, MarkStage(karakeep), notifier, settings.data_dir,
-                        flows={name: runtime.stages for name, runtime in runtimes.items()})
+                        flows={name: runtime.stages for name, runtime in runtimes.items()}, cleaner=cleaner)
     service = Service(
         karakeep, state, pipeline, notifier, settings,
         lambda: preflight(settings, trilium, llm, *runtimes.values(), classifier_model=classifier_model, classifier_mode=cfg.modo),
-        lists=destinations.listas,
+        lists=destinations.listas, cleaner=cleaner,
     )
     legacy = runtimes[destinations.destino_legado]
     return App(

@@ -26,6 +26,14 @@ def test_build_app_orders_stages(settings):
     assert [stage.name for stage in app.stages] == list(STAGE_ORDER)
 
 
+def test_build_app_wires_one_cleaner_into_pipeline_and_service(settings):
+    app = build_app(settings)
+    cleaner = app.pipeline._cleaner
+    assert cleaner is not None and app.service._cleaner is cleaner
+    assert cleaner._retention.days == 30
+    assert cleaner._jobs_dir == settings.data_dir / "jobs"
+
+
 @pytest.fixture
 def trilium():
     fake = FakeTrilium()

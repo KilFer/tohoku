@@ -9,6 +9,11 @@
 #   modo: json_schema
 #   confianza_minima: 0.5
 #   margen_revision: 0.15
+# Limpieza (opcional; este es el valor por defecto). Al terminar un job se borran siempre sus ficheros
+# (data/jobs/<id>/) y el resultado de fetch; los demás resultados de etapa se guardan 'retencion_dias'
+# (0 = borrarlos también al terminar). Nunca se borran la tabla jobs ni las publicaciones.
+# limpieza:
+#   retencion_dias: 30
 listas:
   seo5xdpquppqfy4hmzzeekfh: [japon]   # lista "Japón" de Karakeep
 destinos:

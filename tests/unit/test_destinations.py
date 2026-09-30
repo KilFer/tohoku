@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tohoku.destinations import ClassifierConfig, load_destinations
+from tohoku.destinations import ClassifierConfig, CleanupConfig, load_destinations
 from tohoku.errors import ConfigError
 from tohoku.flows.viaje.params import ViajeParams
 from tohoku.geo import CITY_ALIASES
@@ -153,4 +153,24 @@ def test_several_destinations_with_classifier(tmp_path):
 )
 def test_classifier_and_legacy_errors(tmp_path, prefix, message):
     with pytest.raises(ConfigError, match=message):
+        load_destinations(_write(tmp_path, prefix + JAPON), FLOWS)
+
+
+def test_cleanup_defaults_to_30_days(tmp_path):
+    config = load_destinations(_write(tmp_path), FLOWS)
+    assert config.limpieza == CleanupConfig()
+    assert config.limpieza.retencion_dias == 30
+
+
+def test_cleanup_retention_is_read(tmp_path):
+    config = load_destinations(_write(tmp_path, "limpieza:\n  retencion_dias: 7\n" + JAPON), FLOWS)
+    assert config.limpieza.retencion_dias == 7
+
+
+@pytest.mark.parametrize(
+    "prefix",
+    ["limpieza:\n  retencion_dias: -1\n", "limpieza:\n  dias: 3\n", "limpieza: 3\n"],
+)
+def test_cleanup_errors_name_limpieza(tmp_path, prefix):
+    with pytest.raises(ConfigError, match="limpieza"):
         load_destinations(_write(tmp_path, prefix + JAPON), FLOWS)

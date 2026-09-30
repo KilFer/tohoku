@@ -317,3 +317,95 @@ class ByJobStep(Step):
     def run(self, ctx):
         self.calls += 1
         return self.results[ctx.job.bookmark_id]
+
+
+# --- limpieza (fase 4) -----------------------------------------------------------
+
+
+class RecordingCleaner:
+    def __init__(self, error=None):
+        self.error = error
+        self.calls = []
+
+    def job_finished(self, bookmark_id, outcome):
+        self.calls.append((bookmark_id, outcome))
+        if self.error:
+            raise self.error
+
+
+class WritingStep(Step):
+    """Deja un fichero en el directorio del job, como fetch."""
+
+    def run(self, ctx):
+        (ctx.workdir / "video.mp4").write_bytes(b"x")
+        return super().run(ctx)
+
+
+def _cleaning_pipeline(tmp_path, state, retencion_dias=30):
+    from tohoku.cleanup import Cleaner
+
+    data_dir = tmp_path / "data"
+    fetch = WritingStep("fetch")
+    transcribe = Step("transcribe")
+    publish = Step("publish", result=PublishResult(outcome=Outcome.PROCESADO))
+    cleaner = Cleaner(state, data_dir, retencion_dias, clock=lambda: NOW)
+    pipeline = Pipeline(state, [fetch, transcribe, publish], FakeMark(), FakeNotifier(), data_dir, clock=lambda: NOW,
+                        cleaner=cleaner)
+    return pipeline, fetch, transcribe, publish, data_dir
+
+
+def test_pipeline_with_cleaner_deletes_job_dir_after_procesado(tmp_path, state):
+    _add(state)
+    pipeline, _, _, _, data_dir = _cleaning_pipeline(tmp_path, state)
+
+    pipeline.run_due()
+
+    job = state.get_job("b1")
+    assert job.status == JobStatus.DONE and job.outcome == Outcome.PROCESADO
+    assert not (data_dir / "jobs" / "b1").exists()
+    assert state.load_stage("b1", "fetch", Dummy) is None
+    assert state.load_stage("b1", "transcribe", Dummy) == Dummy()
+
+
+def test_reprocess_after_cleanup_runs_fetch_again_and_reuses_later_results(tmp_path, state):
+    _add(state)
+    pipeline, fetch, transcribe, publish, data_dir = _cleaning_pipeline(tmp_path, state)
+    pipeline.run_due()
+    state.reset("b1")
+    state.clear_stages_from("b1", "publish", ("fetch", "transcribe", "publish"))
+
+    pipeline.run_due()
+
+    assert fetch.calls == 2
+    assert transcribe.calls == 1
+    assert publish.calls == 2
+    assert state.get_job("b1").status == JobStatus.DONE
+    assert not (data_dir / "jobs" / "b1").exists()
+
+
+def test_cleaner_is_called_after_finish_and_on_mark_failed(tmp_path, state):
+    _add(state, "b1")
+    _add(state, "b2")
+    cleaner = RecordingCleaner()
+    publish = Step("publish", result=PublishResult(outcome=Outcome.PROCESADO))
+    pipeline = Pipeline(state, [publish], FakeMark(), FakeNotifier(), tmp_path / "data", clock=lambda: NOW,
+                        cleaner=cleaner)
+
+    pipeline.run_job(state.get_job("b1"))
+    pipeline.mark_failed("b2", "roto")
+
+    assert cleaner.calls == [("b1", Outcome.PROCESADO), ("b2", Outcome.ERROR)]
+    assert state.get_job("b2").status == JobStatus.ERROR
+
+
+def test_cleanup_failure_does_not_change_the_outcome(tmp_path, state, caplog):
+    _add(state)
+    publish = Step("publish", result=PublishResult(outcome=Outcome.PROCESADO))
+    pipeline = Pipeline(state, [publish], FakeMark(), FakeNotifier(), tmp_path / "data", clock=lambda: NOW,
+                        cleaner=RecordingCleaner(OSError("permiso denegado")))
+
+    pipeline.run_due()
+
+    job = state.get_job("b1")
+    assert job.status == JobStatus.DONE and job.outcome == Outcome.PROCESADO and job.attempts == 0
+    assert "permiso denegado" in caplog.text

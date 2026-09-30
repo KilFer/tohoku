@@ -248,6 +248,30 @@ class StateStore:
         if "publish" in names:
             self._db.execute("DELETE FROM published WHERE bookmark_id = ?", (bookmark_id,))
 
+    # --- limpieza (nunca toca `jobs` ni `published`) ----------------------------
+
+    def delete_stage(self, bookmark_id: str, stage: str) -> None:
+        self._db.execute("DELETE FROM stage_results WHERE bookmark_id = ? AND stage = ?", (bookmark_id, stage))
+
+    def delete_stages(self, bookmark_id: str) -> None:
+        """Todos los resultados de etapa del job."""
+        self._db.execute("DELETE FROM stage_results WHERE bookmark_id = ?", (bookmark_id,))
+
+    def purge_stage_results(self, older_than: datetime) -> list[str]:
+        """Borra los resultados de etapa de los jobs `done` terminados antes de `older_than`; devuelve sus ids."""
+        # Una sola sentencia: un `reprocess` concurrente (pasa el job a pending) no puede colarse entre medias.
+        rows = self._db.execute(
+            "DELETE FROM stage_results WHERE bookmark_id IN"
+            " (SELECT bookmark_id FROM jobs WHERE status = 'done' AND updated_at < ?)"
+            " RETURNING bookmark_id",
+            (_iso(older_than),),
+        ).fetchall()
+        return sorted({row["bookmark_id"] for row in rows})
+
+    def done_job_ids(self) -> set[str]:
+        rows = self._db.execute("SELECT bookmark_id FROM jobs WHERE status = 'done'").fetchall()
+        return {row["bookmark_id"] for row in rows}
+
     # --- publicaciones (idempotencia de publish) ------------------------------
 
     def record_publish(self, bookmark_id: str, note: PublishedNote) -> None:

@@ -213,3 +213,39 @@ def test_tick_ingests_every_configured_list(state, settings):
 
     assert state.has_job("a1") and state.has_job("b1")
     assert state.get_job("b1").candidates == ["recetas"]
+
+
+class FakeCleaner:
+    def __init__(self, touched=0):
+        self.touched = touched
+        self.purges = 0
+
+    def purge(self):
+        self.purges += 1
+        return self.touched
+
+
+def test_tick_purges_after_processing_and_logs_when_it_touched_jobs(state, settings, caplog):
+    caplog.set_level("INFO")
+    karakeep = FakeKarakeep([])
+    cleaner = FakeCleaner(touched=3)
+    pipeline = FakePipeline()
+    service = Service(karakeep, state, pipeline, FakeNotifier(), settings, lambda: None, lists={"L1": ["japon"]},
+                      cleaner=cleaner)
+
+    service.tick()
+
+    assert pipeline.runs == 1 and cleaner.purges == 1
+    assert "limpieza jobs=3" in caplog.text
+
+
+def test_tick_does_not_log_purge_when_nothing_was_touched(state, settings, caplog):
+    caplog.set_level("INFO")
+    cleaner = FakeCleaner(touched=0)
+    service = Service(FakeKarakeep([]), state, FakePipeline(), FakeNotifier(), settings, lambda: None,
+                      lists={"L1": ["japon"]}, cleaner=cleaner)
+
+    service.tick()
+
+    assert cleaner.purges == 1
+    assert "limpieza" not in caplog.text
