@@ -25,3 +25,7 @@ class ConfigError(TohokuError):
 
 class QuotaExceeded(TohokuError):
     """Límite diario alcanzado: el job espera al día siguiente sin consumir reintentos."""
+
+    def __init__(self, key: str, message: str) -> None:
+        super().__init__(message)
+        self.key = key

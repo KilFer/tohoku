@@ -136,7 +136,7 @@ def test_permanent_error(tmp_path, state):
 def test_quota_waits_until_tomorrow_and_notifies_once(tmp_path, state):
     _add(state, "b1")
     _add(state, "b2")
-    pipeline, _, _, _, notifier = _pipeline(tmp_path, state, QuotaExceeded("límite diario alcanzado: places_calls (150)"))
+    pipeline, _, _, _, notifier = _pipeline(tmp_path, state, QuotaExceeded("places_calls", "límite diario alcanzado: places_calls (150)"))
 
     pipeline.run_due()
 
@@ -178,7 +178,7 @@ def test_quota_exceeded_stops_the_pass(tmp_path, state):
     """Final review 3: tras un QuotaExceeded no se procesan más jobs en esta pasada."""
     _add(state, "b1")
     _add(state, "b2")
-    pipeline, fetch, publish, mark, notifier = _pipeline(tmp_path, state, fetch_error=QuotaExceeded("presupuesto agotado"))
+    pipeline, fetch, publish, mark, notifier = _pipeline(tmp_path, state, fetch_error=QuotaExceeded("openrouter_usd", "presupuesto agotado"))
 
     pipeline.run_due()
 

@@ -137,8 +137,10 @@ def test_daily_quota(state):
     quota = DailyQuota(state, "places_calls", limit=2)
     quota.check()
     quota.add(2)
-    with pytest.raises(QuotaExceeded):
+    with pytest.raises(QuotaExceeded) as info:
         quota.check()
+    assert info.value.key == "places_calls"
+    assert str(info.value) == "límite diario alcanzado: places_calls (2)"
 
 
 def test_review_reasons_for_note_joins_other_sources(state):

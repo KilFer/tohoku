@@ -12,7 +12,7 @@ class DailyQuota:
 
     def check(self) -> None:
         if self._state.get_counter(self.key) >= self.limit:
-            raise QuotaExceeded(f"límite diario alcanzado: {self.key} ({self.limit})")
+            raise QuotaExceeded(self.key, f"límite diario alcanzado: {self.key} ({self.limit:g})")
 
     def add(self, amount: float) -> None:
         self._state.add_counter(self.key, amount)
