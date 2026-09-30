@@ -3,18 +3,19 @@
 ## Día a día
 - Guarda el enlace (Short, Reel o post) en una lista de Karakeep que figure en `config/destinos.yaml` (hoy, la lista **Japón**). Nada más.
 - En ≤10 minutos se procesa. Los Reels tardan unos minutos más (Whisper en CPU).
-- Resultado en Karakeep: `jr:procesado` / `jr:revisar` / `jr:no-japon` (archivados) o `jr:error` (visible en la Home).
+- Resultado en Karakeep: `jr:procesado` / `jr:revisar` / `jr:descartado` (archivados) o `jr:error` (visible en la Home), más `jr:destino:<destino>` con el destino elegido. `jr:no-japon` es la etiqueta antigua de descartado y se sigue reconociendo.
 
 ## Revisar la bandeja
 En Trilium, `Ideas de Japón › Bandeja de revisión`. Cada nota lleva `#revisar=<motivos>`:
 - `geocodificacion-fallida` / `geocodificacion-ambigua`: corrige `#geolocation` (lat,lng) y `#googleMaps` si hace falta.
 - `posible-duplicado`: si es la misma cosa que otra nota, copia lo útil a la otra y borra esta.
+- `clasificacion-dudosa`: el clasificador dudó entre dos destinos; si la nota no está donde debe, `reprocess <id> --destino X`.
 - `baja-confianza` / `clasificacion-incierta`: comprueba que el contenido tiene sentido.
 - `extraccion-fallida`: la nota trae caption y transcripción; crea la nota a mano o reprocesa.
 Al terminar: quita `#revisar` y quita el clon de la bandeja (clic derecho → "Eliminar" solo en la rama de la bandeja).
 
 ## Destinos: `config/destinos.yaml`
-Qué listas de Karakeep se procesan y cómo se publica cada una. La fase 2 admite **un único destino** (Japón); varios destinos con clasificador llegan en la fase 3. Estructura:
+Qué listas de Karakeep se procesan y cómo se publica cada una. Una lista puede tener varios destinos candidatos; entonces `classify` elige uno con un LLM. Estructura:
 
     listas:
       seo5xdpquppqfy4hmzzeekfh: [japon]   # id de la lista de Karakeep → destinos candidatos
@@ -27,6 +28,12 @@ Qué listas de Karakeep se procesan y cómo se publica cada una. La fase 2 admit
         pais: JP                          # ISO 3166-1; regionCode de Places
         # opcionales (por defecto, los de Japón): nombres_pais, latitud, longitud,
         # categorias_lugar, categorias_cosa, alias_ciudad
+    clasificador:                         # opcional
+      modelo: ...                         # por defecto OPENROUTER_TEXT_MODEL
+      modo: json_schema                   # o etiqueta
+      confianza_minima: 0.5               # por debajo → descartado
+      margen_revision: 0.15               # alternativa más cerca → clasificacion-dudosa
+    destino_legado: japon                 # jobs anteriores a la fase 3; obligatorio con varios destinos
 
 - El servicio sondea **todas** las listas del YAML. `KARAKEEP_LIST_ID` y `TRILIUM_ROOT_LABEL` ya no se leen de `.env` (si siguen ahí, se ignoran). La ruta del YAML es `DESTINOS_FILE` (por defecto `config/destinos.yaml`).
 - Un fichero inválido (YAML mal formado, clave desconocida o mal escrita, `#` en la raíz, prompt inexistente, lista que apunta a un destino que no existe) da `Error de configuración` con el nombre de la clave y sale con código 2.
@@ -34,7 +41,9 @@ Qué listas de Karakeep se procesan y cómo se publica cada una. La fase 2 admit
 - Tras editar `config/` y reiniciar, mira `docker compose logs tohoku`: un error de configuración hace que el contenedor salga al arrancar (código 2) **sin aviso por ntfy**.
 - Vuelta atrás: desde la fase 2 los resultados nuevos de `extract` se guardan como `relacionado_destino`/`confianza_destino`, que el código anterior a la fase 2 no sabe leer. Si haces rollback, ejecuta `reprocess --from extract` sobre los jobs pendientes más allá de `extract`.
 - El prompt de Japón es `config/prompts/japon.md`. Solo se sustituyen los marcadores `{{categorias_lugar}}` y `{{categorias_cosa}}` (las categorías del destino); el resto del texto es tuyo. Si el LLM devuelve una categoría que no es del destino, se reintenta una vez con el error.
-- `init-trilium [--destino X]` crea la estructura bajo la raíz de ese destino (por defecto, el único). `import-instagram ... [--lista ID]` elige la lista de Karakeep destino (por defecto, la única del YAML; con varias hay que indicarla).
+- `destino_legado` (por defecto, el único destino) es el destino de los jobs creados antes de la fase 3 y de un `reprocess` de un bookmark que no está en `state.db`. Un destino quitado del YAML no para la cola: `classify` ignora esos candidatos (cae en `destino_legado`) y solo falla (`jr:error`) el job cuyo destino ya decidido o forzado no existe.
+- El clasificador solo se usa con varios candidatos; el preflight comprueba su modelo solo en ese caso (en modo `json_schema` también que admita salida estructurada). Con un candidato no hay llamada al LLM.
+- `init-trilium [--destino X]` crea la estructura bajo la raíz de ese destino (por defecto, el único; con varios destinos `--destino` es obligatorio). `eval --destino X` evalúa con el prompt de ese destino. `import-instagram ... [--lista ID]` elige la lista de Karakeep destino (por defecto, la única del YAML; con varias hay que indicarla).
 
 ## Comandos
     docker compose exec tohoku tohoku status
@@ -45,9 +54,9 @@ Qué listas de Karakeep se procesan y cómo se publica cada una. La fase 2 admit
 
 `run` y `run-once` toman un candado exclusivo en `DATA_DIR/tohoku.lock`: si ya hay otra instancia en marcha (p. ej. el contenedor), `run-once` sale con código 3 y un mensaje claro, y `run` lo registra en el log y sale con código 3. El resto de comandos (`status`, `reprocess`...) no lo necesitan.
 
-`reprocess --destino X` fuerza el destino (debe existir en `destinos.yaml`) y repite desde `classify`; no borra las notas ya publicadas en Trilium. Sin `--destino`, `--from fetch|classify` olvida el destino y se reclasifica. Si la clasificación quedó dudosa, las notas llevan el motivo `clasificacion-dudosa`.
+`reprocess --from`: `fetch` (vuelve a descargar), `classify` (decide otra vez el destino), `extract` (nuevo prompt o modelo, sin re-transcribir), `geocode`, `resolve`, `publish`. El bookmarkId está en la URL del bookmark en Karakeep. Admite varios ids a la vez; `--all-errors` vuelve a poner en cola **todos** los jobs en error (útil tras corregir cookies o el modelo).
 
-`reprocess --from`: `fetch` (vuelve a descargar), `classify`, `extract` (nuevo prompt o modelo, sin re-transcribir), `geocode`, `resolve`, `publish`. El bookmarkId está en la URL del bookmark en Karakeep. Admite varios ids a la vez; `--all-errors` vuelve a poner en cola **todos** los jobs en error (útil tras corregir cookies o el modelo).
+`reprocess --destino X` fuerza el destino (debe estar configurado en `destinos.yaml`) y repite desde `classify`; `classify` respeta el destino guardado y no llama al LLM. Las notas ya publicadas en Trilium **no se borran**: si el destino cambia, bórralas a mano. Sin `--destino`, `--from fetch|classify` olvida el destino y se reclasifica; `--from extract` o posterior lo conserva. Si la clasificación quedó dudosa, las notas llevan el motivo `clasificacion-dudosa`.
 
 ## Cambiar de modelo
 1. Rellena `eval/cases.yaml` con 10-15 casos reales.

@@ -56,6 +56,8 @@ Documentación de referencia (leer antes de cambiar comportamiento):
 - `204488d` Caché de búsquedas de Places (`places_cache` en state.db, 30 días; el 31 % de consultas se repetía) y día de cuota en hora del Pacífico, como Google (antes el contador local se reiniciaba a 00:00 UTC y habría llamado a Google con su cuota del día agotada).
 - `17950b7` Importador: formato de exportación 2026 (lista de colecciones con posts anidados, mojibake), del más antiguo al más reciente, `--limit N` por tandas.
 
+- Tohoku fase 3 (varios destinos y clasificador) hecha en la rama `feat/tohoku`, **sin desplegar**: se despliega (fases 0-4) cuando termine la importación de Instagram. Ver `docs/pipeline/02b-classify.md`.
+
 ## Importación del historial de Instagram (EN CURSO)
 
 - Fichero: `data/instagram/saved_collections.json` (en el contenedor: `/data/instagram/saved_collections.json`). Colección a importar: **"Cosas de Japon"** = 2.288 enlaces (2.166 Reels, 122 posts). Otras colecciones (Recetas, Para la casa, Boda) no se importan.

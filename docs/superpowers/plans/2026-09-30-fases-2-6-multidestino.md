@@ -180,6 +180,21 @@ Cambios de comportamiento: ninguno. `Layout` se resuelve desde `dest.raiz` y `ca
 
 ## Fase 3: varias listas, clasificador y destino por job
 
+### Rulings de la fase 3 (plan de ejecución `2026-09-30-fase-3-4-clasificador-y-limpieza.md`)
+
+Prevalecen sobre lo que digan las tareas de más abajo.
+
+1. **Jobs anteriores:** la migración deja `candidates` y `destination` a NULL (no asigna `japon`). `classify` los trata como `[destino_legado]`, clave opcional del YAML: por defecto el único destino; con varios y sin la clave, `ConfigError`.
+2. **`reprocess` de un bookmark que no está en `state.db`:** usa `destino_legado`, salvo `--destino`.
+3. **Destino forzado:** `reprocess --destino X` guarda `destination=X` y repite desde `classify` (que no llama al LLM). `--from fetch|transcribe|classify` sin `--destino` olvida el destino; `--from extract` o posterior lo conserva. Las notas viejas de Trilium no se borran.
+4. **Modo `etiqueta`:** confianza 1,0 y sin alternativa; adaptadores específicos (JEV) abiertos vía registro `CLASSIFIERS`.
+5. **Modelo del clasificador:** `clasificador.modelo`, o `OPENROUTER_TEXT_MODEL`/`OPENROUTER_MODEL`. El preflight solo lo comprueba si alguna lista tiene varios destinos.
+6. **`clasificacion-dudosa`:** la calcula `classify` (`Classification.dudosa`) y la añade el `resolve` del flujo `viaje`.
+7. **`App.stages`:** tramo común + etapas del destino legado; solo para el test de orden y `eval`.
+8. **Fase 4:** al limpiar un job terminado se borran su directorio y el resultado de `fetch`; un reprocesado vuelve a descargar. La limpieza se hace en cada pasada del servicio.
+9. **Destino retirado del YAML:** no para la cola. `classify` descarta los candidatos obsoletos (respaldo `destino_legado`); un job cuyo destino decidido o forzado ya no existe falla solo (`PermanentError` → `jr:error`), no `ConfigError`.
+10. **Despliegue:** Tohoku (fases 0-4) se despliega solo cuando termine la importación de Instagram en curso; no habrá jobs legados aparcados en ese momento.
+
 ### Task 3.1: Estado — `candidates`, `destination` y `DESCARTADO`
 
 **Files:** `src/tohoku/state.py`, `src/tohoku/models.py`, `src/tohoku/stages/mark.py`, `tests/unit/test_state.py`, `tests/unit/test_ingest_mark.py`
