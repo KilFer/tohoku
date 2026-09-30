@@ -22,7 +22,8 @@ Documentación de referencia (leer antes de cambiar comportamiento):
 - Volúmenes: `./data → /data` (state.db, jobs, `data/instagram/`), `tohoku_whisper-models → /models` (large-v3; antes `japan-reader_whisper-models`), `./secrets → /secrets:ro`.
 - `data/state.db` lo crea el contenedor como root: usar la CLI dentro del contenedor, no `uv run` sobre `data/`.
 - `data/models/` (~3,5 GB) es una copia del host de las pruebas; el contenedor usa el volumen `/models`. Se puede borrar si hace falta espacio.
-- No hay remoto git: todo se commitea en `master` local.
+- No hay remoto git. `master` = lo desplegado o desplegable. El trabajo multidestino (fases 2-6 de `docs/superpowers/plans/2026-09-30-fases-2-6-multidestino.md`) va en la rama `feat/tohoku` y se integra en `master` con fast-forward al terminar cada fase.
+- Desplegar siempre desde `master` con el árbol limpio (el compose monta `./data` relativo a este directorio): `git switch master && docker compose build && docker compose up -d && git switch feat/tohoku`.
 
 ## Reglas de trabajo
 
