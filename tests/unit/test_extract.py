@@ -39,7 +39,7 @@ def _ctx(tmp_path, images=0, frames=0):
 
 
 def _stage(settings, llm, state, limit=1.0):
-    return ExtractStage(settings, llm, DailyQuota(state, "openrouter_usd", limit))
+    return ExtractStage(settings, llm, DailyQuota(state, "openrouter_usd", limit), "prompt de prueba")
 
 
 def test_valid_extraction_with_images_uses_vision_model(tmp_path, settings, state):

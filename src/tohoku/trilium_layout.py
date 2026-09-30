@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from tohoku.clients.trilium import TNote, TriliumClient
@@ -63,11 +63,11 @@ def _find_template(trilium: TriliumClient, plantillas: str, title: str) -> TNote
 def _root(trilium: TriliumClient, root_label: str) -> TNote:
     root = _find_one(trilium, f"#{root_label}")
     if root is None:
-        raise ConfigError(f"No se encuentra la nota raíz con #{root_label}. Añade esa etiqueta a 'Ideas de Japón' en Trilium.")
+        raise ConfigError(f"No se encuentra la nota raíz con #{root_label}. Añade esa etiqueta a la nota raíz del destino en Trilium.")
     return root
 
 
-def resolve_layout(trilium: TriliumClient, root_label: str = "jrRoot") -> Layout:
+def resolve_layout(trilium: TriliumClient, root_label: str = "jrRoot", categorias: Mapping[str, str] = CATEGORIES) -> Layout:
     root = _root(trilium, root_label)
     ids: dict[str, str] = {}
     for label in _SECTIONS:
@@ -75,12 +75,12 @@ def resolve_layout(trilium: TriliumClient, root_label: str = "jrRoot") -> Layout
         if note is None:
             raise ConfigError(f"Falta la nota #{label} en Trilium; ejecuta 'tohoku init-trilium'")
         ids[label] = note.note_id
-    categorias: dict[str, str] = {}
-    for key in CATEGORIES:
+    resueltas: dict[str, str] = {}
+    for key in categorias:
         note = _find_one(trilium, f"#jrCategoria={key}", ids["jrComprar"])
         if note is None:
             raise ConfigError(f"Falta la categoría '{key}' en Trilium; ejecuta 'tohoku init-trilium'")
-        categorias[key] = note.note_id
+        resueltas[key] = note.note_id
     templates = {}
     for title in (TEMPLATE_LUGAR, TEMPLATE_COSA):
         note = _find_template(trilium, ids["jrPlantillas"], title)
@@ -96,11 +96,11 @@ def resolve_layout(trilium: TriliumClient, root_label: str = "jrRoot") -> Layout
         plantillas=ids["jrPlantillas"],
         plantilla_lugar=templates[TEMPLATE_LUGAR],
         plantilla_cosa=templates[TEMPLATE_COSA],
-        categorias=categorias,
+        categorias=resueltas,
     )
 
 
-def init_layout(trilium: TriliumClient, root_label: str = "jrRoot") -> Layout:
+def init_layout(trilium: TriliumClient, root_label: str = "jrRoot", categorias: Mapping[str, str] = CATEGORIES) -> Layout:
     """Crea bajo la raíz lo que falte. Idempotente."""
     root = _root(trilium, root_label).note_id
 
@@ -117,7 +117,7 @@ def init_layout(trilium: TriliumClient, root_label: str = "jrRoot") -> Layout:
 
     ensure("#jrMapa", root, root, _SECTIONS["jrMapa"], {"jrMapa": ""}, type="book", relations={"template": GEO_MAP_TEMPLATE})
     comprar = ensure("#jrComprar", root, root, _SECTIONS["jrComprar"], {"jrComprar": ""})
-    for key, title in CATEGORIES.items():
+    for key, title in categorias.items():
         ensure(f"#jrCategoria={key}", comprar, comprar, title, {"jrCategoria": key})
     ensure("#jrCultura", root, root, _SECTIONS["jrCultura"], {"jrCultura": ""})
     ensure("#jrRevision", root, root, _SECTIONS["jrRevision"], {"jrRevision": ""})
@@ -128,7 +128,7 @@ def init_layout(trilium: TriliumClient, root_label: str = "jrRoot") -> Layout:
             trilium.add_label(note.note_id, "template", "")
             for name, value in labels.items():
                 trilium.add_label(note.note_id, name, value)
-    return resolve_layout(trilium, root_label)
+    return resolve_layout(trilium, root_label, categorias)
 
 
 class LayoutCache:

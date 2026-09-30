@@ -41,8 +41,8 @@ def _renamed(text: str) -> str:
     return text
 
 
-def test_extract_prompt_matches_baseline():
-    assert _read(REPO / "src/tohoku/prompts/extract.md") == _renamed(_read(BASELINE / "extract_prompt.md"))
+def test_japan_prompt_matches_baseline():
+    assert _read(REPO / "config/prompts/japon.md") == _renamed(_read(BASELINE / "extract_prompt.md"))
 
 
 def test_extraction_schema_matches_baseline():

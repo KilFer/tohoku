@@ -57,6 +57,7 @@ class Settings(BaseSettings):
 
     poll_interval_minutes: int = 10
     data_dir: Path = Path("data")
+    destinos_file: Path = Path("config/destinos.yaml")
 
     japan_min_confidence: float = 0.4
     japan_review_confidence: float = 0.7

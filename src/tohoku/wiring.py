@@ -6,20 +6,19 @@ from tohoku.clients.openrouter import OpenRouterClient, supports_images, support
 from tohoku.clients.places import PlacesClient
 from tohoku.clients.trilium import TriliumClient
 from tohoku.config import Settings
+from tohoku.destinations import Destination, DestinationsConfig, load_destinations
 from tohoku.errors import ConfigError
+from tohoku.flows.base import FlowDeps, FlowRuntime
+from tohoku.flows.registry import FLOWS
 from tohoku.media.downloaders import GalleryDlDownloader, YtDlpDownloader
 from tohoku.pipeline import Pipeline, Stage
 from tohoku.quota import DailyQuota
 from tohoku.service import Service
-from tohoku.stages.extract import ExtractStage
 from tohoku.stages.fetch import FetchStage
-from tohoku.stages.geocode import GeocodeStage
 from tohoku.stages.mark import MarkStage
-from tohoku.stages.publish import PublishStage
-from tohoku.stages.resolve import ResolveStage
 from tohoku.stages.transcribe import TranscribeStage, WhisperTranscriber
 from tohoku.state import StateStore
-from tohoku.trilium_layout import LayoutCache, resolve_layout
+from tohoku.trilium_layout import LayoutCache
 
 
 @dataclass
@@ -38,9 +37,12 @@ class App:
     stages: list[Stage]
     pipeline: Pipeline
     service: Service
+    destinations: DestinationsConfig
+    destination: Destination
+    runtime: FlowRuntime
 
 
-def preflight(settings: Settings, trilium: TriliumClient, llm: OpenRouterClient, layout: LayoutCache) -> None:
+def preflight(settings: Settings, trilium: TriliumClient, llm: OpenRouterClient, layout: FlowRuntime | LayoutCache) -> None:
     """Comprobaciones antes de procesar: Trilium accesible y estructurado, modelos válidos, cookies."""
     trilium.app_info()
     layout.refresh()
@@ -70,7 +72,6 @@ def build_app(settings: Settings) -> App:
     llm = OpenRouterClient(settings.openrouter_api_key)
     places = PlacesClient(settings.google_places_api_key)
     notifier = Notifier(settings.ntfy_url, settings.ntfy_topic, settings.ntfy_token)
-    layout = LayoutCache(lambda: resolve_layout(trilium, settings.trilium_root_label))
     llm_budget = DailyQuota(state, "openrouter_usd", settings.openrouter_daily_budget_usd)
     places_quota = DailyQuota(state, "places_calls", settings.places_daily_limit)
     ytdlp = YtDlpDownloader(settings.instagram_cookies_file, settings.max_video_duration_min * 60)
@@ -78,19 +79,17 @@ def build_app(settings: Settings) -> App:
     transcribe = TranscribeStage(
         WhisperTranscriber(settings.whisper_model, settings.whisper_compute_type, settings.whisper_download_root, settings.whisper_threads)
     )
-    thresholds = settings.thresholds
-    stages: list[Stage] = [
-        FetchStage(settings, ytdlp, gallery, karakeep),
-        transcribe,
-        ExtractStage(settings, llm, llm_budget),
-        GeocodeStage(places, places_quota, thresholds, cache=state),
-        ResolveStage(trilium, layout, thresholds),
-        PublishStage(trilium, layout, llm, settings, llm_budget, state),
-    ]
+    destinations = load_destinations(settings.destinos_file, FLOWS)
+    destination = destinations.single_destination()
+    deps = FlowDeps(settings=settings, state=state, trilium=trilium, llm=llm, places=places,
+                    llm_budget=llm_budget, places_quota=places_quota)
+    runtime = FLOWS[destination.flujo].build(destination, deps)
+    stages: list[Stage] = [FetchStage(settings, ytdlp, gallery, karakeep), transcribe, *runtime.stages]
     pipeline = Pipeline(state, stages, MarkStage(karakeep), notifier, settings.data_dir)
-    service = Service(karakeep, state, pipeline, notifier, settings, lambda: preflight(settings, trilium, llm, layout))
+    service = Service(karakeep, state, pipeline, notifier, settings, lambda: preflight(settings, trilium, llm, runtime))
     return App(
         settings=settings, state=state, karakeep=karakeep, trilium=trilium, llm=llm, notifier=notifier,
-        layout=layout, llm_budget=llm_budget, ytdlp=ytdlp, gallery=gallery, transcribe=transcribe,
+        layout=runtime.layout, llm_budget=llm_budget, ytdlp=ytdlp, gallery=gallery, transcribe=transcribe,
         stages=stages, pipeline=pipeline, service=service,
+        destinations=destinations, destination=destination, runtime=runtime,
     )

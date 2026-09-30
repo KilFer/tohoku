@@ -1,3 +1,4 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -184,3 +185,19 @@ def test_cli_run_exits_3_when_another_instance_runs(fake_app):
     with single_instance(fake_app.settings.data_dir):
         result = CliRunner().invoke(cli.app, ["run"])
     assert result.exit_code == 3
+
+
+def test_build_app_uses_the_destination_from_config(settings):
+    app = build_app(settings)
+    assert app.destination.nombre == "japon" and app.destination.raiz == "jrRoot"
+    assert "Japón" in next(s for s in app.stages if s.name == "extract").system_prompt
+
+
+def test_build_app_rejects_several_destinations_for_now(settings, tmp_path):
+    text = (Path(__file__).parents[1] / "fixtures" / "destinos.yaml").read_text(encoding="utf-8")
+    text = text.replace("../../config", str(Path(__file__).parents[2] / "config"))
+    text += "  nz:\n    flujo: viaje\n    raiz: jrRootNZ\n    descripcion: NZ\n    prompt: " + str(Path(__file__).parents[2] / "config/prompts/japon.md") + "\n    pais: NZ\n"
+    path = tmp_path / "destinos.yaml"
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(ConfigError, match="fase 3"):
+        build_app(settings.model_copy(update={"destinos_file": path}))

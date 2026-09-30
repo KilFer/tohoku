@@ -1,0 +1,12 @@
+# Destinos de Tohoku: qué listas de Karakeep se procesan, con qué flujo y dónde se publican.
+# Referencia: docs/superpowers/specs/2026-09-30-multi-destino-design.md §2 y docs/operations.md.
+# Fase 2: un único destino. Varios destinos (clasificador) llegan en la fase 3.
+listas:
+  seo5xdpquppqfy4hmzzeekfh: [japon]   # lista "Japón" de Karakeep
+destinos:
+  japon:
+    flujo: viaje
+    raiz: jrRoot                        # etiqueta de "Home › Viajes › Ideas de Japón"
+    descripcion: "Viaje a Japón: lugares, comida, compras y cultura de Japón"
+    prompt: prompts/japon.md
+    pais: JP                            # el resto de parámetros del flujo viaje toman sus valores por defecto (Japón)

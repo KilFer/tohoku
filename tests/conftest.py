@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from tohoku.config import Settings
@@ -18,4 +20,5 @@ def settings(tmp_path) -> Settings:
         google_places_api_key="gp",
         data_dir=tmp_path / "data",
         whisper_download_root=tmp_path / "models",
+        destinos_file=Path(__file__).parent / "fixtures" / "destinos.yaml",
     )

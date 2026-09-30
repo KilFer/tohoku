@@ -135,5 +135,6 @@ def eval_cmd(
         updates |= {"openrouter_model": model, "openrouter_text_model": model}
     settings = loaded.settings.model_copy(update=updates)
     runner = EvalRunner(FetchStage(settings, loaded.ytdlp, loaded.gallery, loaded.karakeep), loaded.transcribe, Path("eval/.cache"))
-    scores = runner.run(load_cases(cases), ExtractStage(settings, loaded.llm, loaded.llm_budget), settings.thresholds, keyframes)
+    extract = ExtractStage(settings, loaded.llm, loaded.llm_budget, loaded.destination.prompt)
+    scores = runner.run(load_cases(cases), extract, settings.thresholds, keyframes)
     typer.echo(format_table(scores, settings.openrouter_model, keyframes))

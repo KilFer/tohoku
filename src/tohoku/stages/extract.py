@@ -6,7 +6,6 @@ from tohoku.clients.openrouter import OpenRouterClient, image_part
 from tohoku.config import Settings
 from tohoku.context import JobContext
 from tohoku.models import Extraction, ExtractResult, FetchResult, Transcript
-from tohoku.prompts import load_prompt
 from tohoku.quota import DailyQuota
 from tohoku.text import strip_fences
 
@@ -40,10 +39,11 @@ class ExtractStage:
     name = "extract"
     result_model = ExtractResult
 
-    def __init__(self, settings: Settings, llm: OpenRouterClient, budget: DailyQuota) -> None:
+    def __init__(self, settings: Settings, llm: OpenRouterClient, budget: DailyQuota, system_prompt: str) -> None:
         self._settings = settings
         self._llm = llm
         self._budget = budget
+        self.system_prompt = system_prompt
 
     def run(self, ctx: JobContext) -> ExtractResult:
         fetch = ctx.result("fetch", FetchResult)
@@ -52,7 +52,7 @@ class ExtractStage:
         model = self._settings.openrouter_model if image_paths else self._settings.text_model
         content = [{"type": "text", "text": build_user_text(fetch, transcript)}] + [image_part(p) for p in image_paths]
         messages: list[dict] = [
-            {"role": "system", "content": load_prompt("extract")},
+            {"role": "system", "content": self.system_prompt},
             {"role": "user", "content": content},
         ]
         schema = Extraction.model_json_schema()

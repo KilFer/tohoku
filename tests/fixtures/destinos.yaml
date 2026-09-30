@@ -1,0 +1,9 @@
+# Configuración de tests: la lista L1 de la fixture `settings` y el prompt real de Japón.
+listas:
+  L1: [japon]
+destinos:
+  japon:
+    flujo: viaje
+    raiz: jrRoot
+    descripcion: "Viaje a Japón: lugares, comida, compras y cultura de Japón"
+    prompt: ../../config/prompts/japon.md
