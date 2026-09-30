@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 from tohoku.sources import Platform
 
@@ -82,8 +82,9 @@ class Otro(BaseModel):
 
 
 class Extraction(BaseModel):
-    relacionado_japon: bool
-    confianza_japon: float = Field(ge=0, le=1)
+    # Antes relacionado_japon / confianza_japon: se aceptan al leer resultados ya guardados en state.db.
+    relacionado_destino: bool = Field(validation_alias=AliasChoices("relacionado_destino", "relacionado_japon"))
+    confianza_destino: float = Field(ge=0, le=1, validation_alias=AliasChoices("confianza_destino", "confianza_japon"))
     idioma: str
     resumen_fuente: str
     lugares: list[Lugar] = []

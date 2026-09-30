@@ -15,7 +15,7 @@ from tohoku.models import (
     ResolveResult,
 )
 from tohoku.notes import name_key
-from tohoku.rules import japan_decision
+from tohoku.rules import destination_decision
 from tohoku.text import similarity
 from tohoku.trilium_layout import Layout
 
@@ -38,7 +38,7 @@ class ResolveStage:
         if extraction is None:
             item = PlannedItem(key="fallo", kind=ItemKind.FALLO, index=0, action="create", review_reasons=["extraccion-fallida"])
             return ResolveResult(items=[item])
-        decision = japan_decision(extraction, self._th)
+        decision = destination_decision(extraction, self._th)
         if decision == "no":
             return ResolveResult()
         layout = self._layout()

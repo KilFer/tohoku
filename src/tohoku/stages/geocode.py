@@ -9,7 +9,7 @@ from tohoku.flows.viaje.params import ViajeParams
 from tohoku.geo import NAME_SIMILARITY, SAME_PLACE_RADIUS_M, city_matches, distance_m, in_country, name_score
 from tohoku.models import ExtractResult, GeocodeResult, GeoMatch, GeoOutcome, Lugar
 from tohoku.quota import DailyQuota
-from tohoku.rules import japan_decision
+from tohoku.rules import destination_decision
 from tohoku.state import StateStore
 
 log = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ class GeocodeStage:
 
     def run(self, ctx: JobContext) -> GeocodeResult:
         extraction = ctx.result("extract", ExtractResult).extraction
-        if extraction is None or japan_decision(extraction, self._th) == "no":
+        if extraction is None or destination_decision(extraction, self._th) == "no":
             return GeocodeResult()
         outcomes = [self._geocode(i, lugar) for i, lugar in enumerate(extraction.lugares)]
         for outcome in outcomes:

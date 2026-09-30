@@ -7,7 +7,7 @@ from tohoku.config import Thresholds
 from tohoku.context import JobContext
 from tohoku.errors import TohokuError
 from tohoku.models import ExtractResult, FetchResult, Transcript
-from tohoku.rules import japan_decision
+from tohoku.rules import destination_decision
 from tohoku.sources import classify_url
 from tohoku.state import Job, JobStatus, utcnow
 from tohoku.text import normalize_name, similarity
@@ -62,7 +62,7 @@ def score_case(case: EvalCase, result: ExtractResult, thresholds: Thresholds) ->
             id=case.id, japan_ok=False, lugares_expected=expected_l, cosas_expected=expected_c,
             cost_usd=result.cost_usd, error=result.error or "extracción fallida",
         )
-    is_japan = japan_decision(extraction, thresholds) != "no"
+    is_japan = destination_decision(extraction, thresholds) != "no"
     lugar_names = [l.nombre for l in extraction.lugares] + [l.nombre_local for l in extraction.lugares if l.nombre_local]
     found_l = count_matches(case.expect.lugares, lugar_names)
     found_c = count_matches(case.expect.cosas, [c.nombre for c in extraction.cosas])

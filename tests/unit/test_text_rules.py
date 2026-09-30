@@ -2,7 +2,7 @@ import pytest
 
 from tohoku.config import Thresholds
 from tohoku.models import Extraction, Outcome, PublishedNote
-from tohoku.rules import decide_outcome, japan_decision
+from tohoku.rules import decide_outcome, destination_decision
 from tohoku.text import fold, normalize_name, similarity, strip_fences
 
 
@@ -41,7 +41,7 @@ def _extraction(conf: float) -> Extraction:
 
 @pytest.mark.parametrize(("conf", "expected"), [(0.1, "no"), (0.39, "no"), (0.4, "uncertain"), (0.69, "uncertain"), (0.7, "yes"), (1.0, "yes")])
 def test_japan_decision(conf, expected):
-    assert japan_decision(_extraction(conf), Thresholds()) == expected
+    assert destination_decision(_extraction(conf), Thresholds()) == expected
 
 
 def test_decide_outcome():

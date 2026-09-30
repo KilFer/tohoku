@@ -45,7 +45,7 @@ from tohoku.notes import (
 )
 from tohoku.prompts import load_prompt
 from tohoku.quota import DailyQuota
-from tohoku.rules import decide_outcome, japan_decision
+from tohoku.rules import decide_outcome, destination_decision
 from tohoku.state import StateStore
 from tohoku.text import normalize_name, strip_fences
 from tohoku.trilium_layout import Layout
@@ -127,7 +127,7 @@ class PublishStage:
         if extraction is not None:
             self._link_donde(extraction, plan, by_key)
         notes = [by_key[item.key] for item in plan.items if item.action != "alias"]
-        decision = japan_decision(extraction, self._settings.thresholds) if extraction else "yes"
+        decision = destination_decision(extraction, self._settings.thresholds) if extraction else "yes"
         outcome = decide_outcome(decision, notes)
         log.info("bookmark=%s publish notas=%d resultado=%s", ctx.job.bookmark_id, len(notes), outcome)
         return PublishResult(notes=notes, outcome=outcome)

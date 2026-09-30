@@ -51,9 +51,9 @@ def make_cosa(nombre="CoCo Ichibanya", **overrides) -> Cosa:
     return Cosa(**(base | overrides))
 
 
-def make_extraction(confianza_japon=0.95, lugares=(), cosas=(), otros=()) -> Extraction:
+def make_extraction(confianza_destino=0.95, lugares=(), cosas=(), otros=()) -> Extraction:
     return Extraction(
-        relacionado_japon=confianza_japon >= 0.5, confianza_japon=confianza_japon, idioma="es",
+        relacionado_destino=confianza_destino >= 0.5, confianza_destino=confianza_destino, idioma="es",
         resumen_fuente="Un vídeo sobre Tokio", lugares=list(lugares), cosas=list(cosas),
         otros=[o if isinstance(o, Otro) else Otro(**o) for o in otros],
     )
