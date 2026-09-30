@@ -31,6 +31,21 @@ class Step:
         return self.result
 
 
+class QuotaStep(Step):
+    """Agota la cuota solo para los bookmarks indicados (los demás no la necesitan: p. ej. todo en caché)."""
+
+    def __init__(self, name, key, for_bookmarks):
+        super().__init__(name)
+        self.key = key
+        self.for_bookmarks = set(for_bookmarks)
+
+    def run(self, ctx):
+        self.calls += 1
+        if ctx.job.bookmark_id in self.for_bookmarks:
+            raise QuotaExceeded(self.key, f"límite diario alcanzado: {self.key} (150)")
+        return self.result
+
+
 class FakeMark:
     def __init__(self, error=None):
         self.error = error
@@ -145,6 +160,7 @@ def test_quota_waits_until_tomorrow_and_notifies_once(tmp_path, state):
     # Medianoche del Pacífico (cuando Google renueva la cuota) + 5 min: 28/09 10:00 UTC → 29/09 07:05 UTC.
     assert job.next_attempt_at == datetime(2026, 9, 29, 7, 5, tzinfo=UTC)
     assert len(notifier.sent) == 1
+    assert state.get_job("b2").next_attempt_at == datetime(2026, 9, 29, 7, 5, tzinfo=UTC)
 
 
 def test_config_error_propagates_without_touching_job(tmp_path, state):
@@ -174,14 +190,49 @@ def test_failing_to_mark_error_still_finishes_job(tmp_path, state):
     assert state.get_job("b1").status == JobStatus.ERROR
 
 
-def test_quota_exceeded_stops_the_pass(tmp_path, state):
-    """Final review 3: tras un QuotaExceeded no se procesan más jobs en esta pasada."""
+def test_quota_exceeded_parks_job_and_pass_continues(tmp_path, state):
+    """Con la cuota agotada solo espera el job que la necesita; el resto de la cola sigue."""
     _add(state, "b1")
     _add(state, "b2")
-    pipeline, fetch, publish, mark, notifier = _pipeline(tmp_path, state, fetch_error=QuotaExceeded("openrouter_usd", "presupuesto agotado"))
+    fetch = Step("fetch")
+    geocode = QuotaStep("geocode", "places_calls", for_bookmarks={"b1"})
+    publish = Step("publish", result=PublishResult(outcome=Outcome.PROCESADO))
+    notifier = FakeNotifier()
+    pipeline = Pipeline(state, [fetch, geocode, publish], FakeMark(), notifier, tmp_path / "data", clock=lambda: NOW)
+
+    assert pipeline.run_due() == 2
+
+    b1, b2 = state.get_job("b1"), state.get_job("b2")
+    assert b1.status == JobStatus.PENDING and b1.attempts == 0
+    assert b1.next_attempt_at == datetime(2026, 9, 29, 7, 5, tzinfo=UTC)
+    assert b2.status == JobStatus.DONE and b2.outcome == Outcome.PROCESADO
+    assert state.load_stage("b1", "fetch", Dummy) == Dummy()  # lo hecho antes de la cuota queda guardado
+    assert len(notifier.sent) == 1
+
+
+def test_parked_job_resumes_at_the_quota_stage(tmp_path, state):
+    _add(state, "b1")
+    fetch = Step("fetch")
+    geocode = QuotaStep("geocode", "places_calls", for_bookmarks={"b1"})
+    publish = Step("publish", result=PublishResult(outcome=Outcome.PROCESADO))
+    pipeline = Pipeline(state, [fetch, geocode, publish], FakeMark(), FakeNotifier(), tmp_path / "data", clock=lambda: NOW)
+    pipeline.run_due()
+
+    geocode.for_bookmarks.clear()  # vuelve la cuota
+    pipeline.run_job(state.get_job("b1"))
+
+    assert fetch.calls == 1 and geocode.calls == 2 and publish.calls == 1
+    assert state.get_job("b1").status == JobStatus.DONE
+
+
+def test_quota_notifies_once_per_key_even_if_every_job_hits_it(tmp_path, state):
+    for bid in ("b1", "b2", "b3"):
+        _add(state, bid)
+    geocode = QuotaStep("geocode", "places_calls", for_bookmarks={"b1", "b2", "b3"})
+    notifier = FakeNotifier()
+    pipeline = Pipeline(state, [geocode], FakeMark(), notifier, tmp_path / "data", clock=lambda: NOW)
 
     pipeline.run_due()
 
-    assert fetch.calls == 1
-    assert state.get_job("b2").status == JobStatus.PENDING and state.get_job("b2").attempts == 0
-    assert state.get_job("b2").last_error is None
+    assert all(state.get_job(b).status == JobStatus.PENDING for b in ("b1", "b2", "b3"))
+    assert [title for title, _ in notifier.sent] == ["tohoku: límite diario alcanzado"]
