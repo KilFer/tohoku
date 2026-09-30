@@ -45,7 +45,9 @@ Qué listas de Karakeep se procesan y cómo se publica cada una. La fase 2 admit
 
 `run` y `run-once` toman un candado exclusivo en `DATA_DIR/tohoku.lock`: si ya hay otra instancia en marcha (p. ej. el contenedor), `run-once` sale con código 3 y un mensaje claro, y `run` lo registra en el log y sale con código 3. El resto de comandos (`status`, `reprocess`...) no lo necesitan.
 
-`reprocess --from`: `fetch` (vuelve a descargar), `extract` (nuevo prompt o modelo, sin re-transcribir), `geocode`, `resolve`, `publish`. El bookmarkId está en la URL del bookmark en Karakeep. Admite varios ids a la vez; `--all-errors` vuelve a poner en cola **todos** los jobs en error (útil tras corregir cookies o el modelo).
+`reprocess --destino X` fuerza el destino (debe existir en `destinos.yaml`) y repite desde `classify`; no borra las notas ya publicadas en Trilium. Sin `--destino`, `--from fetch|classify` olvida el destino y se reclasifica. Si la clasificación quedó dudosa, las notas llevan el motivo `clasificacion-dudosa`.
+
+`reprocess --from`: `fetch` (vuelve a descargar), `classify`, `extract` (nuevo prompt o modelo, sin re-transcribir), `geocode`, `resolve`, `publish`. El bookmarkId está en la URL del bookmark en Karakeep. Admite varios ids a la vez; `--all-errors` vuelve a poner en cola **todos** los jobs en error (útil tras corregir cookies o el modelo).
 
 ## Cambiar de modelo
 1. Rellena `eval/cases.yaml` con 10-15 casos reales.

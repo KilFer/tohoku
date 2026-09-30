@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from fakes import FakeKarakeep
 from tohoku.clients.karakeep import Bookmark
 from tohoku.errors import ConfigError, TransientError
-from tohoku.models import Outcome
+from tohoku.models import Outcome, PublishedNote
 from tohoku.pipeline import STAGE_ORDER
 from tohoku.service import Service, format_status, reprocess
 from tohoku.sources import ContentHint, Platform
@@ -137,6 +137,56 @@ def test_reprocess_unknown_job_is_created_from_karakeep(state):
 def test_reprocess_rejects_invalid_stage(state):
     with pytest.raises(ValueError):
         reprocess(state, FakeKarakeep(), "b1", "transcribe")
+
+
+def _done_job_with_stages(state, destination="japon"):
+    state.add_job("b1", "https://youtu.be/a", Platform.YOUTUBE, ContentHint.VIDEO)
+    state.set_destination("b1", destination)
+    for stage in STAGE_ORDER:
+        state.save_stage("b1", stage, Saved())
+    state.record_publish("b1", PublishedNote(key="lugar:0", note_id="n1", action="create"))
+    state.finish("b1", Outcome.PROCESADO)
+
+
+def test_reprocess_with_destination_saves_it_and_clears_from_classify(state):
+    _done_job_with_stages(state)
+
+    job = reprocess(state, FakeKarakeep(), "b1", "geocode", destination="recetas", known={"japon", "recetas"})
+
+    assert job.destination == "recetas"
+    assert state.load_stage("b1", "transcribe", Saved) is not None
+    for stage in ("classify", "extract", "geocode", "resolve", "publish"):
+        assert state.load_stage("b1", stage, Saved) is None
+
+
+def test_reprocess_with_unknown_destination_raises_with_name(state):
+    _done_job_with_stages(state)
+    with pytest.raises(ValueError, match="nz"):
+        reprocess(state, FakeKarakeep(), "b1", "geocode", destination="nz", known={"japon"})
+
+
+def test_reprocess_from_fetch_without_destination_resets_it(state):
+    _done_job_with_stages(state)
+    job = reprocess(state, FakeKarakeep(), "b1", "fetch", known={"japon"})
+    assert job.destination is None
+
+
+def test_reprocess_from_geocode_without_destination_keeps_destination_and_classify(state):
+    _done_job_with_stages(state)
+    job = reprocess(state, FakeKarakeep(), "b1", "geocode", known={"japon"})
+    assert job.destination == "japon"
+    assert state.load_stage("b1", "classify", Saved) is not None
+
+
+def test_reprocess_destination_on_done_job_goes_pending_and_drops_published(state):
+    """Review Focus 4: se borra desde `classify` (incluye `publish`). Las notas antiguas en Trilium NO se borran."""
+    _done_job_with_stages(state)
+    assert state.published("b1")
+
+    job = reprocess(state, FakeKarakeep(), "b1", "publish", destination="recetas", known={"japon", "recetas"})
+
+    assert job.status == JobStatus.PENDING and job.destination == "recetas"
+    assert state.published("b1") == {}
 
 
 def test_format_status(state):

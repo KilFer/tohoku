@@ -58,7 +58,8 @@ def test_preflight_requires_existing_cookies(settings, trilium, tmp_path):
 
 @pytest.fixture
 def fake_app(monkeypatch, tmp_path, settings):
-    app = SimpleNamespace(settings=settings, state=StateStore(tmp_path / "state.db"), karakeep=FakeKarakeep())
+    app = SimpleNamespace(settings=settings, state=StateStore(tmp_path / "state.db"), karakeep=FakeKarakeep(),
+                          destinations=SimpleNamespace(destinos={"japon": object()}))
     monkeypatch.setattr(cli, "_load", lambda: app)
     return app
 
@@ -78,6 +79,11 @@ def test_cli_status(fake_app):
 def test_cli_reprocess_rejects_invalid_stage(fake_app):
     result = CliRunner().invoke(cli.app, ["reprocess", "b1", "--from", "transcribe"])
     assert result.exit_code == 1 and "etapa no válida" in result.output
+
+
+def test_cli_reprocess_unknown_destino(fake_app):
+    result = CliRunner().invoke(cli.app, ["reprocess", "b1", "--destino", "nz"])
+    assert result.exit_code == 1 and "nz" in result.output
 
 
 def _info(model, modalities=("text", "image"), params=("response_format",)):

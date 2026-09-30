@@ -1,6 +1,6 @@
 import logging
 import time
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from datetime import datetime
 
 from tohoku.clients.karakeep import KarakeepClient
@@ -89,17 +89,33 @@ class Service:
             self._notifier.send("tohoku: resumen del día", message, priority=2)
 
 
-def reprocess(state: StateStore, karakeep: KarakeepClient, bookmark_id: str, from_stage: str) -> Job:
-    """Vuelve a poner un bookmark en la cola desde la etapa indicada."""
+def reprocess(
+    state: StateStore, karakeep: KarakeepClient, bookmark_id: str, from_stage: str,
+    destination: str | None = None, known: Collection[str] = (),
+) -> Job:
+    """Vuelve a poner un bookmark en la cola desde la etapa indicada.
+
+    Con `destination` fuerza ese destino y repite desde `classify` (o antes, si `from_stage` es anterior).
+    Sin él, reprocesar desde fetch/classify olvida el destino para que se vuelva a clasificar.
+    """
     if from_stage not in REPROCESS_FROM:
         raise ValueError(f"etapa no válida: {from_stage}. Opciones: {', '.join(REPROCESS_FROM)}")
+    if destination is not None and destination not in known:
+        raise ValueError(f"destino desconocido: {destination}. Opciones: {', '.join(sorted(known))}")
+    clear_from = from_stage
+    if destination is not None and STAGE_ORDER.index(from_stage) > STAGE_ORDER.index("classify"):
+        clear_from = "classify"
     if not state.has_job(bookmark_id):
         bookmark = karakeep.get_bookmark(bookmark_id)
         classified = classify_url(bookmark.url) if bookmark.url else None
         platform, hint = classified if classified else (None, None)
         state.add_job(bookmark_id, bookmark.url or "", platform, hint)
     state.reset(bookmark_id)
-    state.clear_stages_from(bookmark_id, from_stage, STAGE_ORDER)
+    state.clear_stages_from(bookmark_id, clear_from, STAGE_ORDER)
+    if destination is not None:
+        state.set_destination(bookmark_id, destination)
+    elif from_stage in ("fetch", "transcribe", "classify"):
+        state.set_destination(bookmark_id, None)
     job = state.get_job(bookmark_id)
     assert job is not None
     return job

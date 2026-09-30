@@ -3,7 +3,7 @@ import pytest
 from builders import make_ctx, make_cosa, make_extraction, make_geo, make_lugar
 from fakes import FakeTrilium
 from tohoku.config import Thresholds
-from tohoku.models import ExtractResult, GeocodeResult, GeoOutcome, ItemKind
+from tohoku.models import Classification, ExtractResult, GeocodeResult, GeoOutcome, ItemKind
 from tohoku.stages.resolve import ResolveStage
 from tohoku.trilium_layout import init_layout
 
@@ -128,3 +128,25 @@ def test_otros_and_synthetic_summary(tmp_path, env):
 
     items = _run(tmp_path, env, make_extraction())
     assert [(i.key, i.kind, i.index) for i in items] == [("otro:resumen", ItemKind.OTRO, -1)]
+
+
+def _run_classified(tmp_path, env, classification):
+    trilium, layout = env
+    results = {"classify": classification} if classification else {}
+    ctx = make_ctx(
+        tmp_path, extract=ExtractResult(extraction=make_extraction(lugares=[make_lugar()], cosas=[make_cosa()], otros=[{"titulo": "Dato", "contenido": "algo"}])),
+        geocode=GeocodeResult(outcomes=[GeoOutcome(lugar_index=0, match=make_geo())]), **results,
+    )
+    return ResolveStage(trilium, lambda: layout, Thresholds()).run(ctx).items
+
+
+def test_dudosa_classification_marks_every_item(tmp_path, env):
+    items = _run_classified(tmp_path, env, Classification(destino="japon", dudosa=True))
+    assert len(items) == 3
+    assert all("clasificacion-dudosa" in i.review_reasons for i in items)
+
+
+@pytest.mark.parametrize("classification", [Classification(destino="japon", dudosa=False), None])
+def test_not_dudosa_or_missing_classification_adds_no_reason(tmp_path, env, classification):
+    items = _run_classified(tmp_path, env, classification)
+    assert all("clasificacion-dudosa" not in i.review_reasons for i in items)

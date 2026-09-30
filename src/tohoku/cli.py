@@ -103,6 +103,7 @@ def reprocess_cmd(
     bookmark_ids: Annotated[list[str] | None, typer.Argument(help="Uno o varios bookmarkId")] = None,
     from_stage: Annotated[str, typer.Option("--from", help=" | ".join(REPROCESS_FROM))] = "fetch",
     all_errors: Annotated[bool, typer.Option("--all-errors", help="Reprocesar todos los jobs en error")] = False,
+    destino: Annotated[str | None, typer.Option("--destino", help="Forzar este destino (repite desde classify); no borra las notas ya publicadas")] = None,
 ) -> None:
     """Vuelve a poner uno o varios bookmarks en la cola desde una etapa."""
     if from_stage not in REPROCESS_FROM:
@@ -115,7 +116,10 @@ def reprocess_cmd(
         raise typer.Exit(1 if not all_errors else 0)
     for bookmark_id in ids:
         try:
-            job = reprocess(loaded.state, loaded.karakeep, bookmark_id, from_stage)
+            job = reprocess(
+                loaded.state, loaded.karakeep, bookmark_id, from_stage,
+                destination=destino, known=loaded.destinations.destinos,
+            )
         except ValueError as exc:
             typer.echo(str(exc))
             raise typer.Exit(1) from exc

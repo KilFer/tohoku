@@ -6,6 +6,7 @@ from tohoku.config import Thresholds
 from tohoku.context import JobContext
 from tohoku.geo import near_notes
 from tohoku.models import (
+    Classification,
     Extraction,
     ExtractResult,
     GeocodeResult,
@@ -43,6 +44,9 @@ class ResolveStage:
             return ResolveResult()
         layout = self._layout()
         common = ["clasificacion-incierta"] if decision == "uncertain" else []
+        classification = ctx.results.get("classify")
+        if isinstance(classification, Classification) and classification.dudosa:
+            common.append("clasificacion-dudosa")
         items = [
             *self._lugares(extraction, ctx.result("geocode", GeocodeResult), layout, common),
             *self._cosas(extraction, layout, common),
