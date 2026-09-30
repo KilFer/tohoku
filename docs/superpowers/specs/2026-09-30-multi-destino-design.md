@@ -284,7 +284,7 @@ Cada fase se puede desplegar sola, deja `uv run pytest -q` en verde, actualiza s
 
 **El prefijo `jr` es intencionado y se mantiene para todo lo que genere Tohoku:** etiquetas de Karakeep (`jr:*`) y atributos de Trilium (`#jr*`), incluidos los de destinos y flujos nuevos. Las raíces nuevas siguen la convención `jrRoot<Destino>` (`jrRootRecetas`, `jrRootNZ`). Es un homenaje doble: son las siglas de *Japan Reader*, el nombre original, y de **JR** (Japan Railways), cuya línea **Tohoku Shinkansen** da nombre al proyecto.
 
-**Volumen de modelos:** Compose antepone el nombre del proyecto al del volumen (`japan-reader_whisper-models`). El compose declara `name: japan-reader_whisper-models` para reutilizarlo y no volver a descargar large-v3.
+**Volumen de modelos:** Compose antepone el nombre del proyecto al volumen, así que pasa de `japan-reader_whisper-models` a `tohoku_whisper-models`. Antes de levantar el contenedor nuevo se copian los modelos de uno a otro, para no descargar large-v3 otra vez. El viejo se borra tras verificarlo. Tras la fase 0 no queda ningún nombre interno `japan-reader` salvo los intencionados (`jr`, `japan-reader.json`).
 
 **Directorio del repositorio:** `/media/1tb-disk/japan-reader` → `/media/1tb-disk/tohoku`, al final de la fase, con el contenedor parado y entre tandas. Se mueve también la memoria de Claude del proyecto (su ruta depende del directorio).
 

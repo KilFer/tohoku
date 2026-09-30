@@ -28,7 +28,7 @@
 ## Review Focus
 
 1. **Adjunto `japan-reader.json` renombrado por un reemplazo masivo:** las fusiones dejarían de encontrar los datos de ~500 notas. Test en la Tarea 0.1 que fija `DATA_ATTACHMENT_TITLE == "japan-reader.json"`.
-2. **Volumen de modelos:** si Compose crea `tohoku_whisper-models` vacío, el primer job descarga ~3 GB. La Tarea 0.2 lo declara `external` con el nombre existente y la verificación de la Tarea 0.4 comprueba que no hay descarga.
+2. **Volumen de modelos:** si `tohoku_whisper-models` queda vacío, el primer job descarga ~3 GB. La Tarea 0.4 copia `japan-reader_whisper-models` → `tohoku_whisper-models` **antes** de levantar el contenedor y comprueba que no hay descarga; el volumen viejo solo se borra tras verificarlo.
 3. **Contenedor viejo huérfano:** si `japan-reader` sigue corriendo al levantar `tohoku`, los dos procesan la cola a la vez con locks distintos (`japan-reader.lock` y `tohoku.lock`). La Tarea 0.4 para el viejo antes y comprueba con `docker ps`.
 4. **Todos los jobs agotan la cuota en la misma pasada:** hay que aparcarlos todos con un solo aviso ntfy. Test en la Tarea 1.2.
 5. **Cuota agotada en `publish` a mitad de un job con varias notas:** al reanudar no se duplican notas, porque `published` hace el reprocesado idempotente, igual que hoy. Test en la Tarea 1.2 de que el job aparcado reanuda desde la etapa donde se quedó.
@@ -145,7 +145,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Modify: `.env.example:13,37`
 
 **Interfaces:**
-- Produces: proyecto Compose `tohoku`, servicio `tohoku`, imagen `tohoku:local`, contenedor `tohoku`, y el volumen existente `japan-reader_whisper-models` reutilizado.
+- Produces: proyecto Compose `tohoku`, servicio `tohoku`, imagen `tohoku:local`, contenedor `tohoku` y volumen `tohoku_whisper-models`. Tras la fase 0 no queda ningún nombre interno `japan-reader`, salvo los intencionados (`jr`, `japan-reader.json`).
 
 - [ ] **Step 1: Escribir el compose**
 
@@ -180,11 +180,7 @@ networks:
     external: true
 
 volumes:
-  whisper-models:
-    # Creado cuando el proyecto se llamaba japan-reader; contiene large-v3 (~3 GB). En una instalación
-    # nueva: `docker volume create japan-reader_whisper-models`.
-    external: true
-    name: japan-reader_whisper-models
+  whisper-models:   # → tohoku_whisper-models (la Tarea 0.4 copia en él los modelos del volumen viejo)
 ```
 
 - [ ] **Step 2: `.env.example`**
@@ -194,14 +190,14 @@ volumes:
 
 - [ ] **Step 3: Validar sin levantar nada**
 
-Run: `docker compose config --quiet && docker compose config | grep -n "name: tohoku\|japan-reader_whisper-models\|container_name"`
-Expected: sin errores; `name: tohoku`, `container_name: tohoku` y `name: japan-reader_whisper-models`.
+Run: `docker compose config --quiet && docker compose config | grep -n "name: tohoku\|whisper-models\|container_name"`
+Expected: sin errores; `name: tohoku`, `container_name: tohoku` y `name: tohoku_whisper-models`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add docker-compose.yml .env.example
-git commit -m "build: compose project tohoku reusing the existing whisper-models volume
+git commit -m "build: rename compose project, service, image and container to tohoku
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -228,7 +224,7 @@ Revisar a mano cada línea restante: nombres de proyecto → Tohoku. `japan-read
 - [ ] **Step 2: Textos de cabecera**
 
 - `README.md` línea 1: `# Tohoku`, seguida de un párrafo: "Antes *japan-reader*. Convierte Shorts, Reels y posts guardados en Karakeep en notas de Trilium. El prefijo `jr` de etiquetas y atributos se mantiene a propósito: Japan Reader y JR, la compañía de la Tohoku Shinkansen."
-- `CLAUDE.md` línea 1: `# CLAUDE.md — Tohoku (antes japan-reader)`. En "Entorno": contenedor `tohoku`, volumen `japan-reader_whisper-models` (externo, nombre histórico). En "Reglas de trabajo": una línea "El prefijo `jr` (Karakeep `jr:*`, Trilium `#jr*`, adjunto `japan-reader.json`) es intencionado y no se renombra."
+- `CLAUDE.md` línea 1: `# CLAUDE.md — Tohoku (antes japan-reader)`. En "Entorno": contenedor `tohoku`, volumen `tohoku_whisper-models`. En "Reglas de trabajo": una línea "El prefijo `jr` (Karakeep `jr:*`, Trilium `#jr*`, adjunto `japan-reader.json`) es intencionado y no se renombra."
 - `docs/trilium-model.md`: tras el primer párrafo, "El prefijo `jr` de todos los atributos y del adjunto `japan-reader.json` viene del nombre original del proyecto y se mantiene."
 - `docs/superpowers/specs/2026-09-28-japan-reader-design.md`: bajo `- **Autor:**`, añadir `- **Nota (2026-09-30):** el proyecto se renombró a Tohoku; ver 2026-09-30-multi-destino-design.md §11.`
 
@@ -254,21 +250,36 @@ Run: `docker exec japan-reader japan-reader status`. Se usa `docker exec` y no `
 Run: `docker stop japan-reader && docker rm japan-reader && docker ps -a --format '{{.Names}}' | grep -c '^japan-reader$'`
 Expected: `0`.
 
-- [ ] **Step 3: Construir y levantar**
+- [ ] **Step 3: Copiar los modelos al volumen nuevo**
+
+Run:
+```bash
+docker volume create tohoku_whisper-models
+docker run --rm -v japan-reader_whisper-models:/from:ro -v tohoku_whisper-models:/to alpine cp -a /from/. /to/
+docker run --rm -v japan-reader_whisper-models:/a:ro -v tohoku_whisper-models:/b alpine sh -c 'du -s /a /b'
+```
+Expected: mismo tamaño en `/a` y `/b` (~3,5 GB). Compose avisará de que el volumen existía antes: es esperado.
+
+- [ ] **Step 4: Construir y levantar**
 
 Run: `docker compose build && docker compose up -d && docker ps --format '{{.Names}} {{.Status}}' | grep tohoku`
 Expected: `tohoku Up …`.
 
-- [ ] **Step 4: Verificar**
+- [ ] **Step 5: Verificar**
 
 - `docker compose exec tohoku tohoku status`: mismos recuentos que en el Step 1.
 - `docker compose logs --since 5m tohoku | grep -i "download\|descarg"`: sin descargas de modelo. Cuando procese un Reel, `docker compose logs tohoku | grep -i whisper` debe mostrar que carga de `/models`.
-- `docker volume ls | grep whisper`: solo `japan-reader_whisper-models`.
+- `docker inspect tohoku --format '{{range .Mounts}}{{.Name}} {{end}}'` incluye `tohoku_whisper-models`.
 - Borrar el lock viejo: `docker compose exec tohoku rm -f /data/japan-reader.lock`.
 
-- [ ] **Step 5: Actualizar el estado en `CLAUDE.md` y hacer commit**
+- [ ] **Step 6: Borrar el volumen viejo (con confirmación del usuario, tras un Reel transcrito con el nuevo)**
 
-Añadir en "Estado": `2026-09-30: renombrado a Tohoku desplegado (contenedor tohoku, mismo state.db y volumen de modelos).`
+Run: `docker volume rm japan-reader_whisper-models && docker volume ls | grep whisper`
+Expected: solo `tohoku_whisper-models`. Comprobar también `docker images | grep japan-reader` y, si el usuario lo confirma, `docker rmi japan-reader:local`.
+
+- [ ] **Step 7: Actualizar el estado en `CLAUDE.md` y hacer commit**
+
+Añadir en "Estado": `2026-09-30: renombrado a Tohoku desplegado (contenedor tohoku, volumen tohoku_whisper-models, mismo state.db).`
 
 ```bash
 git commit -am "docs: record Tohoku rename deployment
