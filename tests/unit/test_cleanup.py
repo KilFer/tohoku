@@ -3,8 +3,9 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import BaseModel
 
+from builders import make_fetch
 from tohoku.cleanup import Cleaner
-from tohoku.models import Outcome, PublishedNote
+from tohoku.models import FetchResult, Outcome, PublishedNote
 from tohoku.sources import ContentHint, Platform
 from tohoku.state import JobStatus, StateStore
 
@@ -37,7 +38,8 @@ def state(tmp_path, clock):
 def _job(state, data_dir, bid, outcome=Outcome.PROCESADO, with_dir=True):
     """Job con resultados de etapa, una publicación y (opcional) su directorio con ficheros."""
     state.add_job(bid, f"https://youtu.be/{bid}", Platform.YOUTUBE, ContentHint.VIDEO)
-    for stage in STAGES:
+    state.save_stage(bid, "fetch", make_fetch())
+    for stage in STAGES[1:]:
         state.save_stage(bid, stage, Saved())
     state.record_publish(bid, PublishedNote(key=f"lugar:{bid}", note_id=f"n-{bid}", action="create"))
     if outcome is not None:
@@ -54,10 +56,17 @@ def _stages(state, bid):
     return {stage for stage in STAGES if state.load_stage(bid, stage, Saved) is not None}
 
 
+def _assert_fetch_purged(state, bid):
+    """El resultado de fetch sigue (metadatos para publish) marcado con files_purged."""
+    fetch = state.load_stage(bid, "fetch", FetchResult)
+    assert fetch is not None and fetch.files_purged is True
+    assert fetch.meta == make_fetch().meta
+
+
 # --- job_finished ---------------------------------------------------------------
 
 
-def test_job_finished_deletes_dir_and_fetch_but_keeps_later_results(tmp_path, state, clock):
+def test_job_finished_deletes_dir_and_marks_fetch_purged_keeping_all_results(tmp_path, state, clock):
     data_dir = tmp_path / "data"
     workdir = _job(state, data_dir, "b1")
     cleaner = Cleaner(state, data_dir, 30, clock=clock)
@@ -66,8 +75,8 @@ def test_job_finished_deletes_dir_and_fetch_but_keeps_later_results(tmp_path, st
 
     assert not workdir.exists()
     assert (data_dir / "jobs").is_dir()
-    assert _stages(state, "b1") == {"transcribe", "extract"}
-    assert state.load_stage("b1", "fetch", Saved) is None
+    assert _stages(state, "b1") == set(STAGES)
+    _assert_fetch_purged(state, "b1")
 
 
 def test_job_finished_with_error_deletes_nothing(tmp_path, state, clock):
@@ -79,6 +88,7 @@ def test_job_finished_with_error_deletes_nothing(tmp_path, state, clock):
 
     assert (workdir / "video.mp4").is_file() and (workdir / "frames" / "f1.jpg").is_file()
     assert _stages(state, "b1") == set(STAGES)
+    assert state.load_stage("b1", "fetch", FetchResult).files_purged is False
 
 
 def test_job_finished_with_zero_retention_deletes_all_stage_results_but_not_published_or_job(tmp_path, state, clock):
@@ -95,13 +105,14 @@ def test_job_finished_with_zero_retention_deletes_all_stage_results_but_not_publ
     assert job.status == JobStatus.DONE and job.outcome == Outcome.PROCESADO
 
 
-def test_job_finished_without_directory_still_deletes_fetch(tmp_path, state, clock):
+def test_job_finished_without_directory_still_marks_fetch_purged(tmp_path, state, clock):
     data_dir = tmp_path / "data"
     _job(state, data_dir, "b1", with_dir=False)
 
     Cleaner(state, data_dir, 30, clock=clock).job_finished("b1", Outcome.DESCARTADO)
 
-    assert _stages(state, "b1") == {"transcribe", "extract"}
+    assert _stages(state, "b1") == set(STAGES)
+    _assert_fetch_purged(state, "b1")
 
 
 @pytest.mark.parametrize("bad_id", ["", ".", "..", "../fuera", "a/b", "a\\b"])
@@ -208,9 +219,12 @@ def test_purge_deletes_leftover_dirs_of_done_jobs_only(tmp_path, state, clock):
     assert (error / "video.mp4").is_file()
     assert (unknown / "keep.txt").is_file()
     assert stray.is_file()
-    # Sin ficheros, el resultado de fetch se borra (un reprocesado vuelve a descargar); los recientes se conservan.
-    assert _stages(state, "hecho") == {"transcribe", "extract"}
+    # Sin ficheros, el resultado de fetch se conserva marcado con files_purged; los demás, intactos.
+    assert _stages(state, "hecho") == set(STAGES)
+    _assert_fetch_purged(state, "hecho")
     assert _stages(state, "pendiente") == set(STAGES) and _stages(state, "roto") == set(STAGES)
+    for bid in ("pendiente", "roto"):
+        assert state.load_stage(bid, "fetch", FetchResult).files_purged is False
 
 
 def test_purge_counts_a_job_once_when_dir_and_results_are_purged(tmp_path, state, clock):

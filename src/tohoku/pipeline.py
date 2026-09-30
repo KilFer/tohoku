@@ -10,7 +10,7 @@ from tohoku.cleanup import Cleaner
 from tohoku.clients.ntfy import Notifier
 from tohoku.context import JobContext
 from tohoku.errors import ConfigError, TohokuError, PermanentError, QuotaExceeded
-from tohoku.models import Classification, Outcome, PublishResult
+from tohoku.models import Classification, FetchResult, Outcome, PublishResult
 from tohoku.stages.mark import MarkStage
 from tohoku.state import Job, StateStore, next_quota_reset, utcnow
 
@@ -60,6 +60,7 @@ class Pipeline:
         self._clock = clock
         self._flows = {name: list(stages) for name, stages in flows.items()} if flows is not None else None
         self._cleaner = cleaner
+        self._fetch = next((stage for stage in self._stages if stage.name == "fetch"), None)
 
     def run_due(self) -> int:
         """Procesa los jobs pendientes. Un job que agota una cuota diaria espera a que se renueve; los demás siguen.
@@ -120,10 +121,26 @@ class Pipeline:
         for stage in stages:
             result = self._state.load_stage(bookmark_id, stage.name, stage.result_model)
             if result is None:
+                if getattr(stage, "needs_files", False):
+                    self._refetch_if_purged(ctx)
                 log.info("bookmark=%s etapa=%s", bookmark_id, stage.name)
                 result = stage.run(ctx)
                 self._state.save_stage(bookmark_id, stage.name, result)
             ctx.results[stage.name] = result
+
+    def _refetch_if_purged(self, ctx: JobContext) -> None:
+        """Si la limpieza borró los ficheros de fetch, vuelve a descargar antes de una etapa que los necesita.
+
+        El nuevo resultado ya no tiene `files_purged`, así que en el mismo job se descarga como mucho una vez.
+        """
+        fetched = ctx.results.get("fetch")
+        if self._fetch is None or not isinstance(fetched, FetchResult) or not fetched.files_purged:
+            return
+        bookmark_id = ctx.job.bookmark_id
+        log.info("bookmark=%s re-descarga: los ficheros se limpiaron", bookmark_id)
+        result = self._fetch.run(ctx)
+        self._state.save_stage(bookmark_id, self._fetch.name, result)
+        ctx.results[self._fetch.name] = result
 
     def _mark_run(self, bookmark_id: str, outcome: Outcome, destination: str | None) -> None:
         if destination is None:

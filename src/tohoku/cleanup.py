@@ -25,13 +25,14 @@ class Cleaner:
         self._clock = clock
 
     def job_finished(self, bookmark_id: str, outcome: Outcome) -> None:
-        """Tras terminar: si no es ERROR, borra data/jobs/<id>/ y el resultado de fetch; con retención 0, todos los resultados."""
+        """Tras terminar: si no es ERROR, borra data/jobs/<id>/ y marca fetch con `files_purged`; con retención 0, borra todos los resultados."""
         if outcome == Outcome.ERROR:
             return
         self._remove_dir(bookmark_id)
-        # Sin el directorio, el resultado de fetch apunta a ficheros que ya no existen: un reprocesado vuelve a descargar.
+        # Sin el directorio, los ficheros de fetch ya no existen; sus metadatos sí sirven (publish). Solo las etapas
+        # que necesitan ficheros (`needs_files`) vuelven a descargar.
         if self._retention:
-            self._state.delete_stage(bookmark_id, "fetch")
+            self._state.mark_fetch_purged(bookmark_id)
         else:
             self._state.delete_stages(bookmark_id)
 
@@ -43,7 +44,7 @@ class Cleaner:
             for entry in self._jobs_dir.iterdir():
                 if entry.name in done and entry.is_dir() and not entry.is_symlink():
                     if self._remove_dir(entry.name):
-                        self._state.delete_stage(entry.name, "fetch")  # como en job_finished: sus ficheros ya no existen
+                        self._state.mark_fetch_purged(entry.name)  # como en job_finished: sus ficheros ya no existen
                         touched.add(entry.name)
         return len(touched)
 

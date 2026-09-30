@@ -3,8 +3,9 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import BaseModel
 
+from builders import make_fetch
 from tohoku.errors import ConfigError, PermanentError, QuotaExceeded, TransientError
-from tohoku.models import Classification, MarkResult, Outcome, PublishResult
+from tohoku.models import Classification, FetchResult, MarkResult, Outcome, PublishResult
 from tohoku.pipeline import BACKOFF, Pipeline
 from tohoku.sources import ContentHint, Platform
 from tohoku.state import JobStatus, StateStore
@@ -345,8 +346,9 @@ def _cleaning_pipeline(tmp_path, state, retencion_dias=30):
     from tohoku.cleanup import Cleaner
 
     data_dir = tmp_path / "data"
-    fetch = WritingStep("fetch")
+    fetch = WritingStep("fetch", result=make_fetch())
     transcribe = Step("transcribe")
+    transcribe.needs_files = True
     publish = Step("publish", result=PublishResult(outcome=Outcome.PROCESADO))
     cleaner = Cleaner(state, data_dir, retencion_dias, clock=lambda: NOW)
     pipeline = Pipeline(state, [fetch, transcribe, publish], FakeMark(), FakeNotifier(), data_dir, clock=lambda: NOW,
@@ -363,11 +365,11 @@ def test_pipeline_with_cleaner_deletes_job_dir_after_procesado(tmp_path, state):
     job = state.get_job("b1")
     assert job.status == JobStatus.DONE and job.outcome == Outcome.PROCESADO
     assert not (data_dir / "jobs" / "b1").exists()
-    assert state.load_stage("b1", "fetch", Dummy) is None
+    assert state.load_stage("b1", "fetch", FetchResult).files_purged is True
     assert state.load_stage("b1", "transcribe", Dummy) == Dummy()
 
 
-def test_reprocess_after_cleanup_runs_fetch_again_and_reuses_later_results(tmp_path, state):
+def test_reprocess_after_cleanup_from_publish_does_not_download_again(tmp_path, state):
     _add(state)
     pipeline, fetch, transcribe, publish, data_dir = _cleaning_pipeline(tmp_path, state)
     pipeline.run_due()
@@ -376,11 +378,28 @@ def test_reprocess_after_cleanup_runs_fetch_again_and_reuses_later_results(tmp_p
 
     pipeline.run_due()
 
-    assert fetch.calls == 2
+    assert fetch.calls == 1
     assert transcribe.calls == 1
     assert publish.calls == 2
     assert state.get_job("b1").status == JobStatus.DONE
     assert not (data_dir / "jobs" / "b1").exists()
+
+
+def test_reprocess_after_cleanup_from_a_stage_needing_files_downloads_again(tmp_path, state):
+    _add(state)
+    pipeline, fetch, transcribe, publish, data_dir = _cleaning_pipeline(tmp_path, state)
+    pipeline.run_due()
+    state.reset("b1")
+    state.clear_stages_from("b1", "transcribe", ("fetch", "transcribe", "publish"))
+
+    pipeline.run_due()
+
+    assert fetch.calls == 2
+    assert transcribe.calls == 2
+    assert publish.calls == 2
+    assert state.get_job("b1").status == JobStatus.DONE
+    assert not (data_dir / "jobs" / "b1").exists()
+    assert state.load_stage("b1", "fetch", FetchResult).files_purged is True  # limpiado otra vez al terminar
 
 
 def test_cleaner_is_called_after_finish_and_on_mark_failed(tmp_path, state):
@@ -409,3 +428,173 @@ def test_cleanup_failure_does_not_change_the_outcome(tmp_path, state, caplog):
     job = state.get_job("b1")
     assert job.status == JobStatus.DONE and job.outcome == Outcome.PROCESADO and job.attempts == 0
     assert "permiso denegado" in caplog.text
+
+
+# --- Re-descarga solo si hace falta (Task 12) ----------------------------------------
+
+
+class LoggedStep(Step):
+    """Step que apunta su nombre en un registro compartido, para comprobar el orden."""
+
+    def __init__(self, name, log, result=None, needs_files=False):
+        super().__init__(name, result=result)
+        self.log = log
+        if needs_files:
+            self.needs_files = True
+
+    def run(self, ctx):
+        self.log.append(self.name)
+        return super().run(ctx)
+
+
+def _fetch_step(log):
+    return LoggedStep("fetch", log, result=make_fetch(audio_files=["audio.m4a"]))
+
+
+def _publish_step(log):
+    return LoggedStep("publish", log, result=PublishResult(outcome=Outcome.PROCESADO))
+
+
+def test_purged_fetch_is_not_redownloaded_for_stages_without_files(tmp_path, state):
+    _add(state)
+    state.save_stage("b1", "fetch", make_fetch(files_purged=True))
+    state.save_stage("b1", "transcribe", Dummy())
+    state.save_stage("b1", "extract", Dummy())
+    log = []
+    fetch = _fetch_step(log)
+    transcribe = LoggedStep("transcribe", log, needs_files=True)
+    extract = LoggedStep("extract", log, needs_files=True)
+    geocode = LoggedStep("geocode", log)
+    publish = _publish_step(log)
+    pipeline = Pipeline(state, [fetch, transcribe, extract, geocode, publish], FakeMark(), FakeNotifier(),
+                        tmp_path / "data", clock=lambda: NOW)
+
+    pipeline.run_due()
+
+    assert fetch.calls == 0
+    assert geocode.calls == 1
+    assert log == ["geocode", "publish"]
+    assert state.load_stage("b1", "fetch", FetchResult).files_purged is True
+    assert state.get_job("b1").outcome == Outcome.PROCESADO
+
+
+def test_purged_fetch_is_redownloaded_once_before_a_stage_that_needs_files(tmp_path, state, caplog):
+    _add(state)
+    state.save_stage("b1", "fetch", make_fetch(files_purged=True))
+    state.save_stage("b1", "transcribe", Dummy())
+    log = []
+    fetch = _fetch_step(log)
+    transcribe = LoggedStep("transcribe", log, needs_files=True)
+    extract = LoggedStep("extract", log, needs_files=True)
+    publish = _publish_step(log)
+    pipeline = Pipeline(state, [fetch, transcribe, extract, publish], FakeMark(), FakeNotifier(),
+                        tmp_path / "data", clock=lambda: NOW)
+
+    with caplog.at_level("INFO", logger="tohoku.pipeline"):
+        pipeline.run_due()
+
+    assert fetch.calls == 1
+    assert log == ["fetch", "extract", "publish"]
+    saved = state.load_stage("b1", "fetch", FetchResult)
+    assert saved.files_purged is False and saved.audio_files == ["audio.m4a"]
+    assert "bookmark=b1 re-descarga: los ficheros se limpiaron" in caplog.text
+
+
+def test_purged_fetch_is_redownloaded_only_once_for_several_stages_needing_files(tmp_path, state):
+    _add(state)
+    state.save_stage("b1", "fetch", make_fetch(files_purged=True))
+    log = []
+    fetch = _fetch_step(log)
+    transcribe = LoggedStep("transcribe", log, needs_files=True)
+    extract = LoggedStep("extract", log, needs_files=True)
+    publish = _publish_step(log)
+    pipeline = Pipeline(state, [fetch, transcribe, extract, publish], FakeMark(), FakeNotifier(),
+                        tmp_path / "data", clock=lambda: NOW)
+
+    pipeline.run_due()
+
+    assert fetch.calls == 1
+    assert log == ["fetch", "transcribe", "extract", "publish"]
+
+
+def test_purged_fetch_is_redownloaded_once_across_common_stages_and_flow(tmp_path, state):
+    """`classify` (tramo común) y `extract` (flujo del destino) necesitan ficheros: una sola descarga."""
+    _add(state)
+    state.save_stage("b1", "fetch", make_fetch(files_purged=True))
+    state.save_stage("b1", "transcribe", Dummy())
+    log = []
+    fetch = _fetch_step(log)
+    transcribe = LoggedStep("transcribe", log, needs_files=True)
+    classify = LoggedStep("classify", log, result=Classification(destino="japon"), needs_files=True)
+    extract = LoggedStep("extract", log, needs_files=True)
+    publish = _publish_step(log)
+    pipeline = Pipeline(state, [fetch, transcribe, classify], FakeMark(), FakeNotifier(), tmp_path / "data",
+                        clock=lambda: NOW, flows={"japon": [extract, publish]})
+
+    pipeline.run_due()
+
+    assert fetch.calls == 1
+    assert log == ["fetch", "classify", "extract", "publish"]
+
+
+def test_purged_fetch_is_redownloaded_when_only_a_flow_stage_needs_files(tmp_path, state):
+    _add(state)
+    state.save_stage("b1", "fetch", make_fetch(files_purged=True))
+    state.save_stage("b1", "transcribe", Dummy())
+    state.save_stage("b1", "classify", Classification(destino="japon"))
+    log = []
+    fetch = _fetch_step(log)
+    transcribe = LoggedStep("transcribe", log, needs_files=True)
+    classify = LoggedStep("classify", log, result=Classification(destino="japon"), needs_files=True)
+    extract = LoggedStep("extract", log, needs_files=True)
+    publish = _publish_step(log)
+    pipeline = Pipeline(state, [fetch, transcribe, classify], FakeMark(), FakeNotifier(), tmp_path / "data",
+                        clock=lambda: NOW, flows={"japon": [extract, publish]})
+
+    pipeline.run_due()
+
+    assert fetch.calls == 1
+    assert log == ["fetch", "extract", "publish"]
+    assert state.load_stage("b1", "fetch", FetchResult).files_purged is False
+
+
+def test_fetch_not_purged_is_not_redownloaded(tmp_path, state):
+    _add(state)
+    state.save_stage("b1", "fetch", make_fetch())
+    log = []
+    fetch = _fetch_step(log)
+    extract = LoggedStep("extract", log, needs_files=True)
+    publish = _publish_step(log)
+    pipeline = Pipeline(state, [fetch, extract, publish], FakeMark(), FakeNotifier(), tmp_path / "data",
+                        clock=lambda: NOW)
+
+    pipeline.run_due()
+
+    assert fetch.calls == 0
+    assert log == ["extract", "publish"]
+
+
+def test_without_fetch_stage_a_purged_fetch_is_left_alone(tmp_path, state):
+    _add(state)
+    state.save_stage("b1", "fetch", make_fetch(files_purged=True))
+    log = []
+    extract = LoggedStep("extract", log, needs_files=True)
+    publish = _publish_step(log)
+    pipeline = Pipeline(state, [extract, publish], FakeMark(), FakeNotifier(), tmp_path / "data", clock=lambda: NOW)
+
+    pipeline.run_due()
+
+    assert log == ["extract", "publish"]
+    assert state.get_job("b1").outcome == Outcome.PROCESADO
+
+
+def test_stages_that_need_files_are_marked():
+    from tohoku.stages.classify import ClassifyStage
+    from tohoku.stages.extract import ExtractStage
+    from tohoku.stages.fetch import FetchStage
+    from tohoku.stages.transcribe import TranscribeStage
+
+    assert TranscribeStage.needs_files is True
+    assert ClassifyStage.needs_files is True
+    assert ExtractStage.needs_files is True
+    assert getattr(FetchStage, "needs_files", False) is False

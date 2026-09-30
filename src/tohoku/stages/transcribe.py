@@ -48,6 +48,7 @@ class TranscribeStage:
     """Etapa 3: texto del audio (subtítulos manuales o Whisper). Borra el audio al terminar."""
 
     name = "transcribe"
+    needs_files = True  # usa los ficheros del job: si la limpieza los borró, el pipeline vuelve a descargar
     result_model = Transcript
 
     def __init__(self, transcriber: Transcriber) -> None:

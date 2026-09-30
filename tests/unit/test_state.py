@@ -4,8 +4,9 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import BaseModel
 
+from builders import make_fetch
 from tohoku.errors import QuotaExceeded
-from tohoku.models import Outcome, PublishedNote
+from tohoku.models import FetchResult, Outcome, PublishedNote
 from tohoku.quota import DailyQuota
 from tohoku.sources import ContentHint, Platform
 from tohoku.state import JobStatus, StateStore, next_quota_reset
@@ -77,6 +78,39 @@ def test_stage_results_roundtrip_and_clear(state):
     assert state.load_stage("b1", "transcribe", Dummy) is None
     assert state.load_stage("b1", "extract", Dummy) is None
     assert state.published("b1") == {}
+
+
+def test_mark_fetch_purged_sets_flag_and_keeps_the_rest(state):
+    state.add_job("b1", "u1", Platform.YOUTUBE, ContentHint.VIDEO)
+    fetch = make_fetch(audio_files=["audio.m4a"], keyframes=["frames/f1.jpg"], subtitles="subs.vtt")
+    state.save_stage("b1", "fetch", fetch)
+    state.save_stage("b1", "transcribe", Dummy(value=7))
+
+    state.mark_fetch_purged("b1")
+
+    loaded = state.load_stage("b1", "fetch", FetchResult)
+    assert loaded.files_purged is True
+    assert loaded.model_dump(exclude={"files_purged"}) == fetch.model_dump(exclude={"files_purged"})
+    assert state.load_stage("b1", "transcribe", Dummy) == Dummy(value=7)
+
+
+def test_mark_fetch_purged_without_fetch_result_does_nothing(state):
+    state.add_job("b1", "u1", Platform.YOUTUBE, ContentHint.VIDEO)
+    state.save_stage("b1", "transcribe", Dummy(value=7))
+
+    state.mark_fetch_purged("b1")
+
+    assert state.load_stage("b1", "fetch", FetchResult) is None
+    assert state.load_stage("b1", "transcribe", Dummy) == Dummy(value=7)
+
+
+def test_old_fetch_result_without_flag_loads_as_not_purged(state):
+    state.add_job("b1", "u1", Platform.YOUTUBE, ContentHint.VIDEO)
+    state.save_stage("b1", "fetch", make_fetch())
+    state._db.execute("UPDATE stage_results SET data = json_remove(data, '$.files_purged')")
+
+    assert "files_purged" not in state._db.execute("SELECT data FROM stage_results").fetchone()["data"]
+    assert state.load_stage("b1", "fetch", FetchResult).files_purged is False
 
 
 def test_finish_and_reset(state):

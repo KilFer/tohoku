@@ -253,6 +253,14 @@ class StateStore:
     def delete_stage(self, bookmark_id: str, stage: str) -> None:
         self._db.execute("DELETE FROM stage_results WHERE bookmark_id = ? AND stage = ?", (bookmark_id, stage))
 
+    def mark_fetch_purged(self, bookmark_id: str) -> None:
+        """Marca el resultado de fetch con `files_purged` (sus ficheros se borraron); conserva el resto. Sin fetch, no hace nada."""
+        self._db.execute(
+            "UPDATE stage_results SET data = json_set(data, '$.files_purged', json('true'))"
+            " WHERE bookmark_id = ? AND stage = 'fetch'",
+            (bookmark_id,),
+        )
+
     def delete_stages(self, bookmark_id: str) -> None:
         """Todos los resultados de etapa del job."""
         self._db.execute("DELETE FROM stage_results WHERE bookmark_id = ?", (bookmark_id,))

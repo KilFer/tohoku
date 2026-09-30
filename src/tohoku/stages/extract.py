@@ -39,6 +39,7 @@ class ExtractStage:
     """Etapa 4: clasificación y extracción estructurada con un LLM multimodal."""
 
     name = "extract"
+    needs_files = True  # usa los ficheros del job: si la limpieza los borró, el pipeline vuelve a descargar
     result_model = ExtractResult
 
     def __init__(

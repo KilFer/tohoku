@@ -17,6 +17,7 @@ class ClassifyStage:
     """Decide a qué destino va el enlace entre los candidatos de su lista."""
 
     name = "classify"
+    needs_files = True  # usa los ficheros del job: si la limpieza los borró, el pipeline vuelve a descargar
     result_model = Classification
 
     def __init__(self, config: DestinationsConfig, classifier: Classifier | None, budget: DailyQuota) -> None:

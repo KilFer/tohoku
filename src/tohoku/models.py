@@ -38,6 +38,8 @@ class FetchResult(BaseModel):
     subtitles: str | None = None
     images: list[str] = []
     keyframes: list[str] = []
+    # La limpieza borró los ficheros del job; los metadatos siguen valiendo. Las etapas con `needs_files` vuelven a descargar.
+    files_purged: bool = False
 
 
 class Transcript(BaseModel):
