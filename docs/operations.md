@@ -31,6 +31,8 @@ Qué listas de Karakeep se procesan y cómo se publica cada una. La fase 2 admit
 - El servicio sondea **todas** las listas del YAML. `KARAKEEP_LIST_ID` y `TRILIUM_ROOT_LABEL` ya no se leen de `.env` (si siguen ahí, se ignoran). La ruta del YAML es `DESTINOS_FILE` (por defecto `config/destinos.yaml`).
 - Un fichero inválido (YAML mal formado, clave desconocida o mal escrita, `#` en la raíz, prompt inexistente, lista que apunta a un destino que no existe) da `Error de configuración` con el nombre de la clave y sale con código 2.
 - La imagen lleva `config/` dentro (`COPY config ./config`) y el compose lo monta de solo lectura (`./config:/app/config:ro`): **editar `config/` no requiere reconstruir**, basta `docker compose restart tohoku`.
+- Tras editar `config/` y reiniciar, mira `docker compose logs tohoku`: un error de configuración hace que el contenedor salga al arrancar (código 2) **sin aviso por ntfy**.
+- Vuelta atrás: desde la fase 2 los resultados nuevos de `extract` se guardan como `relacionado_destino`/`confianza_destino`, que el código anterior a la fase 2 no sabe leer. Si haces rollback, ejecuta `reprocess --from extract` sobre los jobs pendientes más allá de `extract`.
 - El prompt de Japón es `config/prompts/japon.md`. Solo se sustituyen los marcadores `{{categorias_lugar}}` y `{{categorias_cosa}}` (las categorías del destino); el resto del texto es tuyo. Si el LLM devuelve una categoría que no es del destino, se reintenta una vez con el error.
 - `init-trilium [--destino X]` crea la estructura bajo la raíz de ese destino (por defecto, el único). `import-instagram ... [--lista ID]` elige la lista de Karakeep destino (por defecto, la única del YAML; con varias hay que indicarla).
 

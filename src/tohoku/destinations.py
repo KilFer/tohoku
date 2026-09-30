@@ -59,15 +59,23 @@ def load_destinations(path: Path, flows: Mapping[str, HasParams]) -> Destination
     if unknown:
         raise ConfigError(f"{path}: claves desconocidas: {', '.join(unknown)}")
     destinos_raw = raw.get("destinos") or {}
+    if not isinstance(destinos_raw, dict):
+        raise ConfigError(f"{path}: 'destinos' debe ser un mapa")
     if not destinos_raw:
         raise ConfigError(f"{path}: no hay ningún destino en 'destinos'")
     destinos = {str(name): _destination(path, str(name), spec, flows) for name, spec in destinos_raw.items()}
     listas_raw = raw.get("listas") or {}
+    if not isinstance(listas_raw, dict):
+        raise ConfigError(f"{path}: 'listas' debe ser un mapa")
     if not listas_raw:
         raise ConfigError(f"{path}: no hay ninguna lista de Karakeep en 'listas'")
     listas: dict[str, list[str]] = {}
     for list_id, names in listas_raw.items():
-        names = [names] if isinstance(names, str) else [str(n) for n in names or []]
+        if names is not None and not isinstance(names, str) and not (
+            isinstance(names, list) and all(isinstance(n, str) for n in names)
+        ):
+            raise ConfigError(f"{path}: la lista '{list_id}' debe ser un destino o una lista de destinos")
+        names = [names] if isinstance(names, str) else list(names or [])
         if not names:
             raise ConfigError(f"{path}: la lista '{list_id}' no apunta a ningún destino")
         missing = [n for n in names if n not in destinos]
@@ -84,13 +92,20 @@ def _destination(path: Path, name: str, spec: Any, flows: Mapping[str, HasParams
     missing = [key for key in _BASE_KEYS if key not in spec]
     if missing:
         raise ConfigError(f"{where}: faltan claves: {', '.join(missing)}")
-    flujo = str(spec["flujo"])
+    for key in _BASE_KEYS:
+        value = spec[key]
+        if value is None or (isinstance(value, str) and not value.strip()):
+            hint = " (¿un '#' sin comillas? escribe la etiqueta sin '#')" if key == "raiz" else ""
+            raise ConfigError(f"{where}: '{key}' está vacío{hint}")
+        if not isinstance(value, str):
+            raise ConfigError(f"{where}: '{key}' debe ser texto")
+    flujo = spec["flujo"]
     if flujo not in flows:
         raise ConfigError(f"{where}: flujo desconocido '{flujo}' (disponibles: {', '.join(sorted(flows))})")
-    raiz = str(spec["raiz"])
+    raiz = spec["raiz"]
     if not _LABEL.match(raiz):
         raise ConfigError(f"{where}: 'raiz' debe ser el nombre de una etiqueta de Trilium, sin '#' (p. ej. jrRoot)")
-    prompt_path = (path.parent / str(spec["prompt"])).resolve()
+    prompt_path = (path.parent / spec["prompt"]).resolve()
     if not prompt_path.is_file():
         raise ConfigError(f"{where}: no existe el prompt {prompt_path}")
     params_raw = {key: value for key, value in spec.items() if key not in _BASE_KEYS}
@@ -99,6 +114,6 @@ def _destination(path: Path, name: str, spec: Any, flows: Mapping[str, HasParams
     except ValidationError as exc:
         raise ConfigError(f"{where}: parámetros inválidos para el flujo '{flujo}':\n{exc}") from exc
     return Destination(
-        nombre=name, flujo=flujo, raiz=raiz, descripcion=str(spec["descripcion"]),
+        nombre=name, flujo=flujo, raiz=raiz, descripcion=spec["descripcion"],
         prompt=prompt_path.read_text(encoding="utf-8"), params=params,
     )

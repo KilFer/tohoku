@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from tohoku.geo import CITY_ALIASES
 from tohoku.models import LUGAR_CATEGORIAS
@@ -18,3 +18,11 @@ class ViajeParams(BaseModel):
     categorias_lugar: list[str] = Field(default_factory=lambda: list(LUGAR_CATEGORIAS), min_length=1)
     categorias_cosa: dict[str, str] = Field(default_factory=lambda: dict(CATEGORIES), min_length=1)
     alias_ciudad: dict[str, list[str]] = Field(default_factory=lambda: {k: list(v) for k, v in CITY_ALIASES.items()})
+
+    @field_validator("nombres_pais")
+    @classmethod
+    def _sin_nombres_vacios(cls, value: list[str]) -> list[str]:
+        # Un nombre vacío casaría con cualquier dirección en geo.in_country.
+        if any(not n.strip() for n in value):
+            raise ValueError("nombres_pais no puede contener entradas vacías")
+        return value

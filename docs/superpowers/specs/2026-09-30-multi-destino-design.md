@@ -36,7 +36,7 @@ Ejemplos que guían el diseño:
 
 ## 2. Configuración: `config/destinos.yaml`
 
-Fichero versionado, montado en el contenedor en `/config` (ruta configurable con `DESTINOS_FILE`). Los secretos siguen en `.env`. `KARAKEEP_LIST_ID` y `TRILIUM_ROOT_LABEL` desaparecen de `.env`: las listas y las raíces pasan al YAML.
+Fichero versionado, montado en el contenedor en `/app/config` (ruta configurable con `DESTINOS_FILE`). Los secretos siguen en `.env`. `KARAKEEP_LIST_ID` y `TRILIUM_ROOT_LABEL` desaparecen de `.env`: las listas y las raíces pasan al YAML.
 
 ```yaml
 clasificador:

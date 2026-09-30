@@ -90,6 +90,13 @@ def test_single_list_value_can_be_a_string(tmp_path):
         ("listas:\n  L1: [japon]\ndestinos: {}\n", "ningún destino"),
         (JAPON.replace("  L1: [japon]\n", ""), "ninguna lista"),
         ("listas: [\n", "YAML inválido"),
+        (JAPON.replace("raiz: jrRoot", "raiz: #jrRoot"), "'raiz' está vacío"),
+        (JAPON.replace("flujo: viaje", "flujo:"), "'flujo' está vacío"),
+        (JAPON.replace("prompt: prompts/japon.md", "prompt:"), "'prompt' está vacío"),
+        (JAPON.replace('descripcion: "Viaje a Japón"', "descripcion:"), "'descripcion' está vacío"),
+        ("listas:\n  L1: [japon]\ndestinos:\n  - japon\n", "'destinos' debe ser un mapa"),
+        (JAPON.replace("listas:\n  L1: [japon]\n", "listas:\n  - L1\n"), "'listas' debe ser un mapa"),
+        (JAPON.replace("[japon]", "5"), "la lista 'L1' debe ser un destino o una lista de destinos"),
     ],
 )
 def test_config_errors_name_the_culprit(tmp_path, text, message):
@@ -107,3 +114,9 @@ def test_more_than_one_destination_is_not_supported_yet(tmp_path):
     config = load_destinations(_write(tmp_path, text), FLOWS)
     with pytest.raises(ConfigError, match="fase 3"):
         config.single_destination()
+
+
+def test_empty_nombres_pais_entry_is_rejected(tmp_path):
+    text = JAPON.replace("    prompt: prompts/japon.md\n", '    prompt: prompts/japon.md\n    nombres_pais: [""]\n')
+    with pytest.raises(ConfigError, match="nombres_pais"):
+        load_destinations(_write(tmp_path, text), FLOWS)
