@@ -7,7 +7,7 @@ from enum import StrEnum
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from tohoku.models import Outcome, PublishedNote
 from tohoku.sources import ContentHint, Platform
@@ -54,6 +54,13 @@ class Job(BaseModel):
     outcome: Outcome | None
     created_at: datetime
     updated_at: datetime
+    candidates: list[str] | None = None  # None = job anterior a la fase 3
+    destination: str | None = None
+
+    @field_validator("candidates", mode="before")
+    @classmethod
+    def _decode_candidates(cls, value):
+        return json.loads(value) if isinstance(value, str) else value
 
 
 _SCHEMA = """
@@ -105,7 +112,16 @@ class StateStore:
         self._db = sqlite3.connect(path, isolation_level=None)
         self._db.row_factory = sqlite3.Row
         self._db.executescript(_SCHEMA)
+        self._migrate()
         self._clock = clock
+
+    def _migrate(self) -> None:
+        """Columnas añadidas después de la primera versión (idempotente)."""
+        columns = {row["name"] for row in self._db.execute("PRAGMA table_info(jobs)")}
+        if "candidates" not in columns:
+            self._db.execute("ALTER TABLE jobs ADD COLUMN candidates TEXT")  # JSON; NULL = anterior a la fase 3
+        if "destination" not in columns:
+            self._db.execute("ALTER TABLE jobs ADD COLUMN destination TEXT")
 
     def _now(self) -> str:
         return _iso(self._clock())
@@ -119,14 +135,42 @@ class StateStore:
 
     # --- jobs -------------------------------------------------------------
 
-    def add_job(self, bookmark_id: str, url: str, platform: Platform | None, hint: ContentHint | None) -> bool:
+    def add_job(
+        self,
+        bookmark_id: str,
+        url: str,
+        platform: Platform | None,
+        hint: ContentHint | None,
+        candidates: Sequence[str] | None = None,
+    ) -> bool:
         now = self._now()
         cursor = self._db.execute(
-            "INSERT OR IGNORE INTO jobs (bookmark_id, url, platform, hint, created_at, updated_at)"
-            " VALUES (?, ?, ?, ?, ?, ?)",
-            (bookmark_id, url, platform.value if platform else None, hint.value if hint else None, now, now),
+            "INSERT OR IGNORE INTO jobs (bookmark_id, url, platform, hint, candidates, created_at, updated_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                bookmark_id, url, platform.value if platform else None, hint.value if hint else None,
+                json.dumps(list(candidates)) if candidates is not None else None, now, now,
+            ),
         )
         return cursor.rowcount == 1
+
+    def add_candidates(self, bookmark_id: str, names: Sequence[str]) -> None:
+        """Une destinos candidatos sin duplicar y conservando el orden."""
+        row = self._db.execute("SELECT candidates FROM jobs WHERE bookmark_id = ?", (bookmark_id,)).fetchone()
+        if row is None:
+            return
+        old = json.loads(row["candidates"]) if row["candidates"] else []
+        merged = list(dict.fromkeys(old + list(names)))
+        self._db.execute(
+            "UPDATE jobs SET candidates = ?, updated_at = ? WHERE bookmark_id = ?",
+            (json.dumps(merged), self._now(), bookmark_id),
+        )
+
+    def set_destination(self, bookmark_id: str, destination: str | None) -> None:
+        self._db.execute(
+            "UPDATE jobs SET destination = ?, updated_at = ? WHERE bookmark_id = ?",
+            (destination, self._now(), bookmark_id),
+        )
 
     def has_job(self, bookmark_id: str) -> bool:
         return self._db.execute("SELECT 1 FROM jobs WHERE bookmark_id = ?", (bookmark_id,)).fetchone() is not None

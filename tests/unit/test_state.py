@@ -1,3 +1,4 @@
+import sqlite3
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -162,3 +163,34 @@ def test_legacy_no_japon_jobs_are_counted_as_descartado(state):
 
     assert state.status_counts() == {"descartado": 2}
     assert state.get_job("b1").outcome is Outcome.DESCARTADO
+
+
+OLD_JOBS_SCHEMA = """CREATE TABLE jobs (bookmark_id TEXT PRIMARY KEY, url TEXT NOT NULL, platform TEXT, hint TEXT,
+    status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at TEXT, last_error TEXT,
+    outcome TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"""
+
+
+def test_old_database_is_migrated_and_old_jobs_have_no_candidates(tmp_path, clock):
+    path = tmp_path / "state.db"
+    db = sqlite3.connect(path)
+    db.execute(OLD_JOBS_SCHEMA)
+    db.execute("INSERT INTO jobs (bookmark_id, url, platform, hint, created_at, updated_at) VALUES ('old', 'u', 'youtube', 'video', '2026-09-01T00:00:00+00:00', '2026-09-01T00:00:00+00:00')")
+    db.commit(); db.close()
+
+    state = StateStore(path, clock=clock)
+    StateStore(path, clock=clock)  # la migración es idempotente
+
+    job = state.get_job("old")
+    assert job.candidates is None and job.destination is None
+
+
+def test_candidates_and_destination_roundtrip(state):
+    state.add_job("b1", "u1", Platform.YOUTUBE, ContentHint.VIDEO, candidates=["japon", "recetas"])
+    state.add_candidates("b1", ["recetas", "nueva_zelanda"])
+    state.set_destination("b1", "recetas")
+
+    job = state.get_job("b1")
+    assert job.candidates == ["japon", "recetas", "nueva_zelanda"]
+    assert job.destination == "recetas"
+    state.set_destination("b1", None)
+    assert state.get_job("b1").destination is None
