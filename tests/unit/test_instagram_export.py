@@ -4,8 +4,8 @@ import zipfile
 import pytest
 
 from fakes import FakeKarakeep
-from japan_reader.clients.karakeep import Bookmark
-from japan_reader.instagram_export import filter_collection, format_import_report, import_items, parse_export
+from tohoku.clients.karakeep import Bookmark
+from tohoku.instagram_export import filter_collection, format_import_report, import_items, parse_export
 
 COLLECTIONS = {"saved_saved_collections": [
     {"title": "Collection", "string_map_data": {"Name": {"value": "Japón"}, "Creation Time": {"timestamp": 1700000000}}},

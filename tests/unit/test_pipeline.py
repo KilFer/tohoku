@@ -3,11 +3,11 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import BaseModel
 
-from japan_reader.errors import ConfigError, PermanentError, QuotaExceeded, TransientError
-from japan_reader.models import MarkResult, Outcome, PublishResult
-from japan_reader.pipeline import BACKOFF, Pipeline
-from japan_reader.sources import ContentHint, Platform
-from japan_reader.state import JobStatus, StateStore
+from tohoku.errors import ConfigError, PermanentError, QuotaExceeded, TransientError
+from tohoku.models import MarkResult, Outcome, PublishResult
+from tohoku.pipeline import BACKOFF, Pipeline
+from tohoku.sources import ContentHint, Platform
+from tohoku.state import JobStatus, StateStore
 
 NOW = datetime(2026, 9, 28, 10, 0, tzinfo=UTC)
 

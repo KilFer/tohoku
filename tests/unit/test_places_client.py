@@ -4,8 +4,8 @@ import httpx
 import pytest
 import respx
 
-from japan_reader.clients.places import FIELD_MASK, PlacesClient
-from japan_reader.errors import ApiError, ConfigError
+from tohoku.clients.places import FIELD_MASK, PlacesClient
+from tohoku.errors import ApiError, ConfigError
 
 HOST = "places.googleapis.com"
 PLACE = {

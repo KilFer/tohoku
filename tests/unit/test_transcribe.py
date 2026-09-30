@@ -1,5 +1,5 @@
 from builders import make_ctx, make_fetch
-from japan_reader.stages.transcribe import TranscribeStage
+from tohoku.stages.transcribe import TranscribeStage
 
 
 class FakeTranscriber:

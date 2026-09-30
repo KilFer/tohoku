@@ -2,10 +2,10 @@ import pytest
 
 from builders import make_ctx, make_cosa, make_extraction, make_geo, make_lugar
 from fakes import FakeTrilium
-from japan_reader.config import Thresholds
-from japan_reader.models import ExtractResult, GeocodeResult, GeoOutcome, ItemKind
-from japan_reader.stages.resolve import ResolveStage
-from japan_reader.trilium_layout import init_layout
+from tohoku.config import Thresholds
+from tohoku.models import ExtractResult, GeocodeResult, GeoOutcome, ItemKind
+from tohoku.stages.resolve import ResolveStage
+from tohoku.trilium_layout import init_layout
 
 
 @pytest.fixture

@@ -1,12 +1,12 @@
 import pytest
 
 from fakes import FakeKarakeep
-from japan_reader.clients.karakeep import Bookmark
-from japan_reader.ingest import ingest
-from japan_reader.models import Outcome
-from japan_reader.sources import ContentHint, Platform
-from japan_reader.stages.mark import MarkStage
-from japan_reader.state import StateStore
+from tohoku.clients.karakeep import Bookmark
+from tohoku.ingest import ingest
+from tohoku.models import Outcome
+from tohoku.sources import ContentHint, Platform
+from tohoku.stages.mark import MarkStage
+from tohoku.state import StateStore
 
 
 @pytest.fixture

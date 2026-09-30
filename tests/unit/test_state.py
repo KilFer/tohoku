@@ -3,11 +3,11 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import BaseModel
 
-from japan_reader.errors import QuotaExceeded
-from japan_reader.models import Outcome, PublishedNote
-from japan_reader.quota import DailyQuota
-from japan_reader.sources import ContentHint, Platform
-from japan_reader.state import JobStatus, StateStore, next_quota_reset
+from tohoku.errors import QuotaExceeded
+from tohoku.models import Outcome, PublishedNote
+from tohoku.quota import DailyQuota
+from tohoku.sources import ContentHint, Platform
+from tohoku.state import JobStatus, StateStore, next_quota_reset
 
 
 class Clock:

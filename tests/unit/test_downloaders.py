@@ -6,16 +6,16 @@ from pathlib import Path
 import pytest
 from yt_dlp.utils import DownloadError
 
-from japan_reader.errors import ConfigError, PermanentError, TransientError
-from japan_reader.media.downloaders import (
+from tohoku.errors import ConfigError, PermanentError, TransientError
+from tohoku.media.downloaders import (
     GalleryDlDownloader,
     TooLongError,
     YtDlpDownloader,
     classify_download_error,
     prepare_cookies,
 )
-from japan_reader.models import ContentType
-from japan_reader.sources import Platform
+from tohoku.models import ContentType
+from tohoku.sources import Platform
 
 VTT = "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nBienvenidos a Kioto\n"
 

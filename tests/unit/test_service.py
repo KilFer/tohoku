@@ -4,13 +4,13 @@ import pytest
 from pydantic import BaseModel
 
 from fakes import FakeKarakeep
-from japan_reader.clients.karakeep import Bookmark
-from japan_reader.errors import ConfigError, TransientError
-from japan_reader.models import Outcome
-from japan_reader.pipeline import STAGE_ORDER
-from japan_reader.service import Service, format_status, reprocess
-from japan_reader.sources import ContentHint, Platform
-from japan_reader.state import JobStatus, StateStore
+from tohoku.clients.karakeep import Bookmark
+from tohoku.errors import ConfigError, TransientError
+from tohoku.models import Outcome
+from tohoku.pipeline import STAGE_ORDER
+from tohoku.service import Service, format_status, reprocess
+from tohoku.sources import ContentHint, Platform
+from tohoku.state import JobStatus, StateStore
 
 
 class FakePipeline:
@@ -113,7 +113,7 @@ def test_daily_summary_sent_once_after_hour(state, settings):
     service.tick()
     service.tick()
 
-    assert notifier.sent == [("japan-reader: resumen del día", "procesado: 1")]
+    assert notifier.sent == [("tohoku: resumen del día", "procesado: 1")]
 
 
 def test_reprocess_existing_job(state):

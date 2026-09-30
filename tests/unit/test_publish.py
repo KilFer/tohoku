@@ -5,8 +5,8 @@ import pytest
 
 from builders import make_cosa, make_ctx, make_extraction, make_fetch, make_geo, make_job, make_lugar, make_meta
 from fakes import FakeLLM, FakeTrilium
-from japan_reader.errors import ApiError, TransientError
-from japan_reader.models import (
+from tohoku.errors import ApiError, TransientError
+from tohoku.models import (
     ExtractResult,
     GeocodeResult,
     GeoOutcome,
@@ -17,10 +17,10 @@ from japan_reader.models import (
     ResolveResult,
     Transcript,
 )
-from japan_reader.quota import DailyQuota
-from japan_reader.stages.publish import PublishStage
-from japan_reader.state import StateStore
-from japan_reader.trilium_layout import init_layout
+from tohoku.quota import DailyQuota
+from tohoku.stages.publish import PublishStage
+from tohoku.state import StateStore
+from tohoku.trilium_layout import init_layout
 
 MERGED = json.dumps({"resumen": "Resumen fusionado", "que_hacer": "Pedir extra de cerdo", "consejos": ["Ir pronto", "Pagar en la máquina"]})
 GEO = [GeoOutcome(lugar_index=0, match=make_geo())]

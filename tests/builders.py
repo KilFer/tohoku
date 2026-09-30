@@ -1,10 +1,10 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
-from japan_reader.context import JobContext
-from japan_reader.models import ContentType, Cosa, Extraction, FetchResult, GeoMatch, Lugar, Otro, SourceMeta
-from japan_reader.sources import ContentHint, Platform
-from japan_reader.state import Job, JobStatus
+from tohoku.context import JobContext
+from tohoku.models import ContentType, Cosa, Extraction, FetchResult, GeoMatch, Lugar, Otro, SourceMeta
+from tohoku.sources import ContentHint, Platform
+from tohoku.state import Job, JobStatus
 
 
 def make_job(bookmark_id="b1", url="https://www.youtube.com/shorts/abc", platform=Platform.YOUTUBE, hint=ContentHint.VIDEO) -> Job:

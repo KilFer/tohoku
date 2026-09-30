@@ -1,6 +1,6 @@
 import pytest
 
-from japan_reader.config import Settings
+from tohoku.config import Settings
 
 
 @pytest.fixture

@@ -1,6 +1,6 @@
 import pytest
 
-from japan_reader.sources import ContentHint, Platform, canonical_url, classify_url
+from tohoku.sources import ContentHint, Platform, canonical_url, classify_url
 
 
 @pytest.mark.parametrize(

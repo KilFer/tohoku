@@ -1,10 +1,10 @@
 from PIL import Image
 
 from helpers import make_image, make_video
-from japan_reader.media.audio import extract_audio, has_audio, probe_duration
-from japan_reader.media.images import resize_image
-from japan_reader.media.keyframes import dedupe_similar, extract_keyframes, pick_evenly
-from japan_reader.media.subtitles import vtt_to_text
+from tohoku.media.audio import extract_audio, has_audio, probe_duration
+from tohoku.media.images import resize_image
+from tohoku.media.keyframes import dedupe_similar, extract_keyframes, pick_evenly
+from tohoku.media.subtitles import vtt_to_text
 
 
 def test_extract_audio(tmp_path):

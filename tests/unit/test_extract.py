@@ -5,11 +5,11 @@ import pytest
 from builders import make_ctx, make_fetch, make_lugar
 from fakes import FakeLLM
 from helpers import make_image
-from japan_reader.errors import QuotaExceeded
-from japan_reader.models import Transcript
-from japan_reader.quota import DailyQuota
-from japan_reader.stages.extract import ExtractStage, build_user_text
-from japan_reader.state import StateStore
+from tohoku.errors import QuotaExceeded
+from tohoku.models import Transcript
+from tohoku.quota import DailyQuota
+from tohoku.stages.extract import ExtractStage, build_user_text
+from tohoku.state import StateStore
 
 VALID = json.dumps({
     "relacionado_japon": True,

@@ -4,8 +4,8 @@ import httpx
 import pytest
 import respx
 
-from japan_reader.clients.karakeep import KarakeepClient
-from japan_reader.errors import ApiError, ConfigError, TransientError
+from tohoku.clients.karakeep import KarakeepClient
+from tohoku.errors import ApiError, ConfigError, TransientError
 
 HOST = "karakeep.test"
 

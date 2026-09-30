@@ -1,9 +1,9 @@
 import pytest
 
-from japan_reader.config import Thresholds
-from japan_reader.models import Extraction, Outcome, PublishedNote
-from japan_reader.rules import decide_outcome, japan_decision
-from japan_reader.text import fold, normalize_name, similarity, strip_fences
+from tohoku.config import Thresholds
+from tohoku.models import Extraction, Outcome, PublishedNote
+from tohoku.rules import decide_outcome, japan_decision
+from tohoku.text import fold, normalize_name, similarity, strip_fences
 
 
 def test_fold_keeps_words():

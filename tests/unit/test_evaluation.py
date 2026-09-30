@@ -1,7 +1,7 @@
 from builders import make_extraction, make_fetch, make_lugar, make_cosa
-from japan_reader.config import Thresholds
-from japan_reader.evaluation import EvalCase, EvalRunner, count_matches, format_table, load_cases, score_case
-from japan_reader.models import ExtractResult, Transcript
+from tohoku.config import Thresholds
+from tohoku.evaluation import EvalCase, EvalRunner, count_matches, format_table, load_cases, score_case
+from tohoku.models import ExtractResult, Transcript
 
 CASE = EvalCase.model_validate({
     "id": "ramen", "url": "https://www.youtube.com/shorts/abc",

@@ -1,5 +1,5 @@
 from builders import make_geo, make_meta
-from japan_reader.notes import (
+from tohoku.notes import (
     CosaData,
     LugarData,
     OtroData,
@@ -84,3 +84,10 @@ def test_labels_for_lugar_and_cosa():
 def test_render_failure():
     html = render_failure(make_meta(description="caption <x>"), "transcripción", "JSON inválido")
     assert "caption &lt;x&gt;" in html and "transcripción" in html and "JSON inválido" in html
+
+
+def test_data_attachment_title_is_kept_after_rename():
+    """El adjunto de ~500 notas ya existentes se llama así: renombrarlo rompería las fusiones."""
+    from tohoku.notes import DATA_ATTACHMENT_TITLE
+
+    assert DATA_ATTACHMENT_TITLE == "japan-reader.json"

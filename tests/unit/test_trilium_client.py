@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from japan_reader.clients.trilium import TriliumClient
+from tohoku.clients.trilium import TriliumClient
 
 HOST = "trilium.test"
 NOTE = {

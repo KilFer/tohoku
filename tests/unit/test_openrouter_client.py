@@ -5,8 +5,8 @@ import pytest
 import respx
 
 from helpers import make_image
-from japan_reader.clients.openrouter import OpenRouterClient, image_part
-from japan_reader.errors import ApiError, ConfigError
+from tohoku.clients.openrouter import OpenRouterClient, image_part
+from tohoku.errors import ApiError, ConfigError
 
 HOST = "openrouter.ai"
 MODELS = {"data": [

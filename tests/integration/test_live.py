@@ -3,14 +3,14 @@ import os
 import pytest
 from pydantic import ValidationError
 
-from japan_reader.clients.karakeep import KarakeepClient
-from japan_reader.clients.trilium import TriliumClient
-from japan_reader.config import Settings
-from japan_reader.media.audio import extract_audio
-from japan_reader.media.downloaders import YtDlpDownloader
-from japan_reader.sources import Platform
-from japan_reader.stages.transcribe import WhisperTranscriber
-from japan_reader.trilium_layout import GEO_MAP_TEMPLATE, init_layout
+from tohoku.clients.karakeep import KarakeepClient
+from tohoku.clients.trilium import TriliumClient
+from tohoku.config import Settings
+from tohoku.media.audio import extract_audio
+from tohoku.media.downloaders import YtDlpDownloader
+from tohoku.sources import Platform
+from tohoku.stages.transcribe import WhisperTranscriber
+from tohoku.trilium_layout import GEO_MAP_TEMPLATE, init_layout
 
 pytestmark = pytest.mark.integration
 

@@ -1,13 +1,13 @@
 import pytest
 
 from builders import make_ctx, make_extraction, make_geo, make_lugar
-from japan_reader.config import Thresholds
-from japan_reader.errors import QuotaExceeded
-from japan_reader.geo import name_score
-from japan_reader.models import ExtractResult
-from japan_reader.quota import DailyQuota
-from japan_reader.stages.geocode import GeocodeStage
-from japan_reader.state import StateStore
+from tohoku.config import Thresholds
+from tohoku.errors import QuotaExceeded
+from tohoku.geo import name_score
+from tohoku.models import ExtractResult
+from tohoku.quota import DailyQuota
+from tohoku.stages.geocode import GeocodeStage
+from tohoku.state import StateStore
 
 SHIBUYA = make_geo("P1", "Ichiran Shibuya", "Jinnan, Shibuya, Tokio 150-0041, Japón")
 OSAKA = make_geo("P2", "Ichiran Dotonbori", "Chuo Ward, Osaka, 542-0084, Japón", lat=34.66, lng=135.50)

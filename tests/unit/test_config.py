@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from japan_reader.config import Settings, Thresholds
+from tohoku.config import Settings, Thresholds
 
 REQUIRED = {
     "KARAKEEP_URL": "http://kk",

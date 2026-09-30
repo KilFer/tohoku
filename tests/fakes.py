@@ -2,9 +2,9 @@ import itertools
 import re
 from pathlib import Path
 
-from japan_reader.clients.karakeep import Bookmark
-from japan_reader.clients.openrouter import ChatResult
-from japan_reader.clients.trilium import TAttachment, TAttr, TNote
+from tohoku.clients.karakeep import Bookmark
+from tohoku.clients.openrouter import ChatResult
+from tohoku.clients.trilium import TAttachment, TAttr, TNote
 
 _CONDITION = re.compile(r'#([\w:]+)(?:=(?:"([^"]*)"|(\S+)))?')
 

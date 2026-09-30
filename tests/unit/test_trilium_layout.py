@@ -1,8 +1,8 @@
 import pytest
 
 from fakes import FakeTrilium
-from japan_reader.errors import ConfigError
-from japan_reader.trilium_layout import CATEGORIES, GEO_MAP_TEMPLATE, LayoutCache, init_layout, resolve_layout
+from tohoku.errors import ConfigError
+from tohoku.trilium_layout import CATEGORIES, GEO_MAP_TEMPLATE, LayoutCache, init_layout, resolve_layout
 
 
 @pytest.fixture

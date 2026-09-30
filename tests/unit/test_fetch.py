@@ -4,12 +4,12 @@ from PIL import Image
 from builders import make_ctx, make_job
 from fakes import FakeKarakeep
 from helpers import make_image, make_video
-from japan_reader.clients.karakeep import Bookmark
-from japan_reader.errors import PermanentError, TransientError
-from japan_reader.media.downloaders import DownloadedMedia, TooLongError
-from japan_reader.models import ContentType, SourceMeta
-from japan_reader.sources import ContentHint, Platform
-from japan_reader.stages.fetch import FetchStage
+from tohoku.clients.karakeep import Bookmark
+from tohoku.errors import PermanentError, TransientError
+from tohoku.media.downloaders import DownloadedMedia, TooLongError
+from tohoku.models import ContentType, SourceMeta
+from tohoku.sources import ContentHint, Platform
+from tohoku.stages.fetch import FetchStage
 
 
 class StubVideo:

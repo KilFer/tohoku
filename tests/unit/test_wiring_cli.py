@@ -5,15 +5,15 @@ from pydantic import BaseModel
 from typer.testing import CliRunner
 
 from fakes import FakeKarakeep, FakeLLM, FakeTrilium
-from japan_reader import cli
-from japan_reader.errors import ConfigError
-from japan_reader.models import Outcome
-from japan_reader.sources import ContentHint, Platform
-from japan_reader.pipeline import STAGE_ORDER
-from japan_reader.state import JobStatus, StateStore
-from japan_reader.trilium_layout import LayoutCache, init_layout, resolve_layout
-from japan_reader.lock import AlreadyRunning, single_instance
-from japan_reader.wiring import build_app, preflight
+from tohoku import cli
+from tohoku.errors import ConfigError
+from tohoku.models import Outcome
+from tohoku.sources import ContentHint, Platform
+from tohoku.pipeline import STAGE_ORDER
+from tohoku.state import JobStatus, StateStore
+from tohoku.trilium_layout import LayoutCache, init_layout, resolve_layout
+from tohoku.lock import AlreadyRunning, single_instance
+from tohoku.wiring import build_app, preflight
 
 
 class SimpleModel(BaseModel):
@@ -163,7 +163,7 @@ def test_single_instance_lock(tmp_path):
                 pass
     with single_instance(tmp_path / "data"):  # liberado al salir
         pass
-    assert (tmp_path / "data" / "japan-reader.lock").exists()
+    assert (tmp_path / "data" / "tohoku.lock").exists()
 
 
 def test_cli_run_once_exits_3_when_another_instance_runs(fake_app):

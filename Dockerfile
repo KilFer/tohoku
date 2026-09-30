@@ -18,4 +18,4 @@ ENV PATH="/app/.venv/bin:$PATH" \
     WHISPER_DOWNLOAD_ROOT=/models \
     TZ=Europe/Madrid
 VOLUME ["/data", "/models"]
-CMD ["japan-reader", "run"]
+CMD ["tohoku", "run"]
