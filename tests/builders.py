@@ -7,11 +7,13 @@ from tohoku.sources import ContentHint, Platform
 from tohoku.state import Job, JobStatus
 
 
-def make_job(bookmark_id="b1", url="https://www.youtube.com/shorts/abc", platform=Platform.YOUTUBE, hint=ContentHint.VIDEO) -> Job:
+def make_job(bookmark_id="b1", url="https://www.youtube.com/shorts/abc", platform=Platform.YOUTUBE, hint=ContentHint.VIDEO,
+             candidates=None, destination=None) -> Job:
     now = datetime(2026, 9, 28, tzinfo=UTC)
     return Job(
         bookmark_id=bookmark_id, url=url, platform=platform, hint=hint, status=JobStatus.PENDING, attempts=0,
         next_attempt_at=None, last_error=None, outcome=None, created_at=now, updated_at=now,
+        candidates=candidates, destination=destination,
     )
 
 

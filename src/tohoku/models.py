@@ -171,3 +171,15 @@ class MergeOutput(BaseModel):
     resumen: str
     que_hacer: str = ""
     consejos: list[str] = []
+
+
+class Classification(BaseModel):
+    """Resultado de la etapa `classify`."""
+
+    destino: str | None  # None → DESCARTADO
+    confianza: float = 1.0
+    alternativa: str | None = None
+    confianza_alternativa: float = 0.0
+    omitido: bool = False  # sin llamada: un solo candidato o destino forzado
+    dudosa: bool = False  # alternativa a menos de margen_revision → clasificacion-dudosa
+    cost_usd: float = 0.0
