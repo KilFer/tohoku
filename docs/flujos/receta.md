@@ -2,7 +2,7 @@
 
 **Qué hace:** convierte un Reel, Short o post de Instagram de cocina en **una nota de receta** (ingredientes, pasos, consejos, portada) dentro del Recetario de Trilium. Un enlace = una receta. No hay fusión entre fuentes: dos enlaces con la misma receta dan dos notas, y si el título se parece mucho la nueva va a la Bandeja como `posible-duplicado`.
 
-Se activa con un destino de `config/destinos.yaml` con `flujo: receta`. Las etapas comunes (`fetch`, `transcribe`, `classify`) son las de siempre; las propias del flujo son `extract → cover → resolve → publish`. Estado: implementado en `feat/tohoku` (fase 5), sin desplegar.
+Se activa con un destino de `config/destinos.yaml` con `flujo: receta`. Las etapas comunes (`fetch`, `transcribe`, `classify`) son las de siempre; las propias del flujo son `extract → cover → resolve → publish`. Estado: desplegado (fase 5) y desactivado: el bloque `recetas` está comentado en `config/destinos.yaml`.
 
 ## Estructura en Trilium
 

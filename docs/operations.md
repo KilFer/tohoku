@@ -47,7 +47,7 @@ Qué listas de Karakeep se procesan y cómo se publica cada una. Una lista puede
 - Vuelta atrás desde las fases 3/4: el código anterior a la fase 3 no sabe leer el resultado `descartado` (antes `no-japon`) ni la marca `files_purged` de `fetch`. Antes de desplegar haz una copia de `state.db` con el servicio parado (`sudo sqlite3 data/state.db ".backup data/state-antes-fase3.db"`; el fichero es de root); para volver atrás más allá de la fase 3 hay que restaurar esa copia (se pierde lo procesado después) o no retroceder más allá de la fase 3.
 - `init-trilium [--destino X]` crea la estructura bajo la raíz de ese destino (por defecto, el único; con varios destinos `--destino` es obligatorio). `eval --destino X` evalúa con el prompt de ese destino (solo destinos de flujo `viaje`; con otro flujo falla con un error de configuración). `import-instagram ... [--lista ID]` elige la lista de Karakeep destino (por defecto, la única del YAML; con varias hay que indicarla).
 
-### Activar Recetas (fase 5, sin desplegar)
+### Activar Recetas (fase 5, desplegado y desactivado)
 
 1. En Trilium, crea la nota raíz del Recetario y márcala con `#jrRootRecetas` (para pruebas, `#jrRootRecetasTest`).
 2. En `config/destinos.yaml` descomenta el bloque `recetas`, añade en `listas` la lista de Karakeep de recetas (`<id>: [recetas]`) y descomenta `destino_legado: japon` (con varios destinos es obligatorio). Con una lista que lleve solo `recetas` y otra solo `japon`, un bookmark en ambas pasa por `classify` (hay clasificador desde que existen dos destinos).

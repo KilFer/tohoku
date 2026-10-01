@@ -4,7 +4,7 @@
 >
 > **Modo acordado con el usuario:** subagentes con **revisión especial de TDD**. Cada tarea declara el RED esperado, y el controlador vuelve a ejecutar los tests nuevos contra el código anterior a la tarea para confirmarlo. Las tareas con acciones sobre servicios reales (Tasks 2, 7 y 9) se paran y piden confirmación al usuario antes de tocar Trilium, Karakeep o el LLM de pago.
 >
-> **Estado:** preparado, sin ejecutar (el usuario lo lanzará más adelante).
+> **Estado:** ejecutado el 2026-10-01 (Tasks 1-8, desplegado en `master` `fe509ff`; recetas y NZ comentadas en producción). Task 9 (NZ real) pendiente, sin prioridad: ver CLAUDE.md, "Plan acordado".
 
 **Goal:**
 - **Fase 5:** añadir un segundo flujo real, `receta`. Guarda recetas en un Recetario de Trilium en vista Tabla, con ingredientes, pasos, atributos promovidos e imagen de portada. Reutiliza las piezas comunes del flujo `viaje` sin cambiar su comportamiento.

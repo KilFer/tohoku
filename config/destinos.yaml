@@ -26,7 +26,7 @@ destinos:
     descripcion: "Viaje a Japón: lugares, comida, compras y cultura de Japón"
     prompt: prompts/japon.md
     pais: JP                            # el resto de parámetros del flujo viaje toman sus valores por defecto (Japón)
-  # Recetas (fase 5, sin desplegar). Para activarlo: descomenta este bloque, la lista nueva de arriba
+  # Recetas (fase 5, desplegado pero desactivado). Para activarlo: descomenta este bloque, la lista nueva de arriba
   # (en 'listas') y 'destino_legado: japon' (arriba, con varios destinos es obligatorio); crea la nota
   # raíz con #jrRootRecetas y ejecuta 'tohoku init-trilium --destino recetas'. Ver docs/flujos/receta.md.
   # recetas:
@@ -36,7 +36,7 @@ destinos:
   #   prompt: prompts/recetas.md
   #   vista: table                        # table | grid | list (vista del Recetario)
   #   # atributos / atributos_usuario: opcionales (ver docs/flujos/receta.md)
-  # Nueva Zelanda (ejemplo de destino nuevo solo con configuración; sin desplegar). Para activarlo, sigue
+  # Nueva Zelanda (ejemplo de destino nuevo solo con configuración; desactivado). Para activarlo, sigue
   # "Cómo añadir un destino" en docs/operations.md: descomenta este bloque, su lista en 'listas' y 'destino_legado: japon'.
   # nueva_zelanda:
   #   flujo: viaje
