@@ -17,6 +17,7 @@
 #   retencion_dias: 30
 listas:
   seo5xdpquppqfy4hmzzeekfh: [japon]   # lista "Japón" de Karakeep
+  # <id-lista-recetas>: [recetas]        # lista de Karakeep de recetas (descomentar con el bloque `recetas`)
 destinos:
   japon:
     flujo: viaje
@@ -24,3 +25,13 @@ destinos:
     descripcion: "Viaje a Japón: lugares, comida, compras y cultura de Japón"
     prompt: prompts/japon.md
     pais: JP                            # el resto de parámetros del flujo viaje toman sus valores por defecto (Japón)
+  # Recetas (fase 5, sin desplegar). Para activarlo: descomenta este bloque, la lista nueva de arriba
+  # (en 'listas') y 'destino_legado: japon' (arriba, con varios destinos es obligatorio); crea la nota
+  # raíz con #jrRootRecetas y ejecuta 'tohoku init-trilium --destino recetas'. Ver docs/flujos/receta.md.
+  # recetas:
+  #   flujo: receta
+  #   raiz: jrRootRecetas                 # etiqueta de la nota raíz del Recetario en Trilium
+  #   descripcion: "Recetas de cocina: platos y bebidas con ingredientes y pasos"
+  #   prompt: prompts/recetas.md
+  #   vista: table                        # table | grid | list (vista del Recetario)
+  #   # atributos / atributos_usuario: opcionales (ver docs/flujos/receta.md)

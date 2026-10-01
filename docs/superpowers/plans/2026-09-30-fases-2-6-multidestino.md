@@ -407,3 +407,14 @@ class CoverResult(BaseModel):
 **Criterio:** ningún cambio en `src/`. Si hace falta alguno, es un fallo de diseño: se corrige en `flows/viaje` y se documenta.
 
 **Tests de aceptación:** un test de configuración que carga un YAML con `japon` y `nueva_zelanda` y comprueba que `in_country(..., "NZ")` y el `name_key` de NZ usan los parámetros del destino.
+
+---
+
+## Rulings de las fases 5-6 (plan `2026-09-30-fase-5-6-recetas-y-nueva-zelanda.md`)
+
+1. No se mueven módulos de `viaje` a `flows/viaje/`; solo se extraen a módulos neutros (`publishing.py`, `llm_json.py`) las utilidades que `receta` reutiliza. Asimetría anotada en `docs/operations.md`.
+2. `STAGE_ORDER` es canónico e incluye `cover`: `reprocess --from extract` borra también `cover` (y `geocode`, que en recetas no existe) y vuelve a descargar si los ficheros se limpiaron.
+3. Sin fusión entre fuentes en recetas: identidad `#jrItem="<bookmark>:receta:<name_key(título)>"` y un enlace = una receta (al reprocesar se retoma la nota del mismo enlace aunque cambie el título). Receta de título parecido → `posible-duplicado`.
+4. Atributos escritos por el servicio: solo los 5 campos de extracción (`tipo_plato`, `cocina`, `tiempo_min`, `raciones`, `dificultad`); `atributos_usuario` (`probada`, `valoracion`) nunca.
+5. Portada como adjunto de imagen, con `src="api/attachments/<id>/image/<título>"` verificado en Trilium 0.106.
+6. El prompt de recetas vive solo en `config/prompts/recetas.md` (sin marcadores; se carga tal cual).

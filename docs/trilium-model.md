@@ -51,3 +51,21 @@ Cada nota lleva un adjunto `japan-reader.json` con sus datos (resumen, consejos,
 ## Bandeja de revisión
 
 Las notas dudosas se **clonan** en la bandeja (siguen también en su sitio) con `#revisar=<motivos>`: `geocodificacion-fallida`, `geocodificacion-ambigua`, `posible-duplicado`, `baja-confianza`, `clasificacion-incierta`, `clasificacion-dudosa` (el clasificador dudó entre dos destinos: comprueba que la nota está en el destino correcto; si no, `reprocess --destino`), `extraccion-fallida`. Revisar = corregir la nota, quitar `#revisar` y quitar el clon de la bandeja. El servicio no vuelve a meter en la bandeja una nota que el usuario sacó salvo que llegue una fuente nueva con motivos; y la saca él mismo si un reprocesado resuelve todos sus motivos.
+
+## Flujo `receta`: Recetario y nota Receta
+
+Destino con `flujo: receta` (p. ej. raíz `#jrRootRecetas`; ver `docs/flujos/receta.md`):
+
+    Recetas                           #jrRootRecetas
+     ├── Recetario                    #jrColeccion (book, #viewType=table|grid|list)
+     ├── Bandeja de revisión          #jrRevision
+     └── Plantillas                   #jrPlantillas
+          └── Receta                  #template + #label:<atributo>=promoted,single,<tipo>
+
+**Nota Receta** (hija del Recetario, con `~template=Receta`):
+- Atributos: `#jrTipo=receta`, `#jrItem="<bookmark_id>:receta:<título normalizado>"`, `#jrNombreNorm`, `#fuentes`, `#iconClass`, más los promovidos que escribe el servicio: `tipo_plato`, `cocina`, `tiempo_min`, `raciones`, `dificultad` (se respetan los que corrijas tú).
+- `probada` y `valoracion` (y cualquier atributo de `atributos_usuario` o añadido a mano) son tuyos: el servicio no los escribe nunca.
+- Cuerpo: portada, Resumen, Ingredientes (agrupados por `grupo`), Preparación, Consejos, Fuentes y, debajo de "Mis notas", lo tuyo (se conserva siempre).
+- Portada: adjunto de imagen `portada.jpg` (JPEG, lado máximo `IMAGE_MAX_SIDE`) incrustado con `<img src="api/attachments/<id>/image/portada.jpg">` (formato verificado en Trilium 0.106).
+- Adjunto `japan-reader.json` con los datos estructurados (fuente de verdad; no lo borres).
+- Sin fusión entre fuentes: un enlace = una receta. Si ya hay otra de título parecido, la nueva se clona en la Bandeja con `posible-duplicado`.

@@ -86,6 +86,7 @@ Documentación de referencia (leer antes de cambiar comportamiento):
   - 2026-09-30/10-01: tanda 6 terminada (01:18). Las comprobaciones programadas de las 00:02/02:03 no llegaron a ejecutarse (eran de la sesión de Claude, que estaba inactiva): despliegue hecho a mano el 1/10 por la mañana. Reprocesados los 17 errores: 9 OK, 1 restricción de audiencia (`lz568a2m2rost8xqewtm5d93`, a mano como `pxf0p8…`), 7 con "empty media" de Instagram reintentando (Instagram corta tras varias descargas seguidas). Prueba de 5 enlaces importada y procesada (1.310 ya existían, 973 pendientes de importar). Total: 1.056 procesados, 217 revisar, 38 descartados.
   - 2026-10-01 ~08:55: **tanda 7 importada: 20 creados** (verificación en vivo de las fases 2-4), 1.315 ya existían, 953 pendientes. Lanzada antes de las 09:00 (aún día PT 30/09, 1.210/2.200 de Places): parte se geocodifica con la cuota de septiembre.
   - Siguiente: revisar la tanda 7 (destino, clasificador, limpieza, Bandeja); después, tandas normales con el límite de 150/día.
+- **Fase 5 (recetas): implementada en `feat/tohoku`, sin desplegar** (flujo `receta` registrado, bloque `recetas` comentado en `config/destinos.yaml`, doc `docs/flujos/receta.md`). Pendiente: integración real (Task 7, con confirmación del usuario).
 
 ## Pendientes y mejoras conocidas
 

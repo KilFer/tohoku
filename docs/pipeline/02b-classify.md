@@ -25,4 +25,15 @@
 
 **Fallos:** varios candidatos sin clasificador → `ConfigError`; respuesta inválida tras el reintento o 429/5xx → reintento del job; presupuesto agotado → `QuotaExceeded` (espera al día siguiente). Un destino decidido o forzado que ya no existe en el YAML hace fallar solo ese job (`jr:error`), no la cola.
 
+**Ejemplo con dos flujos** (`japon` con flujo `viaje`, `recetas` con flujo `receta`):
+
+    listas:
+      L_JAPON: [japon]
+      L_RECETAS: [recetas]
+    destinos: {japon: {flujo: viaje, ...}, recetas: {flujo: receta, ...}}
+    destino_legado: japon
+
+- Un bookmark solo en `L_RECETAS` tiene un candidato (`recetas`): no hay llamada al LLM y sigue el flujo `receta`. Uno solo en `L_JAPON` sigue el flujo `viaje`. Uno en las dos listas tiene dos candidatos y lo decide el clasificador (hay clasificador porque hay más de un destino en total, aunque cada lista tenga uno solo).
+- Un Reel que el clasificador manda a `recetas` pero no es una receta termina `descartado`: sin nota y sin `jr:destino`.
+
 **Cómo probarla:** `uv run pytest tests/unit/test_classify.py`. Con casos reales: `tohoku eval --destino X`. Para forzar: `tohoku reprocess <id> --destino X` (ver `docs/operations.md`).

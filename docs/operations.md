@@ -21,7 +21,7 @@ Qué listas de Karakeep se procesan y cómo se publica cada una. Una lista puede
       seo5xdpquppqfy4hmzzeekfh: [japon]   # id de la lista de Karakeep → destinos candidatos
     destinos:
       japon:
-        flujo: viaje                      # único flujo por ahora
+        flujo: viaje                      # viaje | receta (docs/flujos/receta.md)
         raiz: jrRoot                      # etiqueta de la nota raíz en Trilium
         descripcion: "Viaje a Japón: ..."
         prompt: prompts/japon.md          # relativo a config/
@@ -46,6 +46,16 @@ Qué listas de Karakeep se procesan y cómo se publica cada una. Una lista puede
 - Dos destinos cuyo nombre solo difiere en mayúsculas, acentos o separadores (`japon`/`Japón`) son un error de configuración: el clasificador no los distinguiría.
 - Vuelta atrás desde las fases 3/4: el código anterior a la fase 3 no sabe leer el resultado `descartado` (antes `no-japon`) ni la marca `files_purged` de `fetch`. Antes de desplegar haz una copia de `state.db` con el servicio parado (`sudo sqlite3 data/state.db ".backup data/state-antes-fase3.db"`; el fichero es de root); para volver atrás más allá de la fase 3 hay que restaurar esa copia (se pierde lo procesado después) o no retroceder más allá de la fase 3.
 - `init-trilium [--destino X]` crea la estructura bajo la raíz de ese destino (por defecto, el único; con varios destinos `--destino` es obligatorio). `eval --destino X` evalúa con el prompt de ese destino. `import-instagram ... [--lista ID]` elige la lista de Karakeep destino (por defecto, la única del YAML; con varias hay que indicarla).
+
+### Activar Recetas (fase 5, sin desplegar)
+
+1. En Trilium, crea la nota raíz del Recetario y márcala con `#jrRootRecetas` (para pruebas, `#jrRootRecetasTest`).
+2. En `config/destinos.yaml` descomenta el bloque `recetas`, añade en `listas` la lista de Karakeep de recetas (`<id>: [recetas]`) y descomenta `destino_legado: japon` (con varios destinos es obligatorio). Con una lista que lleve solo `recetas` y otra solo `japon`, un bookmark en ambas pasa por `classify` (hay clasificador desde que existen dos destinos).
+3. `docker compose restart tohoku` (el YAML se monta de solo lectura; el primer arranque comprueba el modelo del clasificador).
+4. `docker compose exec tohoku tohoku init-trilium --destino recetas`. Es idempotente, pero no añade atributos promovidos nuevos a una plantilla `Receta` que ya exista: si cambias `atributos`, añade los promovidos a mano en Trilium.
+5. Ver `docs/flujos/receta.md`.
+
+Asimetría de código: el flujo `viaje` vive en `src/tohoku/stages/` (+ `geo.py`, `trilium_layout.py`, `notes.py`) y el flujo `receta` en `src/tohoku/flows/receta/`; no se movieron los módulos del viaje (decisión de las fases 5-6, hoja de ruta). Las utilidades comunes están en módulos neutros (`publishing.py`, `llm_json.py`). `reprocess --from extract` también repite `cover` en recetas (orden canónico de etapas).
 
 ## Comandos
     docker compose exec tohoku tohoku status
