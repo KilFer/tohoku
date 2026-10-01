@@ -281,6 +281,19 @@ def test_cli_eval_rejects_unknown_destination(monkeypatch, settings):
     assert "nz" in result.output
 
 
+def test_cli_eval_rejects_non_viaje_destination(monkeypatch, settings):
+    from dataclasses import replace
+    from types import SimpleNamespace
+
+    app = build_app(settings)
+    recetas = replace(app.destination, nombre="recetas", flujo="receta")
+    fake = SimpleNamespace(settings=app.settings, destination=app.destination, destinations=SimpleNamespace(destinos={"recetas": recetas}))
+    monkeypatch.setattr(cli, "_load", lambda: fake)
+    result = CliRunner().invoke(cli.app, ["eval", "--destino", "recetas"])
+    assert result.exit_code == 2
+    assert "eval solo admite destinos de flujo viaje" in result.output
+
+
 def test_cli_reprocess_accepts_classify(fake_app):
     fake_app.state.add_job("b1", "https://youtu.be/b1", Platform.YOUTUBE, ContentHint.VIDEO)
     for stage in ("transcribe", "classify", "extract"):

@@ -160,6 +160,8 @@ def eval_cmd(
     loaded = _load()
     try:
         dest = _destination(loaded, destino) if destino else loaded.destination
+        if dest.flujo != "viaje":
+            raise ConfigError(f"eval solo admite destinos de flujo viaje ('{dest.nombre}' es de flujo {dest.flujo})")
     except ConfigError as exc:
         raise _config_exit(exc) from exc
     updates: dict = {"reel_keyframes_enabled": True}

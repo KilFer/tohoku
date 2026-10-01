@@ -99,10 +99,15 @@ class RecetaPublishStage:
         data = self._build_data(ctx)
         item_id = f"{ctx.job.bookmark_id}:receta:{name_key(data.titulo)}"
         found = self._find_existing(ctx.job.bookmark_id, item_id, layout)
+        attachments: list[TAttachment] | None = None
+        old_data: RecetaData | None = None
         if found:
             # Un enlace = una receta: si el título cambió al reprocesar, se reutiliza la nota y se actualiza su identidad.
             note, existing_content = found, self._t.get_content(found.note_id)
-            if note.title != data.titulo:
+            attachments = self._t.list_attachments(note.note_id)
+            old_data = self._old_data(attachments)
+            # El título solo se renombra si sigue siendo el que generó el servicio la vez anterior (si no, lo cambió el usuario).
+            if note.title != data.titulo and old_data is not None and note.title == old_data.titulo:
                 self._t.set_title(note.note_id, data.titulo)
             current = note.label("jrItem")
             if current != item_id:
@@ -113,8 +118,9 @@ class RecetaPublishStage:
             created = self._t.create_note(layout.recetario, data.titulo, "text", "")
             self._t.add_label(created.note_id, "jrItem", item_id)
             note, existing_content = self._t.get_note(created.note_id), None
-        attachments = self._t.list_attachments(note.note_id)
-        old_labels = self._old_labels(attachments)
+        if attachments is None:
+            attachments = self._t.list_attachments(note.note_id)
+        old_labels = self.labels_for(old_data) if old_data is not None else {}
         data.portada_adjunto = self._upload_cover(note.note_id, attachments, self._cover_bytes(ctx))
         src = image_src(data.portada_adjunto, COVER_TITLE) if data.portada_adjunto else None
         self._t.set_content(note.note_id, compose_content(render_receta(data, src), existing_content))
@@ -140,11 +146,11 @@ class RecetaPublishStage:
         # Creación cortada antes de escribir `jrTipo`: solo existe `#jrItem`.
         return next(iter(self._t.search(f'#jrItem="{item_id}"', ancestor=layout.root)), None)
 
-    def _old_labels(self, attachments: list[TAttachment]) -> dict[str, str]:
+    def _old_data(self, attachments: list[TAttachment]) -> RecetaData | None:
         attachment = next((a for a in attachments if a.title == DATA_ATTACHMENT_TITLE), None)
         if attachment is None:
-            return {}
-        return self.labels_for(load_data(self._t.get_attachment_content(attachment.attachment_id)))
+            return None
+        return load_data(self._t.get_attachment_content(attachment.attachment_id))
 
     @staticmethod
     def _cover_bytes(ctx: JobContext) -> bytes | None:

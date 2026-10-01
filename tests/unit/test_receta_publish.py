@@ -186,6 +186,36 @@ def test_reprocess_keeps_user_edits(env):
     assert "Me salió genial" in content and "Nuevo paso" in content and "Otro resumen" in content
 
 
+def _republish(env, extraction):
+    env.state.clear_stages_from("b1", "publish", ("publish",))
+    return _publish(env, _ctx(env, extraction=extraction))
+
+
+def test_reprocess_keeps_user_renamed_title(env):
+    (published,) = _publish(env, _ctx(env, extraction=make_receta())).notes
+    nid = published.note_id
+    env.trilium.set_title(nid, "Mi tortilla de la abuela")
+
+    result = _republish(env, make_receta(resumen="Otro resumen"))
+
+    assert [n.note_id for n in result.notes] == [nid]
+    assert env.trilium.get_note(nid).title == "Mi tortilla de la abuela"
+
+
+def test_reprocess_keeps_user_title_when_llm_title_changes(env):
+    (published,) = _publish(env, _ctx(env, extraction=make_receta())).notes
+    nid = published.note_id
+    env.trilium.set_title(nid, "Mi tortilla de la abuela")
+
+    result = _republish(env, make_receta(titulo="Tortilla española"))
+
+    assert [n.note_id for n in result.notes] == [nid]
+    assert env.trilium.children(env.layout.recetario) == [nid]
+    assert env.trilium.get_note(nid).title == "Mi tortilla de la abuela"
+    labels = env.trilium.labels(nid)
+    assert labels["jrItem"] == "b1:receta:" + name_key("Tortilla española")
+
+
 def test_reprocess_with_new_title_reuses_note(env):
     (published,) = _publish(env, _ctx(env, extraction=make_receta())).notes
     nid = published.note_id
