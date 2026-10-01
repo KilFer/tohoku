@@ -51,9 +51,23 @@ Qué listas de Karakeep se procesan y cómo se publica cada una. Una lista puede
 
 1. En Trilium, crea la nota raíz del Recetario y márcala con `#jrRootRecetas` (para pruebas, `#jrRootRecetasTest`).
 2. En `config/destinos.yaml` descomenta el bloque `recetas`, añade en `listas` la lista de Karakeep de recetas (`<id>: [recetas]`) y descomenta `destino_legado: japon` (con varios destinos es obligatorio). Con una lista que lleve solo `recetas` y otra solo `japon`, un bookmark en ambas pasa por `classify` (hay clasificador desde que existen dos destinos).
-3. `docker compose restart tohoku` (el YAML se monta de solo lectura; el primer arranque comprueba el modelo del clasificador).
-4. `docker compose exec tohoku tohoku init-trilium --destino recetas`. Es idempotente, pero no añade atributos promovidos nuevos a una plantilla `Receta` que ya exista: si cambias `atributos`, añade los promovidos a mano en Trilium.
+3. `docker compose exec tohoku tohoku init-trilium --destino recetas` (`./config` está montado de solo lectura en el contenedor, así que `exec` ya ve el YAML editado). Es idempotente, pero no añade atributos promovidos nuevos a una plantilla `Receta` que ya exista: si cambias `atributos`, añade los promovidos a mano en Trilium.
+4. `docker compose restart tohoku` (el primer arranque comprueba el modelo del clasificador). El orden importa: si reinicias antes de `init-trilium`, el preflight falla en `refresh()` y se pausan **todas** las colas (también Japón) con un aviso de error de configuración en ntfy.
 5. Ver `docs/flujos/receta.md`.
+
+### Cómo añadir un destino
+
+Un destino de viaje nuevo (Nueva Zelanda, Portugal...) es solo configuración: no se toca `src/`. El ejemplo completo está comentado al final de `config/destinos.yaml` (`nueva_zelanda`) y probado en `tests/unit/test_destino_nz.py` con `tests/fixtures/destinos_tres.yaml`.
+
+1. En Karakeep, crea la lista del destino y anota su id.
+2. En Trilium, crea la nota raíz del destino y márcala con su etiqueta (`#jrRootNZ`; en pruebas, la variante `Test`).
+3. Escribe el prompt en `config/prompts/<destino>.md`: copia `config/prompts/japon.md` y adapta país, ciudades y regiones; conserva los campos y los marcadores `{{categorias_lugar}}` y `{{categorias_cosa}}`.
+4. En `config/destinos.yaml`: añade el bloque del destino (`flujo: viaje`, `raiz`, `descripcion`, `prompt`, `pais` ISO-2, `nombres_pais`, `latitud`/`longitud` [mín, máx] del país, `categorias_lugar`, `categorias_cosa`, `alias_ciudad`), su lista en `listas` y, si es el segundo destino, `destino_legado: japon` (obligatorio con varios destinos). El YAML se valida al cargar: un error se ve con `docker compose exec tohoku tohoku init-trilium --destino <nombre>`.
+5. `docker compose exec tohoku tohoku init-trilium --destino <nombre>` crea el Mapa, "Comprar y comer", "Cultura y curiosidades" y la Bandeja bajo la raíz (idempotente).
+6. `docker compose restart tohoku`. **Siempre después de `init-trilium`**: si el servicio arranca con un destino sin estructura, el preflight falla en `refresh()` y se pausan todas las colas (también las de Japón) con un aviso de error de configuración en ntfy.
+7. Prueba con unos pocos enlaces (`import-instagram ... --lista <id> --limit 5`) y revisa la Bandeja antes de importar más.
+
+Particularidades (decisión 6 de las fases 5-6): la caché de búsquedas de Places lleva el prefijo `<PAIS>|` salvo en Japón; `palabras_genericas` es global (no distingue destinos); las categorías sin icono usan el pin genérico; los umbrales `JAPAN_*_CONFIDENCE` del `.env` valen para todos los destinos de viaje (el nombre no se cambió para no obligar a editar `.env`). Si al procesar enlaces reales algo de esto molesta, se abre una tarea aparte.
 
 Asimetría de código: el flujo `viaje` vive en `src/tohoku/stages/` (+ `geo.py`, `trilium_layout.py`, `notes.py`) y el flujo `receta` en `src/tohoku/flows/receta/`; no se movieron los módulos del viaje (decisión de las fases 5-6, hoja de ruta). Las utilidades comunes están en módulos neutros (`publishing.py`, `llm_json.py`). `reprocess --from extract` también repite `cover` en recetas (orden canónico de etapas).
 

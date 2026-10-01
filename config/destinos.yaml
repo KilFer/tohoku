@@ -18,6 +18,7 @@
 listas:
   seo5xdpquppqfy4hmzzeekfh: [japon]   # lista "Japón" de Karakeep
   # <id-lista-recetas>: [recetas]        # lista de Karakeep de recetas (descomentar con el bloque `recetas`)
+  # <id-lista-nz>: [nueva_zelanda]       # lista de Karakeep de Nueva Zelanda (descomentar con el bloque `nueva_zelanda`)
 destinos:
   japon:
     flujo: viaje
@@ -35,3 +36,17 @@ destinos:
   #   prompt: prompts/recetas.md
   #   vista: table                        # table | grid | list (vista del Recetario)
   #   # atributos / atributos_usuario: opcionales (ver docs/flujos/receta.md)
+  # Nueva Zelanda (ejemplo de destino nuevo solo con configuración; sin desplegar). Para activarlo, sigue
+  # "Cómo añadir un destino" en docs/operations.md: descomenta este bloque, su lista en 'listas' y 'destino_legado: japon'.
+  # nueva_zelanda:
+  #   flujo: viaje
+  #   raiz: jrRootNZ
+  #   descripcion: "Viaje a Nueva Zelanda: naturaleza, rutas, pueblos, comida y cultura de Nueva Zelanda"
+  #   prompt: prompts/nueva_zelanda.md
+  #   pais: NZ
+  #   nombres_pais: [new zealand, nueva zelanda, aotearoa]
+  #   latitud: [-47.5, -34.0]
+  #   longitud: [166.0, 179.0]
+  #   categorias_lugar: [naturaleza, ruta, mirador, pueblo, playa, comida, cafe, bar, museo, alojamiento, transporte, otro]
+  #   categorias_cosa: {souvenirs: Souvenirs, comida: Comida, otros: Otros}
+  #   alias_ciudad: {auckland: [tamaki makaurau], wellington: [te whanganui-a-tara], christchurch: [otautahi]}

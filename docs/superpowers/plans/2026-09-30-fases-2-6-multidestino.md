@@ -418,3 +418,4 @@ class CoverResult(BaseModel):
 4. Atributos escritos por el servicio: solo los 5 campos de extracción (`tipo_plato`, `cocina`, `tiempo_min`, `raciones`, `dificultad`); `atributos_usuario` (`probada`, `valoracion`) nunca.
 5. Portada como adjunto de imagen, con `src="api/attachments/<id>/image/<título>"` verificado en Trilium 0.106.
 6. El prompt de recetas vive solo en `config/prompts/recetas.md` (sin marcadores; se carga tal cual).
+7. Nueva Zelanda se añade sin tocar `src/` (configuración, prompt y docs). `palabras_genericas` sigue siendo global; las categorías sin icono usan el pin genérico; `Thresholds`/`JAPAN_*_CONFIDENCE` no se renombran porque obligaría a editar `.env`. Se revisa en una tarea aparte si los enlaces reales de NZ dan problemas.

@@ -1,0 +1,29 @@
+# Configuración de tests con tres destinos: japon, recetas y nueva_zelanda (prompts reales de config/).
+listas:
+  L1: [japon]
+  L2: [recetas]
+  L3: [nueva_zelanda]
+destino_legado: japon
+destinos:
+  japon:
+    flujo: viaje
+    raiz: jrRoot
+    descripcion: "Viaje a Japón: lugares, comida, compras y cultura de Japón"
+    prompt: ../../config/prompts/japon.md
+  recetas:
+    flujo: receta
+    raiz: jrRootRecetas
+    descripcion: "Recetas de cocina: platos y bebidas con ingredientes y pasos"
+    prompt: ../../config/prompts/recetas.md
+  nueva_zelanda:
+    flujo: viaje
+    raiz: jrRootNZ
+    descripcion: "Viaje a Nueva Zelanda: naturaleza, rutas, pueblos, comida y cultura de Nueva Zelanda"
+    prompt: ../../config/prompts/nueva_zelanda.md
+    pais: NZ
+    nombres_pais: [new zealand, nueva zelanda, aotearoa]
+    latitud: [-47.5, -34.0]
+    longitud: [166.0, 179.0]
+    categorias_lugar: [naturaleza, ruta, mirador, pueblo, playa, comida, cafe, bar, museo, alojamiento, transporte, otro]
+    categorias_cosa: {souvenirs: Souvenirs, comida: Comida, otros: Otros}
+    alias_ciudad: {auckland: [tamaki makaurau], wellington: [te whanganui-a-tara], christchurch: [otautahi]}
