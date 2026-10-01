@@ -48,11 +48,14 @@ class Layout:
     categorias: dict[str, str]
 
 
-def _find_one(trilium: TriliumClient, query: str, ancestor: str | None = None, depth: str | None = None) -> TNote | None:
+def find_one(trilium: TriliumClient, query: str, ancestor: str | None = None, depth: str | None = None) -> TNote | None:
     found = trilium.search(query, ancestor=ancestor, ancestor_depth=depth)
     if len(found) > 1:
         raise ConfigError(f"Hay {len(found)} notas que cumplen '{query}' en Trilium; debe haber solo una")
     return found[0] if found else None
+
+
+_find_one = find_one  # alias privado: los imports antiguos siguen funcionando
 
 
 def _find_template(trilium: TriliumClient, plantillas: str, title: str) -> TNote | None:
@@ -60,24 +63,27 @@ def _find_template(trilium: TriliumClient, plantillas: str, title: str) -> TNote
     return next((n for n in trilium.search("#template", ancestor=plantillas, ancestor_depth="eq1") if n.title == title), None)
 
 
-def _root(trilium: TriliumClient, root_label: str) -> TNote:
-    root = _find_one(trilium, f"#{root_label}")
+def root_note(trilium: TriliumClient, root_label: str) -> TNote:
+    root = find_one(trilium, f"#{root_label}")
     if root is None:
         raise ConfigError(f"No se encuentra la nota raíz con #{root_label}. Añade esa etiqueta a la nota raíz del destino en Trilium.")
     return root
 
 
+_root = root_note  # alias privado: los imports antiguos siguen funcionando
+
+
 def resolve_layout(trilium: TriliumClient, root_label: str = "jrRoot", categorias: Mapping[str, str] = CATEGORIES) -> Layout:
-    root = _root(trilium, root_label)
+    root = root_note(trilium, root_label)
     ids: dict[str, str] = {}
     for label in _SECTIONS:
-        note = _find_one(trilium, f"#{label}", root.note_id)
+        note = find_one(trilium, f"#{label}", root.note_id)
         if note is None:
             raise ConfigError(f"Falta la nota #{label} en Trilium; ejecuta 'tohoku init-trilium'")
         ids[label] = note.note_id
     resueltas: dict[str, str] = {}
     for key in categorias:
-        note = _find_one(trilium, f"#jrCategoria={key}", ids["jrComprar"])
+        note = find_one(trilium, f"#jrCategoria={key}", ids["jrComprar"])
         if note is None:
             raise ConfigError(f"Falta la categoría '{key}' en Trilium; ejecuta 'tohoku init-trilium'")
         resueltas[key] = note.note_id
@@ -102,10 +108,10 @@ def resolve_layout(trilium: TriliumClient, root_label: str = "jrRoot", categoria
 
 def init_layout(trilium: TriliumClient, root_label: str = "jrRoot", categorias: Mapping[str, str] = CATEGORIES) -> Layout:
     """Crea bajo la raíz lo que falte. Idempotente."""
-    root = _root(trilium, root_label).note_id
+    root = root_note(trilium, root_label).note_id
 
     def ensure(query: str, ancestor: str, parent: str, title: str, labels: dict[str, str], **kwargs) -> str:
-        existing = _find_one(trilium, query, ancestor)
+        existing = find_one(trilium, query, ancestor)
         if existing:
             return existing.note_id
         note = trilium.create_note(parent, title, kwargs.get("type", "text"), "")
