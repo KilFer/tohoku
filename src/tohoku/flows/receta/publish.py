@@ -1,12 +1,12 @@
 import logging
 from collections.abc import Callable
 
-from tohoku.clients.trilium import TNote, TriliumClient, image_src
+from tohoku.clients.trilium import TAttachment, TriliumClient, image_src
 from tohoku.config import Settings
 from tohoku.context import JobContext
 from tohoku.flows.receta.extract import RecetaExtractResult
 from tohoku.flows.receta.layout import RecetaLayout
-from tohoku.flows.receta.models import CoverResult, RecetaData, RecetaExtraction, dump_data, load_data
+from tohoku.flows.receta.models import CoverResult, RecetaData, dump_data, load_data
 from tohoku.flows.receta.params import RecetaParams
 from tohoku.flows.receta.render import render_receta
 from tohoku.models import FetchResult, ItemKind, PlannedItem, PublishedNote, PublishResult, ResolveResult, Transcript
@@ -19,6 +19,8 @@ log = logging.getLogger(__name__)
 
 COVER_TITLE = "portada.jpg"
 RECETA_ICON = "bx bx-bowl-rice"
+# Campos de la extracción que el servicio escribe como etiquetas (si además están promovidos y no son del usuario).
+WRITABLE_FIELDS = ("tipo_plato", "cocina", "tiempo_min", "raciones", "dificultad")
 
 
 class RecetaPublishStage:
@@ -85,8 +87,8 @@ class RecetaPublishStage:
     def labels_for(self, data: RecetaData) -> dict[str, str]:
         """Atributos que gestiona el servicio. Nunca los de `atributos_usuario` (probada, valoracion…)."""
         labels = {"jrTipo": "receta", "jrNombreNorm": name_key(data.titulo), "fuentes": str(len(data.fuentes)), "iconClass": RECETA_ICON}
-        for name in RecetaExtraction.model_fields:
-            if name in self._params.atributos and name not in self._params.atributos_usuario and hasattr(data, name):
+        for name in WRITABLE_FIELDS:
+            if name in self._params.atributos and name not in self._params.atributos_usuario:
                 value = getattr(data, name)
                 if value is not None:
                     labels[name] = str(value)
@@ -96,15 +98,23 @@ class RecetaPublishStage:
         """Crea (o retoma tras un fallo a medias, o reprocesa) la nota. Idempotente vía `#jrItem`."""
         data = self._build_data(ctx)
         item_id = f"{ctx.job.bookmark_id}:receta:{name_key(data.titulo)}"
-        found = self._t.search(f'#jrItem="{item_id}"', ancestor=layout.root)
+        found = self._find_existing(ctx.job.bookmark_id, item_id, layout)
         if found:
-            note, existing_content = found[0], self._t.get_content(found[0].note_id)
+            # Un enlace = una receta: si el título cambió al reprocesar, se reutiliza la nota y se actualiza su identidad.
+            note, existing_content = found, self._t.get_content(found.note_id)
+            if note.title != data.titulo:
+                self._t.set_title(note.note_id, data.titulo)
+            current = note.label("jrItem")
+            if current != item_id:
+                attr = note.attr("label", "jrItem")
+                if attr is not None:
+                    self._t.update_attribute(attr.attribute_id, item_id)
         else:
             created = self._t.create_note(layout.recetario, data.titulo, "text", "")
             self._t.add_label(created.note_id, "jrItem", item_id)
             note, existing_content = self._t.get_note(created.note_id), None
         attachments = self._t.list_attachments(note.note_id)
-        old_labels = self._old_labels(note, attachments)
+        old_labels = self._old_labels(attachments)
         data.portada_adjunto = self._upload_cover(note.note_id, attachments, self._cover_bytes(ctx))
         src = image_src(data.portada_adjunto, COVER_TITLE) if data.portada_adjunto else None
         self._t.set_content(note.note_id, compose_content(render_receta(data, src), existing_content))
@@ -118,7 +128,19 @@ class RecetaPublishStage:
             self._t.set_attachment_content(attachment.attachment_id, dump_data(data))
         return note.note_id
 
-    def _old_labels(self, note: TNote, attachments: list) -> dict[str, str]:
+    def _find_existing(self, bookmark_id: str, item_id: str, layout: RecetaLayout):
+        """Nota de la receta de este enlace: la de la identidad exacta o, si no, cualquiera con el prefijo del enlace."""
+        recipes = self._t.search("#jrTipo=receta", ancestor=layout.root)
+        exact = [n for n in recipes if n.label("jrItem") == item_id]
+        if exact:
+            return exact[0]
+        prefixed = [n for n in recipes if (n.label("jrItem") or "").startswith(f"{bookmark_id}:receta:")]
+        if prefixed:
+            return prefixed[0]
+        # Creación cortada antes de escribir `jrTipo`: solo existe `#jrItem`.
+        return next(iter(self._t.search(f'#jrItem="{item_id}"', ancestor=layout.root)), None)
+
+    def _old_labels(self, attachments: list[TAttachment]) -> dict[str, str]:
         attachment = next((a for a in attachments if a.title == DATA_ATTACHMENT_TITLE), None)
         if attachment is None:
             return {}
@@ -131,7 +153,7 @@ class RecetaPublishStage:
             return None
         return (ctx.workdir / path.path).read_bytes()
 
-    def _upload_cover(self, note_id: str, attachments: list, image: bytes | None) -> str | None:
+    def _upload_cover(self, note_id: str, attachments: list[TAttachment], image: bytes | None) -> str | None:
         """Sube `portada.jpg`; si ya hay un adjunto con ese título se reutiliza y se vuelve a subir su binario
         (un fallo entre el POST y la subida deja un adjunto vacío). Sin portada nueva se conserva la anterior."""
         existing = next((a for a in attachments if a.title == COVER_TITLE), None)

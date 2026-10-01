@@ -129,3 +129,10 @@ def test_set_attachment_data_puts_binary(client):
     client.set_attachment_data("att1", b"\xff\xd8bin")
     assert put.calls[0].request.content == b"\xff\xd8bin"
     assert put.calls[0].request.headers["Content-Type"] == "application/octet-stream"
+
+
+@respx.mock
+def test_set_title_patches_note(client):
+    patch = respx.patch(host=HOST, path="/etapi/notes/n1").mock(return_value=httpx.Response(200, json={}))
+    client.set_title("n1", "Nuevo")
+    assert json.loads(patch.calls[0].request.content) == {"title": "Nuevo"}

@@ -14,7 +14,7 @@ from tohoku.flows.receta.publish import RecetaPublishStage
 from tohoku.flows.receta.render import render_receta
 from tohoku.flows.receta.resolve import RecetaResolveStage
 from tohoku.models import Classification, ItemKind, Outcome, ResolveResult, Transcript
-from tohoku.notes import DATA_ATTACHMENT_TITLE, SourceEntry
+from tohoku.notes import DATA_ATTACHMENT_TITLE, SourceEntry, name_key
 from tohoku.state import StateStore
 
 ROOT = "jrRootRecetas"
@@ -184,6 +184,27 @@ def test_reprocess_keeps_user_edits(env):
     assert labels["tiempo_min"] == "55"
     content = env.trilium.get_content(nid)
     assert "Me salió genial" in content and "Nuevo paso" in content and "Otro resumen" in content
+
+
+def test_reprocess_with_new_title_reuses_note(env):
+    (published,) = _publish(env, _ctx(env, extraction=make_receta())).notes
+    nid = published.note_id
+    env.trilium.set_content(nid, env.trilium.get_content(nid).replace("<h2>Mis notas</h2><p></p>", "<h2>Mis notas</h2><p>Mis apuntes</p>"))
+    env.trilium.add_label(nid, "probada", "true")
+
+    env.state.clear_stages_from("b1", "publish", ("publish",))
+    ctx2 = _ctx(env, extraction=make_receta(titulo="Tortilla española"))
+    assert ctx2.results["resolve"].items[0].review_reasons == []
+    result = _publish(env, ctx2)
+
+    assert [n.note_id for n in result.notes] == [nid] and result.outcome == Outcome.PROCESADO
+    assert env.trilium.children(env.layout.recetario) == [nid]
+    note = env.trilium.get_note(nid)
+    assert note.title == "Tortilla española"
+    labels = env.trilium.labels(nid)
+    assert labels["jrItem"] == "b1:receta:" + labels["jrNombreNorm"] and "espanola" in labels["jrItem"]
+    assert labels["probada"] == "true" and labels["jrNombreNorm"] == name_key("Tortilla española")
+    assert "Mis apuntes" in env.trilium.get_content(nid)
 
 
 def test_possible_duplicate_goes_to_inbox(env):

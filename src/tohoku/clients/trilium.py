@@ -84,6 +84,9 @@ class TriliumClient:
         body = {"parentNoteId": parent_id, "title": title, "type": type, "content": content}
         return TNote.model_validate(self._req("POST", "/create-note", json=body).json()["note"])
 
+    def set_title(self, note_id: str, title: str) -> None:
+        self._req("PATCH", f"/notes/{note_id}", json={"title": title})
+
     def get_content(self, note_id: str) -> str:
         return self._req("GET", f"/notes/{note_id}/content").text
 

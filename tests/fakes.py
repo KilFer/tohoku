@@ -130,6 +130,9 @@ class FakeTrilium:
     def create_note(self, parent_id: str, title: str, type: str = "text", content: str = "") -> TNote:
         return self.get_note(self.add_note(parent_id, title, type=type, content=content))
 
+    def set_title(self, note_id: str, title: str) -> None:
+        self.notes[note_id]["title"] = title
+
     def get_content(self, note_id: str) -> str:
         return self.notes[note_id]["content"]
 
