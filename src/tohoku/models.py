@@ -120,6 +120,7 @@ class ItemKind(StrEnum):
     LUGAR = "lugar"
     COSA = "cosa"
     OTRO = "otro"
+    RECETA = "receta"
     FALLO = "fallo"
 
 

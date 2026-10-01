@@ -1,6 +1,10 @@
 """Modelos de las etapas `extract` y `cover` del flujo `receta`."""
 
+from typing import Literal
+
 from pydantic import BaseModel
+
+from tohoku.notes import SourceEntry
 
 
 class Ingrediente(BaseModel):
@@ -30,3 +34,29 @@ class RecetaExtraction(BaseModel):
 
 class CoverResult(BaseModel):
     path: str | None = None  # relativa al workdir
+
+
+class RecetaData(BaseModel):
+    """Datos de una nota de receta; se guardan en el adjunto `japan-reader.json`."""
+
+    kind: Literal["receta"] = "receta"
+    titulo: str
+    resumen: str
+    raciones: int | None = None
+    tiempo_min: int | None = None
+    dificultad: str | None = None
+    tipo_plato: str | None = None
+    cocina: str | None = None
+    ingredientes: list[Ingrediente] = []
+    pasos: list[str] = []
+    consejos: list[str] = []
+    fuentes: list[SourceEntry] = []
+    portada_adjunto: str | None = None  # attachmentId de `portada.jpg`
+
+
+def dump_data(data: RecetaData) -> str:
+    return data.model_dump_json(indent=2)
+
+
+def load_data(raw: str) -> RecetaData:
+    return RecetaData.model_validate_json(raw)

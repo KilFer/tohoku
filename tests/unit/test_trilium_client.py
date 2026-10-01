@@ -121,3 +121,11 @@ def test_create_image_attachment_posts_then_uploads_binary(client):
 def test_image_src_format():
     assert image_src("att1", "portada.jpg") == "api/attachments/att1/image/portada.jpg"
     assert image_src("att1", "mi portada.jpg") == "api/attachments/att1/image/mi%20portada.jpg"
+
+
+@respx.mock
+def test_set_attachment_data_puts_binary(client):
+    put = respx.put(host=HOST, path="/etapi/attachments/att1/content").mock(return_value=httpx.Response(204))
+    client.set_attachment_data("att1", b"\xff\xd8bin")
+    assert put.calls[0].request.content == b"\xff\xd8bin"
+    assert put.calls[0].request.headers["Content-Type"] == "application/octet-stream"

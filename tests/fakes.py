@@ -173,6 +173,9 @@ class FakeTrilium:
         self.attachments[attachment_id] = {"owner": owner_id, "title": title, "mime": mime, "role": "image", "content": bytes(data)}
         return attachment_id
 
+    def set_attachment_data(self, attachment_id: str, data: bytes) -> None:
+        self.attachments[attachment_id]["content"] = bytes(data)
+
     def list_attachments(self, note_id: str) -> list[TAttachment]:
         return [
             TAttachment(attachmentId=aid, title=a["title"], mime=a["mime"], role=a["role"])

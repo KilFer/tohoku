@@ -127,8 +127,12 @@ class TriliumClient:
     def create_image_attachment(self, owner_id: str, title: str, data: bytes, mime: str = "image/jpeg") -> str:
         """Crea un adjunto role=image y sube su contenido binario. Devuelve attachmentId."""
         attachment_id = self.create_attachment(owner_id, title, mime, "", role="image")
-        self._req("PUT", f"/attachments/{attachment_id}/content", content=data, headers={"Content-Type": "application/octet-stream"})
+        self.set_attachment_data(attachment_id, data)
         return attachment_id
+
+    def set_attachment_data(self, attachment_id: str, data: bytes) -> None:
+        """Sustituye el contenido binario de un adjunto (p. ej. una imagen que quedó vacía tras un fallo)."""
+        self._req("PUT", f"/attachments/{attachment_id}/content", content=data, headers={"Content-Type": "application/octet-stream"})
 
     def list_attachments(self, note_id: str) -> list[TAttachment]:
         return [TAttachment.model_validate(a) for a in self._req("GET", f"/notes/{note_id}/attachments").json()]

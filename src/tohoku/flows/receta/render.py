@@ -1,0 +1,33 @@
+from html import escape
+
+from tohoku.flows.receta.models import Ingrediente, RecetaData
+from tohoku.notes import _p, _sources, _ul
+
+
+def _ingrediente(item: Ingrediente) -> str:
+    texto = " ".join(x for x in (item.cantidad, item.unidad, item.ingrediente) if x)
+    return f"{texto} ({item.nota})" if item.nota else texto
+
+
+def _ingredientes(items: list[Ingrediente]) -> str:
+    """Una lista por `grupo`, en el orden de aparición (los ingredientes sin grupo, sin encabezado)."""
+    groups: dict[str | None, list[str]] = {}
+    for item in items:
+        groups.setdefault(item.grupo, []).append(_ingrediente(item))
+    return "".join((f"<h3>{escape(group)}</h3>" if group else "") + _ul(lines) for group, lines in groups.items())
+
+
+def render_receta(data: RecetaData, image_src: str | None) -> str:
+    """Parte de la nota que genera el servicio (todo lo anterior a "Mis notas")."""
+    parts: list[str] = []
+    if image_src:
+        parts.append(f'<p><img src="{escape(image_src, quote=True)}" alt="{escape(data.titulo, quote=True)}"></p>')
+    parts += ["<h2>Resumen</h2>", _p(data.resumen)]
+    if data.ingredientes:
+        parts += ["<h2>Ingredientes</h2>", _ingredientes(data.ingredientes)]
+    if data.pasos:
+        parts += ["<h2>Preparación</h2>", "<ol>" + "".join(f"<li>{escape(p)}</li>" for p in data.pasos) + "</ol>"]
+    if data.consejos:
+        parts += ["<h2>Consejos</h2>", _ul(data.consejos)]
+    parts.append(_sources(data.fuentes))
+    return "".join(parts)
