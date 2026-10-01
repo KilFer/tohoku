@@ -25,7 +25,6 @@ from tohoku.models import (
     Transcript,
 )
 from tohoku.notes import (
-    ALWAYS_WRITTEN_LABELS,
     DATA_ATTACHMENT_TITLE,
     CosaData,
     LugarData,
@@ -39,46 +38,24 @@ from tohoku.notes import (
     load_data,
     name_key,
     note_title,
-    render_failure,
     render_generated,
     source_entry,
 )
 from tohoku.prompts import load_prompt
+from tohoku.publishing import create_failure_note, sync_labels, sync_review, upsert_labels
 from tohoku.quota import DailyQuota
 from tohoku.rules import decide_outcome, destination_decision
 from tohoku.state import StateStore
 from tohoku.text import normalize_name, strip_fences
 from tohoku.trilium_layout import Layout
 
+__all__ = ["PublishStage", "sync_labels", "upsert_labels"]
+
 log = logging.getLogger(__name__)
 
 
 def _unique(items: list[str]) -> list[str]:
     return list(dict.fromkeys(items))
-
-
-def upsert_labels(trilium: TriliumClient, note: TNote, labels: dict[str, str]) -> None:
-    for name, value in labels.items():
-        current = note.attr("label", name)
-        if current is None:
-            trilium.add_label(note.note_id, name, value)
-        elif current.value != value:
-            trilium.update_attribute(current.attribute_id, value)
-
-
-def sync_labels(trilium: TriliumClient, note: TNote, labels: dict[str, str], old_labels: dict[str, str]) -> None:
-    """Como `upsert_labels`, pero respeta las correcciones del usuario en una nota existente.
-
-    Un atributo gestionado se reescribe solo si falta o si sigue teniendo el valor que el servicio
-    escribió la última vez (`old_labels`, calculado del adjunto anterior). `jrTipo` y `fuentes`
-    se escriben siempre.
-    """
-    for name, value in labels.items():
-        current = note.attr("label", name)
-        if current is None:
-            trilium.add_label(note.note_id, name, value)
-        elif current.value != value and (name in ALWAYS_WRITTEN_LABELS or current.value == old_labels.get(name)):
-            trilium.update_attribute(current.attribute_id, value)
 
 
 def _synthetic_title(meta: SourceMeta) -> str:
@@ -291,45 +268,12 @@ class PublishStage:
         fetch = ctx.result("fetch", FetchResult)
         transcript = ctx.result("transcribe", Transcript)
         extract = ctx.result("extract", ExtractResult)
-        meta = fetch.meta
-        item_id = f"{ctx.job.bookmark_id}:fallo"
-        found = self._t.search(f'#jrItem="{item_id}"', ancestor=layout.root)
-        if found:
-            note = found[0]
-            upsert_labels(self._t, note, {"jrTipo": "fallo"})
-            note_id = note.note_id
-        else:
-            note = self._t.create_note(layout.revision, f"Extracción fallida: {meta.title or meta.url}", "text", "")
-            self._t.add_label(note.note_id, "jrItem", item_id)
-            self._t.add_label(note.note_id, "jrTipo", "fallo")
-            note_id = note.note_id
-        self._t.set_content(note_id, render_failure(meta, transcript.text, extract.error or ""))
-        return note_id
+        return create_failure_note(
+            self._t, layout.root, layout.revision, ctx.job.bookmark_id, fetch.meta, transcript.text, extract.error or ""
+        )
 
     def _sync_review(self, note_id: str, item: PlannedItem, bookmark_id: str, layout: Layout) -> None:
-        """Mantiene la Bandeja y `#revisar` al día con los motivos vigentes de todas las fuentes de la nota.
-
-        - El elemento trae motivos → la nota va (o sigue) en la Bandeja.
-        - No trae y ninguna fuente tiene ya motivos → sale de la Bandeja y se borra `#revisar`.
-        - No trae pero otra fuente sí: si sigue en la Bandeja se actualiza `#revisar`; si el usuario
-          ya la sacó, se respeta.
-        `#revisar` es la unión de los motivos vigentes (no se acumulan motivos ya resueltos).
-        """
-        reasons = _unique(item.review_reasons + self._state.review_reasons_for_note(note_id, exclude=(bookmark_id, item.key)))
-        note = self._t.get_note(note_id)
-        in_inbox = layout.revision in note.parent_note_ids
-        label = note.attr("label", "revisar")
-        if item.review_reasons or (reasons and in_inbox):
-            if not in_inbox:
-                self._t.clone(note_id, layout.revision)
-            upsert_labels(self._t, note, {"revisar": ",".join(reasons)})
-            return
-        if reasons:
-            return
-        if in_inbox:
-            self._t.remove_from_parent(note_id, layout.revision)
-        if label is not None:
-            self._t.delete_attribute(label.attribute_id)
+        sync_review(self._t, self._state, note_id, item.review_reasons, bookmark_id, item.key, layout.revision)
 
     def _link_donde(self, extraction: Extraction, plan: ResolveResult, by_key: dict[str, PublishedNote]) -> None:
         lugar_notes: dict[str, str] = {}

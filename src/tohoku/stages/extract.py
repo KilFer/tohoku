@@ -1,15 +1,13 @@
 import logging
 
-from pydantic import ValidationError
-
 from tohoku.clients.openrouter import OpenRouterClient, image_part
 from tohoku.config import Settings
 from tohoku.context import JobContext
 from tohoku.flows.viaje.params import ViajeParams
 from tohoku.flows.viaje.prompt import extraction_schema, invalid_categories
+from tohoku.llm_json import structured_call
 from tohoku.models import Extraction, ExtractResult, FetchResult, Transcript
 from tohoku.quota import DailyQuota
-from tohoku.text import strip_fences
 
 log = logging.getLogger(__name__)
 
@@ -63,31 +61,17 @@ class ExtractStage:
             {"role": "user", "content": content},
         ]
         schema = extraction_schema(self._params)
-        cost = 0.0
-        error = ""
-        for _ in range(2):
-            self._budget.check()
-            result = self._llm.chat_json(model, messages, schema, "extraction")
-            self._budget.add(result.cost_usd)
-            cost += result.cost_usd
-            try:
-                extraction = Extraction.model_validate_json(strip_fences(result.content))
-                problems = invalid_categories(extraction, self._params)
-            except ValidationError as exc:
-                problems = [str(exc)]
-            if problems:
-                error = "\n".join(problems)
-                messages = [
-                    *messages,
-                    {"role": "assistant", "content": result.content},
-                    {"role": "user", "content": f"La respuesta no cumple el esquema:\n{error}\nDevuelve únicamente el JSON corregido."},
-                ]
-                continue
-            log.info(
-                "bookmark=%s extraccion relevancia=%.2f lugares=%d cosas=%d otros=%d coste=%.4f",
-                ctx.job.bookmark_id, extraction.confianza_destino, len(extraction.lugares),
-                len(extraction.cosas), len(extraction.otros), cost,
-            )
-            return ExtractResult(extraction=extraction, cost_usd=cost)
-        log.warning("bookmark=%s extraccion fallida: %s", ctx.job.bookmark_id, error[:200])
-        return ExtractResult(extraction=None, error=error, cost_usd=cost)
+        outcome = structured_call(
+            self._llm, self._budget, model, messages, schema, "extraction",
+            parse=Extraction.model_validate_json, check=lambda e: invalid_categories(e, self._params),
+        )
+        extraction = outcome.value
+        if extraction is None:
+            log.warning("bookmark=%s extraccion fallida: %s", ctx.job.bookmark_id, outcome.error[:200])
+            return ExtractResult(extraction=None, error=outcome.error, cost_usd=outcome.cost_usd)
+        log.info(
+            "bookmark=%s extraccion relevancia=%.2f lugares=%d cosas=%d otros=%d coste=%.4f",
+            ctx.job.bookmark_id, extraction.confianza_destino, len(extraction.lugares),
+            len(extraction.cosas), len(extraction.otros), outcome.cost_usd,
+        )
+        return ExtractResult(extraction=extraction, cost_usd=outcome.cost_usd)

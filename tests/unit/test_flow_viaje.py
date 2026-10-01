@@ -30,7 +30,7 @@ def test_viaje_is_registered():
 
 def test_build_gives_the_flow_stages_in_order(settings, tmp_path):
     runtime = FLOWS["viaje"].build(_dest(), _deps(settings, tmp_path, FakeTrilium()))
-    assert [s.name for s in runtime.stages] == list(STAGE_ORDER[len(COMMON_STAGES):])  # extract, geocode, resolve, publish
+    assert [s.name for s in runtime.stages] == ["extract", "geocode", "resolve", "publish"]
 
 
 def test_init_trilium_uses_the_destination_root_and_categories(settings, tmp_path):

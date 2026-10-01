@@ -16,7 +16,7 @@ from tohoku.state import Job, StateStore, next_quota_reset, utcnow
 
 log = logging.getLogger(__name__)
 
-STAGE_ORDER = ("fetch", "transcribe", "classify", "extract", "geocode", "resolve", "publish")
+STAGE_ORDER = ("fetch", "transcribe", "classify", "extract", "geocode", "cover", "resolve", "publish")
 COMMON_STAGES = ("fetch", "transcribe", "classify")  # tramo común; el resto lo pone el flujo del destino
 BACKOFF = (
     timedelta(minutes=1),

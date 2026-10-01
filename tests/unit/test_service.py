@@ -249,3 +249,15 @@ def test_tick_does_not_log_purge_when_nothing_was_touched(state, settings, caplo
 
     assert cleaner.purges == 1
     assert "limpieza" not in caplog.text
+
+
+def test_clear_stages_from_extract_clears_cover_and_publish(state):
+    state.add_job("b1", "https://youtu.be/a", Platform.YOUTUBE, ContentHint.VIDEO)
+    for stage in ("transcribe", "extract", "cover", "publish"):
+        state.save_stage("b1", stage, Saved())
+
+    state.clear_stages_from("b1", "extract", STAGE_ORDER)
+
+    assert state.load_stage("b1", "transcribe", Saved) is not None
+    for stage in ("extract", "cover", "publish"):
+        assert state.load_stage("b1", stage, Saved) is None

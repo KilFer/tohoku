@@ -10,7 +10,7 @@ from tohoku import cli
 from tohoku.errors import ConfigError
 from tohoku.models import Outcome
 from tohoku.sources import ContentHint, Platform
-from tohoku.pipeline import STAGE_ORDER
+from tohoku.pipeline import COMMON_STAGES, STAGE_ORDER
 from tohoku.state import JobStatus, StateStore
 from tohoku.trilium_layout import LayoutCache, init_layout, resolve_layout
 from tohoku.lock import AlreadyRunning, single_instance
@@ -23,7 +23,7 @@ class SimpleModel(BaseModel):
 
 def test_build_app_orders_stages(settings):
     app = build_app(settings)
-    assert [stage.name for stage in app.stages] == list(STAGE_ORDER)
+    assert [stage.name for stage in app.stages] == list(COMMON_STAGES) + ["extract", "geocode", "resolve", "publish"]
 
 
 def test_build_app_wires_one_cleaner_into_pipeline_and_service(settings):
@@ -224,7 +224,7 @@ def test_build_app_accepts_several_destinations(settings, tmp_path):
     app = build_app(_several_destinations(settings, tmp_path))
     assert set(app.runtimes) == {"japon", "nz"}
     assert app.destination.nombre == "japon"
-    assert [stage.name for stage in app.stages] == list(STAGE_ORDER)
+    assert [stage.name for stage in app.stages] == list(COMMON_STAGES) + ["extract", "geocode", "resolve", "publish"]
 
 
 def test_build_app_single_destination_needs_no_classifier(settings):
