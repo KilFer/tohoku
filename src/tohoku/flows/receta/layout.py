@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 
-from tohoku.clients.trilium import TNote, TriliumClient
+from tohoku.clients.trilium import TriliumClient
 from tohoku.errors import ConfigError
 from tohoku.flows.receta.params import RecetaParams
-from tohoku.trilium_layout import find_one, root_note
+from tohoku.trilium_layout import find_one, find_template, root_note
 
 TEMPLATE_RECETA = "Receta"
 _RECETARIO = "Recetario"
@@ -20,11 +20,6 @@ class RecetaLayout:
     plantilla_receta: str
 
 
-def _find_template(trilium: TriliumClient, plantillas: str) -> TNote | None:
-    # Se busca por título: los atributos de una plantilla se heredan a las notas que la usan.
-    return next((n for n in trilium.search("#template", ancestor=plantillas, ancestor_depth="eq1") if n.title == TEMPLATE_RECETA), None)
-
-
 def resolve_receta_layout(trilium: TriliumClient, root_label: str) -> RecetaLayout:
     root = root_note(trilium, root_label)
     ids: dict[str, str] = {}
@@ -33,7 +28,7 @@ def resolve_receta_layout(trilium: TriliumClient, root_label: str) -> RecetaLayo
         if note is None:
             raise ConfigError(f"Falta la nota #{label} en Trilium; ejecuta 'tohoku init-trilium --destino …'")
         ids[label] = note.note_id
-    plantilla = _find_template(trilium, ids["jrPlantillas"])
+    plantilla = find_template(trilium, ids["jrPlantillas"], TEMPLATE_RECETA)
     if plantilla is None:
         raise ConfigError(f"Falta la plantilla '{TEMPLATE_RECETA}' en Trilium; ejecuta 'tohoku init-trilium --destino …'")
     return RecetaLayout(
@@ -64,7 +59,7 @@ def init_receta_layout(trilium: TriliumClient, root_label: str, params: RecetaPa
     ensure("jrColeccion", _RECETARIO, {"viewType": params.vista}, type="book")
     ensure("jrRevision", _REVISION, {})
     plantillas = ensure("jrPlantillas", _PLANTILLAS, {})
-    if _find_template(trilium, plantillas) is None:
+    if find_template(trilium, plantillas, TEMPLATE_RECETA) is None:
         note = trilium.create_note(plantillas, TEMPLATE_RECETA, "text", "")
         trilium.add_label(note.note_id, "template", "")
         for nombre, tipo in params.atributos.items():

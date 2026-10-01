@@ -58,9 +58,12 @@ def find_one(trilium: TriliumClient, query: str, ancestor: str | None = None, de
 _find_one = find_one  # alias privado: los imports antiguos siguen funcionando
 
 
-def _find_template(trilium: TriliumClient, plantillas: str, title: str) -> TNote | None:
+def find_template(trilium: TriliumClient, plantillas: str, title: str) -> TNote | None:
     # Las plantillas se buscan por título: sus atributos se heredan a las notas que las usan.
     return next((n for n in trilium.search("#template", ancestor=plantillas, ancestor_depth="eq1") if n.title == title), None)
+
+
+_find_template = find_template  # alias privado: los imports antiguos siguen funcionando
 
 
 def root_note(trilium: TriliumClient, root_label: str) -> TNote:
@@ -89,7 +92,7 @@ def resolve_layout(trilium: TriliumClient, root_label: str = "jrRoot", categoria
         resueltas[key] = note.note_id
     templates = {}
     for title in (TEMPLATE_LUGAR, TEMPLATE_COSA):
-        note = _find_template(trilium, ids["jrPlantillas"], title)
+        note = find_template(trilium, ids["jrPlantillas"], title)
         if note is None:
             raise ConfigError(f"Falta la plantilla '{title}' en Trilium; ejecuta 'tohoku init-trilium'")
         templates[title] = note.note_id
@@ -129,7 +132,7 @@ def init_layout(trilium: TriliumClient, root_label: str = "jrRoot", categorias: 
     ensure("#jrRevision", root, root, _SECTIONS["jrRevision"], {"jrRevision": ""})
     plantillas = ensure("#jrPlantillas", root, root, _SECTIONS["jrPlantillas"], {"jrPlantillas": ""})
     for title, labels in _TEMPLATE_LABELS.items():
-        if _find_template(trilium, plantillas, title) is None:
+        if find_template(trilium, plantillas, title) is None:
             note = trilium.create_note(plantillas, title, "text", "")
             trilium.add_label(note.note_id, "template", "")
             for name, value in labels.items():
