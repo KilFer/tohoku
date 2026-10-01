@@ -24,7 +24,7 @@ def resolve_receta_layout(trilium: TriliumClient, root_label: str) -> RecetaLayo
     root = root_note(trilium, root_label)
     ids: dict[str, str] = {}
     for label in ("jrColeccion", "jrRevision", "jrPlantillas"):
-        note = find_one(trilium, f"#{label}", root.note_id)
+        note = find_one(trilium, f"#{label}", root.note_id, depth="eq1")
         if note is None:
             raise ConfigError(f"Falta la nota #{label} en Trilium; ejecuta 'tohoku init-trilium --destino …'")
         ids[label] = note.note_id
@@ -48,7 +48,7 @@ def init_receta_layout(trilium: TriliumClient, root_label: str, params: RecetaPa
     root = root_note(trilium, root_label).note_id
 
     def ensure(label: str, title: str, labels: dict[str, str], type: str = "text") -> str:
-        existing = find_one(trilium, f"#{label}", root)
+        existing = find_one(trilium, f"#{label}", root, depth="eq1")
         if existing:
             return existing.note_id
         note = trilium.create_note(root, title, type, "")

@@ -74,3 +74,26 @@ def test_params_forbid_extra_and_are_frozen():
         RecetaParams(otra=1)
     with pytest.raises(ValidationError):
         RecetaParams().vista = "list"
+
+
+def test_nested_roots_do_not_clash(trilium):
+    from tohoku.trilium_layout import init_layout
+
+    params = RecetaParams()
+    externo = init_receta_layout(trilium, ROOT, params)
+    trilium.add_note(externo.root, "Japón", labels={"jrRoot": ""})
+    viaje = init_layout(trilium)
+    assert resolve_receta_layout(trilium, ROOT) == externo
+    assert viaje.revision != externo.revision
+    notas = len(trilium.notes)
+    assert init_receta_layout(trilium, ROOT, params) == externo
+    assert len(trilium.notes) == notas
+
+
+def test_receta_inside_receta(trilium):
+    params = RecetaParams()
+    externo = init_receta_layout(trilium, ROOT, params)
+    trilium.add_note(externo.root, "Anidado", labels={"jrRootOtra": ""})
+    interno = init_receta_layout(trilium, "jrRootOtra", params)
+    assert resolve_receta_layout(trilium, ROOT) == externo
+    assert interno.revision != externo.revision

@@ -14,7 +14,7 @@ El prefijo `jr` de todos los atributos y del adjunto `japan-reader.json` viene d
           ├── Lugar                   #template (+ definiciones promovidas: visitado, prioridad, ciudad, categoria)
           └── Cosa                    #template (+ comprado, categoria)
 
-`tohoku init-trilium` crea lo que falte (idempotente).
+`tohoku init-trilium` crea lo que falte (idempotente). Las notas de estructura se buscan solo como hijas directas de la raíz del destino (las categorías, de Comprar y comer), así que la raíz de un destino puede estar anidada dentro de la de otro sin que se confundan sus secciones.
 
 ## Nota Lugar (hija de "Mapa de lugares")
 

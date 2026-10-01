@@ -76,17 +76,18 @@ def root_note(trilium: TriliumClient, root_label: str) -> TNote:
 _root = root_note  # alias privado: los imports antiguos siguen funcionando
 
 
+# Las notas de estructura se buscan solo como hijas directas (eq1): así una raíz de otro destino anidada no choca.
 def resolve_layout(trilium: TriliumClient, root_label: str = "jrRoot", categorias: Mapping[str, str] = CATEGORIES) -> Layout:
     root = root_note(trilium, root_label)
     ids: dict[str, str] = {}
     for label in _SECTIONS:
-        note = find_one(trilium, f"#{label}", root.note_id)
+        note = find_one(trilium, f"#{label}", root.note_id, depth="eq1")
         if note is None:
             raise ConfigError(f"Falta la nota #{label} en Trilium; ejecuta 'tohoku init-trilium'")
         ids[label] = note.note_id
     resueltas: dict[str, str] = {}
     for key in categorias:
-        note = find_one(trilium, f"#jrCategoria={key}", ids["jrComprar"])
+        note = find_one(trilium, f"#jrCategoria={key}", ids["jrComprar"], depth="eq1")
         if note is None:
             raise ConfigError(f"Falta la categoría '{key}' en Trilium; ejecuta 'tohoku init-trilium'")
         resueltas[key] = note.note_id
@@ -114,7 +115,7 @@ def init_layout(trilium: TriliumClient, root_label: str = "jrRoot", categorias: 
     root = root_note(trilium, root_label).note_id
 
     def ensure(query: str, ancestor: str, parent: str, title: str, labels: dict[str, str], **kwargs) -> str:
-        existing = find_one(trilium, query, ancestor)
+        existing = find_one(trilium, query, ancestor, depth="eq1")
         if existing:
             return existing.note_id
         note = trilium.create_note(parent, title, kwargs.get("type", "text"), "")

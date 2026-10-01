@@ -105,6 +105,10 @@ Para no disparar los límites de ritmo de Instagram, entre dos descargas de Inst
 Formatos admitidos de `saved_collections.json`: el clásico (cabecera de colección seguida de sus posts) y el de 2026 (lista de colecciones con los posts anidados en `label_values`). El mojibake de Instagram (`OpciÃ³n`) se corrige al leer los nombres de colección.
 Nota: si un enlace ya estaba en Karakeep con otra forma de URL (p. ej. con `?igsh=`), puede crearse un segundo bookmark; la nota de Trilium no se duplica.
 
+## Error "Hay N notas que cumplen '#jrX'"
+
+Hay dos notas con la misma etiqueta de estructura como hijas directas de una misma raíz (p. ej. dos `#jrRevision`); borra o quita la etiqueta a la sobrante. Las raíces de otros destinos anidadas no cuentan: la estructura se busca solo entre hijas directas.
+
 ## Avisos (ntfy)
 Llegan avisos por: error definitivo de un enlace, error de configuración (el servicio se pausa hasta que se corrija), límite diario alcanzado (un aviso por cuota y día). Con una cuota agotada la cola no se para: solo esperan los jobs que la necesitan, y el resto sigue descargando, transcribiendo y publicando. Con `NTFY_DAILY_SUMMARY=true`, resumen a partir de las 21:00.
 

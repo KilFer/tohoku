@@ -71,3 +71,30 @@ def test_layout_cache(trilium):
     assert len(calls) == 1
     cache.refresh()
     assert len(calls) == 2
+
+
+def test_nested_destination_root_does_not_clash(trilium):
+    from tohoku.flows.receta.layout import init_receta_layout
+    from tohoku.flows.receta.params import RecetaParams
+
+    layout = init_layout(trilium)
+    trilium.add_note(layout.root, "Recetas (test)", labels={"jrRootRecetasTest": ""})
+    anidado = init_receta_layout(trilium, "jrRootRecetasTest", RecetaParams())
+
+    assert resolve_layout(trilium).revision == layout.revision != anidado.revision
+    assert resolve_layout(trilium).plantillas == layout.plantillas != anidado.plantillas
+    count = len(trilium.notes)
+    assert init_layout(trilium) == layout
+    assert len(trilium.notes) == count
+
+
+def test_outer_init_after_nested_creates_own_sections(trilium):
+    from tohoku.flows.receta.layout import init_receta_layout
+    from tohoku.flows.receta.params import RecetaParams
+
+    raiz = trilium.search("#jrRoot")[0].note_id
+    trilium.add_note(raiz, "Recetas (test)", labels={"jrRootRecetasTest": ""})
+    anidado = init_receta_layout(trilium, "jrRootRecetasTest", RecetaParams())
+    layout = init_layout(trilium)
+    assert layout.revision != anidado.revision
+    assert trilium.get_note(layout.revision).parent_note_ids == [layout.root]
