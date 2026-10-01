@@ -20,7 +20,7 @@ Detalle de la nota en `docs/trilium-model.md`. `tohoku init-trilium --destino re
 | Etapa | Qué hace |
 |---|---|
 | `extract` | LLM multimodal (`config/prompts/recetas.md`, sin marcadores): relevancia (`relacionado_destino`, `confianza_destino`), título, resumen, ingredientes (con `grupo`), pasos, consejos, atributos y `portada` (índice entre imágenes + fotogramas). Necesita los ficheros del job. |
-| `cover` | Elige la imagen de portada y la guarda como `cover.jpg` (lado máximo `IMAGE_MAX_SIDE`). Un post sin `portada` usa su primera imagen; un vídeo sin `portada` no tiene. |
+| `cover` | Elige la imagen de portada y la guarda como `cover.jpg` (lado máximo `IMAGE_MAX_SIDE`). Si el LLM no indica `portada`, un post usa su primera imagen y un vídeo su último fotograma (suele ser el plato terminado); sin imágenes ni fotogramas no hay portada. |
 | `resolve` | Decide: no es receta → sin elementos (`descartado`); si no, un solo elemento con motivos de revisión (`clasificacion-incierta`, `clasificacion-dudosa`, `baja-confianza`, `posible-duplicado`). Extracción fallida → nota de fallo en la Bandeja. |
 | `publish` | Crea o actualiza la nota (identidad `#jrItem="<bookmark>:receta:<name_key(título)>"`; al reprocesar se retoma la nota del mismo enlace aunque cambie el título; el título solo se actualiza si la nota no fue renombrada por el usuario), sube la portada como adjunto, conserva "Mis notas" y sincroniza la Bandeja. |
 

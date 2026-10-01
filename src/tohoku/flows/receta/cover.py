@@ -30,10 +30,14 @@ class CoverStage:
         candidates = fetch.images + fetch.keyframes  # mismo orden que se envió al LLM
         index = extraction.portada
         if index is None:
-            # un post sin portada indicada usa su primera imagen; un vídeo no tiene una imagen "obvia"
-            if fetch.meta.content_type == ContentType.VIDEO or not fetch.images:
+            # sin portada indicada: un post usa su primera imagen; un vídeo, su último fotograma
+            # (en los Reels de cocina suele ser el plato terminado)
+            if fetch.meta.content_type != ContentType.VIDEO and fetch.images:
+                index = 0
+            elif fetch.keyframes:
+                index = len(candidates) - 1
+            else:
                 return CoverResult()
-            index = 0
         if not 0 <= index < len(candidates):
             log.info("bookmark=%s portada %s fuera de rango (%d imágenes)", ctx.job.bookmark_id, index, len(candidates))
             return CoverResult()

@@ -10,7 +10,7 @@ from tohoku.errors import QuotaExceeded
 from tohoku.flows.receta.cover import CoverStage
 from tohoku.flows.receta.extract import RecetaExtractStage
 from tohoku.flows.receta.models import CoverResult, RecetaExtraction
-from tohoku.models import ContentType, Transcript
+from tohoku.models import ContentType, FetchResult, Transcript
 from tohoku.quota import DailyQuota
 from tohoku.state import StateStore
 
@@ -142,8 +142,19 @@ def test_cover_post_without_portada_uses_first_image(tmp_path, settings):
     assert (ctx.workdir / "cover.jpg").exists()
 
 
-def test_cover_video_without_portada_is_none(tmp_path, settings):
+def test_cover_video_without_portada_uses_last_frame(tmp_path, settings):
     ctx = _cover_ctx(tmp_path, None, frames=3, content_type=ContentType.VIDEO)
+    last = ctx.result("fetch", FetchResult).keyframes[-1]
+    make_image(ctx.workdir / last, color="blue")  # el último fotograma suele ser el plato terminado
+
+    assert CoverStage(settings).run(ctx).path == "cover.jpg"
+    with Image.open(ctx.workdir / "cover.jpg") as im:
+        r, g, b = im.convert("RGB").getpixel((0, 0))
+        assert b > 200 and r < 50 and g < 50  # azul (JPEG no conserva el valor exacto)
+
+
+def test_cover_video_without_portada_nor_frames_is_none(tmp_path, settings):
+    ctx = _cover_ctx(tmp_path, None, content_type=ContentType.VIDEO)
     assert CoverStage(settings).run(ctx).path is None
 
 
