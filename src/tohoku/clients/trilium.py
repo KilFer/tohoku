@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -41,6 +43,11 @@ class TAttachment(BaseModel):
     title: str
     mime: str = ""
     role: str = ""
+
+
+def image_src(attachment_id: str, title: str) -> str:
+    """`src` relativo para incrustar un adjunto de imagen en el cuerpo de una nota (formato provisional, pendiente del spike)."""
+    return f"api/attachments/{attachment_id}/image/{quote(title)}"
 
 
 class TriliumClient:
@@ -116,6 +123,12 @@ class TriliumClient:
     def create_attachment(self, owner_id: str, title: str, mime: str, content: str, role: str = "file") -> str:
         body = {"ownerId": owner_id, "role": role, "mime": mime, "title": title, "content": content, "position": 10}
         return self._req("POST", "/attachments", json=body).json()["attachmentId"]
+
+    def create_image_attachment(self, owner_id: str, title: str, data: bytes, mime: str = "image/jpeg") -> str:
+        """Crea un adjunto role=image y sube su contenido binario. Devuelve attachmentId."""
+        attachment_id = self.create_attachment(owner_id, title, mime, "", role="image")
+        self._req("PUT", f"/attachments/{attachment_id}/content", content=data, headers={"Content-Type": "application/octet-stream"})
+        return attachment_id
 
     def list_attachments(self, note_id: str) -> list[TAttachment]:
         return [TAttachment.model_validate(a) for a in self._req("GET", f"/notes/{note_id}/attachments").json()]

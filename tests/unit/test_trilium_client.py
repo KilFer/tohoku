@@ -4,7 +4,7 @@ import httpx
 import pytest
 import respx
 
-from tohoku.clients.trilium import TriliumClient
+from tohoku.clients.trilium import TriliumClient, image_src
 
 HOST = "trilium.test"
 NOTE = {
@@ -99,3 +99,25 @@ def test_remove_from_parent_never_deletes_the_last_branch(client):
 
     assert client.remove_from_parent("n1", "p1") is False
     assert not delete.called
+
+
+@respx.mock
+def test_create_image_attachment_posts_then_uploads_binary(client):
+    post = respx.post(host=HOST, path="/etapi/attachments").mock(return_value=httpx.Response(201, json={"attachmentId": "att1"}))
+    put = respx.put(host=HOST, path="/etapi/attachments/att1/content").mock(return_value=httpx.Response(204))
+    data = b"\xff\xd8\xff\xe0binary"
+
+    attachment_id = client.create_image_attachment("n1", "portada.jpg", data)
+
+    assert attachment_id == "att1"
+    body = json.loads(post.calls[0].request.content)
+    assert body["ownerId"] == "n1" and body["role"] == "image"
+    assert body["mime"] == "image/jpeg" and body["title"] == "portada.jpg" and body["content"] == ""
+    assert put.calls[0].request.content == data
+    assert put.calls[0].request.headers["Content-Type"] == "application/octet-stream"
+    assert respx.calls[0].request.method == "POST" and respx.calls[1].request.method == "PUT"
+
+
+def test_image_src_format():
+    assert image_src("att1", "portada.jpg") == "api/attachments/att1/image/portada.jpg"
+    assert image_src("att1", "mi portada.jpg") == "api/attachments/att1/image/mi%20portada.jpg"
