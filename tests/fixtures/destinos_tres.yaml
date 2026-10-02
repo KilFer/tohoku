@@ -3,7 +3,7 @@ listas:
   L1: [japon]
   L2: [recetas]
   L3: [nueva_zelanda]
-destino_legado: japon
+destino_por_defecto: japon
 destinos:
   japon:
     flujo: viaje

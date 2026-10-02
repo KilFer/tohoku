@@ -66,7 +66,7 @@ def test_viaje_alias_ciudad_is_optional_and_empty_by_default():
 
 
 def test_viaje_destination_that_only_declares_the_country_is_a_config_error(tmp_path):
-    text = "destino_legado: japon\n" + JAPON + """
+    text = "destino_por_defecto: japon\n" + JAPON + """
   nz:
     flujo: viaje
     raiz: jrRootNZ
@@ -87,7 +87,7 @@ def test_example_config_japan_block_is_the_reference_japan_params():
 
 
 def test_new_zealand_params(tmp_path):
-    text = "destino_legado: japon\n" + JAPON + """
+    text = "destino_por_defecto: japon\n" + JAPON + """
   nz:
     flujo: viaje
     raiz: jrRootNZ
@@ -166,20 +166,20 @@ TWO = JAPON.replace("  L1: [japon]\n", "  L1: [japon]\n  INBOX: [japon, recetas]
 """
 
 
-def test_classifier_defaults_and_legacy_with_single_destination(tmp_path):
+def test_classifier_defaults_and_default_destination_with_single_destination(tmp_path):
     config = load_destinations(_write(tmp_path), FLOWS)
     assert config.clasificador == ClassifierConfig()
-    assert config.destino_legado == "japon"
+    assert config.destino_por_defecto == "japon"
     assert not config.needs_classifier()
 
 
-def test_several_destinations_require_destino_legado(tmp_path):
-    with pytest.raises(ConfigError, match="destino_legado"):
+def test_several_destinations_require_destino_por_defecto(tmp_path):
+    with pytest.raises(ConfigError, match="destino_por_defecto"):
         load_destinations(_write(tmp_path, TWO), FLOWS)
 
 
 def test_several_destinations_with_classifier(tmp_path):
-    text = "destino_legado: japon\nclasificador:\n  modelo: cheap/model\n  modo: etiqueta\n  margen_revision: 0.2\n" + TWO
+    text = "destino_por_defecto: japon\nclasificador:\n  modelo: cheap/model\n  modo: etiqueta\n  margen_revision: 0.2\n" + TWO
     config = load_destinations(_write(tmp_path, text), FLOWS)
     assert config.needs_classifier() and config.candidates_for("INBOX") == ["japon", "recetas"]
     assert (config.clasificador.modelo, config.clasificador.modo, config.clasificador.margen_revision) == ("cheap/model", "etiqueta", 0.2)
@@ -188,12 +188,12 @@ def test_several_destinations_with_classifier(tmp_path):
 @pytest.mark.parametrize(
     ("prefix", "message"),
     [
-        ("destino_legado: nz\n", "destino_legado"),
+        ("destino_por_defecto: nz\n", "destino_por_defecto"),
         ("clasificador:\n  modello: x\n", "clasificador"),
         ("clasificador: 3\n", "clasificador"),
     ],
 )
-def test_classifier_and_legacy_errors(tmp_path, prefix, message):
+def test_classifier_and_default_destination_errors(tmp_path, prefix, message):
     with pytest.raises(ConfigError, match=message):
         load_destinations(_write(tmp_path, prefix + JAPON), FLOWS)
 
@@ -230,7 +230,7 @@ SPLIT = JAPON.replace("  L1: [japon]\n", "  L1: [japon]\n  L2: [recetas]\n") + "
     longitud: [166.0, 179.0]
     categorias_lugar: [otro]
     categorias_cosa: {otros: Otros}
-destino_legado: japon
+destino_por_defecto: japon
 """
 
 
@@ -248,4 +248,4 @@ def test_classifier_not_needed_when_every_list_points_to_the_same_destination(tm
 def test_destination_names_equivalent_for_the_classifier_are_rejected(tmp_path):
     text = TWO.replace("  recetas:\n", "  Japón:\n").replace("[japon, recetas]", "[japon, Japón]")
     with pytest.raises(ConfigError, match="'Japón'.*'japon'|'japon'.*'Japón'"):
-        load_destinations(_write(tmp_path, "destino_legado: japon\n" + text), FLOWS)
+        load_destinations(_write(tmp_path, "destino_por_defecto: japon\n" + text), FLOWS)

@@ -36,7 +36,7 @@ def test_strip_fences():
 
 
 def _extraction(conf: float) -> Extraction:
-    return Extraction(relacionado_japon=conf >= 0.5, confianza_japon=conf, idioma="es", resumen_fuente="x")
+    return Extraction(relacionado_destino=conf >= 0.5, confianza_destino=conf, idioma="es", resumen_fuente="x")
 
 
 @pytest.mark.parametrize(("conf", "expected"), [(0.1, "no"), (0.39, "no"), (0.4, "uncertain"), (0.69, "uncertain"), (0.7, "yes"), (1.0, "yes")])

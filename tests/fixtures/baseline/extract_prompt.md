@@ -4,7 +4,7 @@ Recibirás: metadatos (plataforma, tipo, título, autor, hashtags), la descripci
 
 Tu tarea:
 
-1. Decide si el contenido trata sobre Japón (lugares, comida, compras o cultura de Japón). `confianza_japon` es la probabilidad (0-1) de que trate sobre Japón. `relacionado_japon` = `confianza_japon` >= 0.5.
+1. Decide si el contenido trata sobre Japón (lugares, comida, compras o cultura de Japón). `confianza_destino` es la probabilidad (0-1) de que trate sobre Japón. `relacionado_destino` = `confianza_destino` >= 0.5.
 2. Extrae cada LUGAR concreto que se pueda visitar: un sitio con ubicación física identificable (templo, santuario, restaurante concreto, tienda concreta, mirador, barrio, onsen, museo...).
    - `nombre`: nombre habitual en alfabeto latino. `nombre_local`: nombre en japonés si aparece o si lo conoces con seguridad; si no, null.
    - `consulta_busqueda`: la mejor consulta para encontrarlo en Google Maps: nombre + barrio o ciudad (p. ej. "Ichiran Shibuya Tokyo").

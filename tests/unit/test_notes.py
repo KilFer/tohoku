@@ -86,8 +86,7 @@ def test_render_failure():
     assert "caption &lt;x&gt;" in html and "transcripción" in html and "JSON inválido" in html
 
 
-def test_data_attachment_title_is_kept_after_rename():
-    """El adjunto de ~500 notas ya existentes se llama así: renombrarlo rompería las fusiones."""
+def test_data_attachment_title():
     from tohoku.notes import DATA_ATTACHMENT_TITLE
 
-    assert DATA_ATTACHMENT_TITLE == "japan-reader.json"
+    assert DATA_ATTACHMENT_TITLE == "tohoku.json"

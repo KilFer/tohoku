@@ -37,7 +37,7 @@ class CoverResult(BaseModel):
 
 
 class RecetaData(BaseModel):
-    """Datos de una nota de receta; se guardan en el adjunto `japan-reader.json`."""
+    """Datos de una nota de receta; se guardan en el adjunto `tohoku.json`."""
 
     kind: Literal["receta"] = "receta"
     titulo: str

@@ -4,7 +4,7 @@
 
 La raíz es una nota tuya (en el ejemplo de referencia, **`Home › Viajes › Ideas de Japón`**), marcada a mano una vez con `#jrRoot`. La etiqueta de la raíz de cada destino es la clave `raiz` de `config/destinos.yaml` (Japón: `jrRoot`; un destino nuevo usaría `jrRoot<Destino>`, p. ej. `jrRootNZ`). La estructura de debajo se crea con `tohoku init-trilium [--destino X]`. El servicio encuentra todo por atributos, así que puedes mover o renombrar las notas.
 
-El prefijo `jr` de todos los atributos y del adjunto `japan-reader.json` viene del nombre original del proyecto (*japan-reader*, hoy Tohoku) y se mantiene a propósito.
+El prefijo `jr` de todas las etiquetas y atributos (`#jr*`, y `jr:*` en Karakeep) se mantiene a propósito: son las siglas de *Japan Reader*, el nombre original del proyecto, y de **JR**, la compañía de la Tohoku Shinkansen.
 
     Ideas de Japón                    #jrRoot
      ├── Mapa de lugares              #jrMapa   (book + ~template=_template_geo_map → Geo Map)
@@ -39,7 +39,7 @@ Lleva `#jrItem="<bookmark_id>:fallo"` y `#jrTipo=fallo`. Cuerpo: enlace, error, 
 
 ## Datos estructurados
 
-Cada nota lleva un adjunto `japan-reader.json` con sus datos (resumen, consejos, fuentes, ficha de Google). Es la fuente de verdad para las fusiones: no lo borres.
+Cada nota lleva un adjunto `tohoku.json` con sus datos (resumen, consejos, fuentes, ficha de Google). Es la fuente de verdad para las fusiones: no lo borres.
 
 ## Reglas de fusión
 
@@ -69,5 +69,5 @@ Destino con `flujo: receta` (p. ej. raíz `#jrRootRecetas`; ver `docs/flujos/rec
 - `probada` y `valoracion` (y cualquier atributo de `atributos_usuario` o añadido a mano) son tuyos: el servicio no los escribe nunca.
 - Cuerpo: portada, Resumen, Ingredientes (agrupados por `grupo`), Preparación, Consejos, Fuentes y, debajo de "Mis notas", lo tuyo (se conserva siempre).
 - Portada: adjunto de imagen `portada.jpg` (JPEG, lado máximo `IMAGE_MAX_SIDE`) incrustado con `<img src="api/attachments/<id>/image/portada.jpg">` (formato verificado en Trilium 0.106).
-- Adjunto `japan-reader.json` con los datos estructurados (fuente de verdad; no lo borres).
+- Adjunto `tohoku.json` con los datos estructurados (fuente de verdad; no lo borres).
 - Sin fusión entre fuentes: un enlace = una receta. Si ya hay otra de título parecido, la nueva se clona en la Bandeja con `posible-duplicado`.

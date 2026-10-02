@@ -642,7 +642,7 @@ def _real_classify(state):
 
     dest = {n: Destination(nombre=n, flujo="viaje", raiz="r", descripcion=n, prompt="p", params=Dummy())
             for n in ("japon", "recetas")}
-    config = DestinationsConfig(listas={}, destinos=dest, clasificador=ClassifierConfig(), destino_legado="japon")
+    config = DestinationsConfig(listas={}, destinos=dest, clasificador=ClassifierConfig(), destino_por_defecto="japon")
     text, vision = _ViewClassifier(), _ViewClassifier()
     return ClassifyStage(config, text, DailyQuota(state, "openrouter_usd", 10.0), vision_classifier=vision), text, vision
 

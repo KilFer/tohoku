@@ -12,8 +12,8 @@ from tohoku.stages.extract import ExtractStage, build_user_text
 from tohoku.state import StateStore
 
 VALID = json.dumps({
-    "relacionado_japon": True,
-    "confianza_japon": 0.9,
+    "relacionado_destino": True,
+    "confianza_destino": 0.9,
     "idioma": "es",
     "resumen_fuente": "Ramen en Shibuya",
     "lugares": [make_lugar().model_dump()],
@@ -67,7 +67,7 @@ def test_fenced_json_is_accepted(tmp_path, settings, state):
 
 
 def test_invalid_then_valid_retries_once_with_error(tmp_path, settings, state):
-    llm = FakeLLM(['{"relacionado_japon": true}', VALID])
+    llm = FakeLLM(['{"relacionado_destino": true}', VALID])
 
     result = _stage(settings, llm, state).run(_ctx(tmp_path))
 
@@ -139,3 +139,12 @@ def test_japan_category_not_in_the_list_is_still_retried(tmp_path, settings, sta
     llm = FakeLLM([json.dumps(bad), VALID])
     result = _stage(settings, llm, state).run(_ctx(tmp_path))
     assert result.extraction is not None and len(llm.calls) == 2
+
+
+def test_extraction_rejects_the_old_relevance_field_names():
+    from pydantic import ValidationError
+
+    from tohoku.models import Extraction
+
+    with pytest.raises(ValidationError):
+        Extraction.model_validate({"relacionado_japon": True, "confianza_japon": 0.9, "idioma": "es", "resumen_fuente": "x"})

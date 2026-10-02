@@ -1,4 +1,3 @@
-import sqlite3
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -188,36 +187,6 @@ def test_review_reasons_for_note_joins_other_sources(state):
     assert state.review_reasons_for_note("n9") == []
 
 
-def test_legacy_no_japon_jobs_are_counted_as_descartado(state):
-    state.add_job("b1", "u1", Platform.YOUTUBE, ContentHint.VIDEO)
-    state.finish("b1", Outcome.DESCARTADO)
-    state._db.execute("UPDATE jobs SET outcome = 'no-japon' WHERE bookmark_id = 'b1'")  # fila con el valor antiguo
-    state.add_job("b2", "u2", Platform.YOUTUBE, ContentHint.VIDEO)
-    state.finish("b2", Outcome.DESCARTADO)
-
-    assert state.status_counts() == {"descartado": 2}
-    assert state.get_job("b1").outcome is Outcome.DESCARTADO
-
-
-OLD_JOBS_SCHEMA = """CREATE TABLE jobs (bookmark_id TEXT PRIMARY KEY, url TEXT NOT NULL, platform TEXT, hint TEXT,
-    status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at TEXT, last_error TEXT,
-    outcome TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"""
-
-
-def test_old_database_is_migrated_and_old_jobs_have_no_candidates(tmp_path, clock):
-    path = tmp_path / "state.db"
-    db = sqlite3.connect(path)
-    db.execute(OLD_JOBS_SCHEMA)
-    db.execute("INSERT INTO jobs (bookmark_id, url, platform, hint, created_at, updated_at) VALUES ('old', 'u', 'youtube', 'video', '2026-09-01T00:00:00+00:00', '2026-09-01T00:00:00+00:00')")
-    db.commit(); db.close()
-
-    state = StateStore(path, clock=clock)
-    StateStore(path, clock=clock)  # la migración es idempotente
-
-    job = state.get_job("old")
-    assert job.candidates is None and job.destination is None
-
-
 def test_candidates_and_destination_roundtrip(state):
     state.add_job("b1", "u1", Platform.YOUTUBE, ContentHint.VIDEO, candidates=["japon", "recetas"])
     state.add_candidates("b1", ["recetas", "nueva_zelanda"])
@@ -228,16 +197,6 @@ def test_candidates_and_destination_roundtrip(state):
     assert job.destination == "recetas"
     state.set_destination("b1", None)
     assert state.get_job("b1").destination is None
-
-
-def test_legacy_no_japon_jobs_finished_today_count_as_descartado(state):
-    state.add_job("b1", "u1", Platform.YOUTUBE, ContentHint.VIDEO)
-    state.finish("b1", Outcome.DESCARTADO)
-    state._db.execute("UPDATE jobs SET outcome = 'no-japon' WHERE bookmark_id = 'b1'")  # fila con el valor antiguo
-    state.add_job("b2", "u2", Platform.YOUTUBE, ContentHint.VIDEO)
-    state.finish("b2", Outcome.DESCARTADO)
-
-    assert state.finished_today() == {"descartado": 2}
 
 
 def test_add_candidates_without_new_names_does_not_touch_the_job(state, clock):
@@ -251,18 +210,3 @@ def test_add_candidates_without_new_names_does_not_touch_the_job(state, clock):
     assert job.candidates == ["japon", "recetas"] and job.updated_at == before
 
 
-class _NoColumnsYet:
-    """Conexión que no ve las columnas nuevas en PRAGMA: como otro proceso que migró entre medias."""
-
-    def __init__(self, db):
-        self._db = db
-
-    def execute(self, sql, *args):
-        if sql.startswith("PRAGMA table_info"):
-            return iter([])
-        return self._db.execute(sql, *args)
-
-
-def test_migration_tolerates_a_concurrent_migration(state):
-    state._db = _NoColumnsYet(state._db)
-    state._migrate()  # las columnas ya existen: "duplicate column name" no es un error

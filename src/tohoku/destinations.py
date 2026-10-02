@@ -12,7 +12,7 @@ from tohoku.errors import ConfigError
 from tohoku.text import label_key
 
 _BASE_KEYS = ("flujo", "raiz", "descripcion", "prompt")
-_TOP_KEYS = {"listas", "destinos", "clasificador", "destino_legado", "limpieza"}
+_TOP_KEYS = {"listas", "destinos", "clasificador", "destino_por_defecto", "limpieza"}
 _LABEL = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
 
@@ -48,7 +48,7 @@ class DestinationsConfig:
     listas: dict[str, list[str]]
     destinos: dict[str, Destination]
     clasificador: ClassifierConfig
-    destino_legado: str  # destino de reserva para los jobs sin candidatos
+    destino_por_defecto: str  # destino de reserva para los jobs sin candidatos
     limpieza: CleanupConfig = CleanupConfig()
 
     def candidates_for(self, list_id: str) -> list[str]:
@@ -126,15 +126,15 @@ def load_destinations(path: Path, flows: Mapping[str, HasParams]) -> Destination
             limpieza = CleanupConfig.model_validate(limpieza_raw)
         except ValidationError as exc:
             raise ConfigError(f"{path}: 'limpieza' inválido:\n{exc}") from exc
-    legado = raw.get("destino_legado")
-    if legado is None:
+    por_defecto = raw.get("destino_por_defecto")
+    if por_defecto is None:
         if len(destinos) != 1:
-            raise ConfigError(f"{path}: con varios destinos hay que indicar 'destino_legado' (el destino de reserva para los jobs sin candidatos)")
-        legado = next(iter(destinos))
-    elif not isinstance(legado, str) or legado not in destinos:
-        raise ConfigError(f"{path}: 'destino_legado' apunta a un destino que no existe: {legado}")
+            raise ConfigError(f"{path}: con varios destinos hay que indicar 'destino_por_defecto' (el destino de reserva para los jobs sin candidatos)")
+        por_defecto = next(iter(destinos))
+    elif not isinstance(por_defecto, str) or por_defecto not in destinos:
+        raise ConfigError(f"{path}: 'destino_por_defecto' apunta a un destino que no existe: {por_defecto}")
     return DestinationsConfig(
-        listas=listas, destinos=destinos, clasificador=clasificador, destino_legado=legado, limpieza=limpieza,
+        listas=listas, destinos=destinos, clasificador=clasificador, destino_por_defecto=por_defecto, limpieza=limpieza,
     )
 
 

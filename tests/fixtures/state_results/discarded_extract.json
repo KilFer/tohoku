@@ -1,7 +1,7 @@
 {
   "extraction": {
-    "relacionado_japon": false,
-    "confianza_japon": 0.0,
+    "relacionado_destino": false,
+    "confianza_destino": 0.0,
     "idioma": "es",
     "resumen_fuente": "El vídeo muestra una receta rápida de rollitos de tortilla rellenos con una mezcla de huevo, leche, queso y bacon o jamón. Se cocinan en freidora de aire o en horno.",
     "lugares": [],

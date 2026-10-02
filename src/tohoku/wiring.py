@@ -43,7 +43,7 @@ class App:
     pipeline: Pipeline
     service: Service
     destinations: DestinationsConfig
-    destination: Destination  # el destino legado
+    destination: Destination  # el destino por defecto
     runtimes: dict[str, FlowRuntime]
     classifier: Classifier | None  # None si ningún bookmark puede tener varios candidatos
     vision_classifier: Classifier | None = None  # mismo modo con OPENROUTER_MODEL: solo cuando se mandan imágenes
@@ -100,7 +100,7 @@ def build_app(settings: Settings) -> App:
         WhisperTranscriber(settings.whisper_model, settings.whisper_compute_type, settings.whisper_download_root, settings.whisper_threads)
     )
     destinations = load_destinations(settings.destinos_file, FLOWS)
-    destination = destinations.destinos[destinations.destino_legado]
+    destination = destinations.destinos[destinations.destino_por_defecto]
     deps = FlowDeps(settings=settings, state=state, trilium=trilium, llm=llm, places=places,
                     llm_budget=llm_budget, places_quota=places_quota)
     runtimes = {name: FLOWS[d.flujo].build(d, deps) for name, d in destinations.destinos.items()}
@@ -122,11 +122,11 @@ def build_app(settings: Settings) -> App:
         lambda: preflight(settings, trilium, llm, *runtimes.values(), classifier_model=classifier_model, classifier_mode=cfg.modo),
         lists=destinations.listas, cleaner=cleaner,
     )
-    legacy = runtimes[destinations.destino_legado]
+    default = runtimes[destinations.destino_por_defecto]
     return App(
         settings=settings, state=state, karakeep=karakeep, trilium=trilium, llm=llm, notifier=notifier,
-        layout=legacy.layout, llm_budget=llm_budget, ytdlp=ytdlp, gallery=gallery, transcribe=transcribe,
-        stages=[*common, *legacy.stages], pipeline=pipeline, service=service,
+        layout=default.layout, llm_budget=llm_budget, ytdlp=ytdlp, gallery=gallery, transcribe=transcribe,
+        stages=[*common, *default.stages], pipeline=pipeline, service=service,
         destinations=destinations, destination=destination, runtimes=runtimes, classifier=classifier,
         vision_classifier=vision_classifier,
     )

@@ -38,8 +38,8 @@ class ClassifyStage:
         self._budget = budget
 
     def _names(self, ctx: JobContext) -> list[str]:
-        """Candidatos vigentes: los que ya no están en destinos.yaml no cuentan; si no queda ninguno, el legado."""
-        return [n for n in ctx.job.candidates or [] if n in self._config.destinos] or [self._config.destino_legado]
+        """Candidatos vigentes: los que ya no están en destinos.yaml no cuentan; si no queda ninguno, el destino por defecto."""
+        return [n for n in ctx.job.candidates or [] if n in self._config.destinos] or [self._config.destino_por_defecto]
 
     def _sends_images(self, fetch: FetchResult, transcript: Transcript) -> bool:
         blank = not (fetch.meta.description or "").strip() and not transcript.text.strip()

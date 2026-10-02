@@ -41,14 +41,14 @@ Qué listas de Karakeep se procesan y cómo se publica cada una. Una lista puede
       modo: json_schema                   # o etiqueta
       confianza_minima: 0.5               # por debajo → descartado
       margen_revision: 0.15               # alternativa más cerca → clasificacion-dudosa
-    destino_legado: japon                 # destino de reserva; obligatorio con varios destinos
+    destino_por_defecto: japon                 # destino por defecto; obligatorio con varios destinos
 
 - El servicio sondea **todas** las listas del YAML. La ruta del YAML es `DESTINOS_FILE` (por defecto `config/destinos.yaml`).
 - Un fichero inválido (YAML mal formado, clave desconocida o mal escrita, `#` en la raíz, prompt inexistente, lista que apunta a un destino que no existe) da `Error de configuración` con el nombre de la clave y sale con código 2.
 - La imagen lleva `config/` dentro (`COPY config ./config`) y el compose lo monta de solo lectura (`./config:/app/config:ro`): **editar `config/` no requiere reconstruir**, basta `docker compose restart tohoku`.
 - Tras editar `config/` y reiniciar, mira `docker compose logs tohoku`: un error de configuración hace que el contenedor salga al arrancar (código 2) **sin aviso por ntfy**.
 - El prompt de Japón es `config/prompts/japon.md`. Solo se sustituyen los marcadores `{{categorias_lugar}}` y `{{categorias_cosa}}` (las categorías del destino); el resto del texto es tuyo. Si el LLM devuelve una categoría que no es del destino, se reintenta una vez con el error.
-- `destino_legado` (por defecto, el único destino) es el destino que se usa cuando un bookmark no tiene candidatos registrados, por ejemplo en un `reprocess` de un bookmark que no está en `state.db`. Un destino quitado del YAML no para la cola: `classify` ignora esos candidatos (cae en `destino_legado`) y solo falla (`jr:error`) el job cuyo destino ya decidido o forzado no existe.
+- `destino_por_defecto` (por defecto, el único destino) es el destino que usan los comandos sin `--destino`/`--lista` y el que se toma cuando un bookmark no tiene candidatos registrados, por ejemplo en un `reprocess` de un bookmark que no está en `state.db`. Un destino quitado del YAML no para la cola: `classify` ignora esos candidatos (cae en `destino_por_defecto`) y solo falla (`jr:error`) el job cuyo destino ya decidido o forzado no existe.
 - El clasificador solo se monta si algún bookmark puede tener varios candidatos (una lista con varios destinos o listas con destinos distintos, porque la ingesta une los candidatos de todas sus listas) y solo se llama con varios candidatos; el preflight comprueba su modelo solo en ese caso (en modo `json_schema` también que admita salida estructurada). Con un candidato no hay llamada al LLM. Si no hay caption ni transcripción, se clasifica con imágenes usando `OPENROUTER_MODEL` (multimodal) en lugar de `clasificador.modelo`.
 - Dos destinos cuyo nombre solo difiere en mayúsculas, acentos o separadores (`japon`/`Japón`) son un error de configuración: el clasificador no los distinguiría.
 - `init-trilium [--destino X]` crea la estructura bajo la raíz de ese destino (por defecto, el único; con varios destinos `--destino` es obligatorio). `eval --destino X` evalúa con el prompt de ese destino (solo destinos de flujo `viaje`; con otro flujo falla con un error de configuración). `import-instagram ... [--lista ID]` elige la lista de Karakeep destino (por defecto, la única del YAML; con varias hay que indicarla).
@@ -56,7 +56,7 @@ Qué listas de Karakeep se procesan y cómo se publica cada una. Una lista puede
 ### Activar Recetas
 
 1. En Trilium, crea la nota raíz del Recetario y márcala con `#jrRootRecetas` (para pruebas, `#jrRootRecetasTest`).
-2. En `config/destinos.yaml` descomenta el bloque `recetas`, añade en `listas` la lista de Karakeep de recetas (`<id>: [recetas]`) y descomenta `destino_legado: japon` (con varios destinos es obligatorio). Con una lista que lleve solo `recetas` y otra solo `japon`, un bookmark en ambas pasa por `classify` (hay clasificador desde que existen dos destinos).
+2. En `config/destinos.yaml` descomenta el bloque `recetas`, añade en `listas` la lista de Karakeep de recetas (`<id>: [recetas]`) y descomenta `destino_por_defecto: japon` (con varios destinos es obligatorio). Con una lista que lleve solo `recetas` y otra solo `japon`, un bookmark en ambas pasa por `classify` (hay clasificador desde que existen dos destinos).
 3. `docker compose exec tohoku tohoku init-trilium --destino recetas` (`./config` está montado de solo lectura en el contenedor, así que `exec` ya ve el YAML editado). Es idempotente, pero no añade atributos promovidos nuevos a una plantilla `Receta` que ya exista: si cambias `atributos`, añade los promovidos a mano en Trilium.
 4. `docker compose restart tohoku` (el primer arranque comprueba el modelo del clasificador). El orden importa: si reinicias antes de `init-trilium`, el preflight falla en `refresh()` y se pausan **todas** las colas (también Japón) con un aviso de error de configuración en ntfy.
 5. Ver `docs/flujos/receta.md`.
@@ -68,7 +68,7 @@ Un destino de viaje nuevo (Nueva Zelanda, Portugal...) es solo configuración: n
 1. En Karakeep, crea la lista del destino y anota su id.
 2. En Trilium, crea la nota raíz del destino y márcala con su etiqueta (`#jrRootNZ`; en pruebas, la variante `Test`).
 3. Escribe el prompt en `config/prompts/<destino>.md`: copia `config/prompts/japon.md` y adapta país, ciudades y regiones; conserva los campos y los marcadores `{{categorias_lugar}}` y `{{categorias_cosa}}`.
-4. En `config/destinos.yaml`: añade el bloque del destino (`flujo: viaje`, `raiz`, `descripcion`, `prompt`, `pais` ISO-2, `nombres_pais`, `latitud`/`longitud` [mín, máx] del país, `categorias_lugar`, `categorias_cosa`; `alias_ciudad` es opcional: no hay valores por defecto de ningún país, así que todas las demás claves son obligatorias), su lista en `listas` y, si es el segundo destino, `destino_legado: japon` (obligatorio con varios destinos). El YAML se valida al cargar: un error se ve con `docker compose exec tohoku tohoku init-trilium --destino <nombre>`.
+4. En `config/destinos.yaml`: añade el bloque del destino (`flujo: viaje`, `raiz`, `descripcion`, `prompt`, `pais` ISO-2, `nombres_pais`, `latitud`/`longitud` [mín, máx] del país, `categorias_lugar`, `categorias_cosa`; `alias_ciudad` es opcional: no hay valores por defecto de ningún país, así que todas las demás claves son obligatorias), su lista en `listas` y, si es el segundo destino, `destino_por_defecto: japon` (obligatorio con varios destinos). El YAML se valida al cargar: un error se ve con `docker compose exec tohoku tohoku init-trilium --destino <nombre>`.
 5. `docker compose exec tohoku tohoku init-trilium --destino <nombre>` crea el Mapa, "Comprar y comer", "Cultura y curiosidades" y la Bandeja bajo la raíz (idempotente).
 6. `docker compose restart tohoku`. **Siempre después de `init-trilium`**: si el servicio arranca con un destino sin estructura, el preflight falla en `refresh()` y se pausan todas las colas (también las de Japón) con un aviso de error de configuración en ntfy.
 7. Prueba con unos pocos enlaces (`import-instagram ... --lista <id> --limit 5`) y revisa la Bandeja antes de importar más.
@@ -142,4 +142,4 @@ Clave opcional del YAML `config/destinos.yaml`: `limpieza: {retencion_dias: N}` 
 `transcribe` también necesita los ficheros, pero no es un `--from` válido: se repite con `--from fetch`. Los jobs en `error` conservan sus ficheros (no se limpian) hasta que un reprocesado los termina. Recomendación: reprocesar desde `extract`/`classify` en tandas pequeñas, para no chocar con los límites de ritmo de Instagram (`INSTAGRAM_MIN_INTERVAL_SECONDS`).
 
 ## Copias de seguridad
-`data/state.db` guarda el estado de la cola. Si se pierde, no se reprocesan los bookmarks ya etiquetados `jr:*`; las notas de Trilium tienen su propio adjunto `japan-reader.json`.
+`data/state.db` guarda el estado de la cola. Si se pierde, no se reprocesan los bookmarks ya etiquetados `jr:*`; las notas de Trilium tienen su propio adjunto `tohoku.json`.

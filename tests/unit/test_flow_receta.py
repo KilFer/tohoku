@@ -88,7 +88,7 @@ def _japon_y_recetas(settings, tmp_path):
     text = (REPO / "tests/fixtures/destinos.yaml").read_text(encoding="utf-8").replace("../../config", str(REPO / "config"))
     text = text.replace("L1: [japon]", "L1: [japon]\n  L2: [recetas]")
     text += f"  recetas:\n    flujo: receta\n    raiz: {ROOT}\n    descripcion: Recetas\n    prompt: {REPO / 'config/prompts/recetas.md'}\n"
-    text += "destino_legado: japon\n"
+    text += "destino_por_defecto: japon\n"
     path = tmp_path / "destinos.yaml"
     path.write_text(text, encoding="utf-8")
     return settings.model_copy(update={"destinos_file": path})

@@ -88,12 +88,13 @@ def test_mark_tags_and_archives(outcome, tag, archived):
     assert [t for t in bookmark.tags if t.startswith("jr:")] == [tag]
 
 
-def test_legacy_no_japon_outcome_is_read_as_descartado():
-    assert Outcome("no-japon") is Outcome.DESCARTADO
+def test_no_japon_is_not_an_outcome():
+    with pytest.raises(ValueError):
+        Outcome("no-japon")
 
 
 def test_mark_adds_destination_tag_and_replaces_old_jr_tags():
-    karakeep = FakeKarakeep([Bookmark(id="b1", url="https://youtu.be/a", tags=["jr:no-japon", "jr:destino:recetas", "viaje"])])
+    karakeep = FakeKarakeep([Bookmark(id="b1", url="https://youtu.be/a", tags=["jr:revisar", "jr:destino:recetas", "viaje"])])
 
     result = MarkStage(karakeep).run("b1", Outcome.PROCESADO, destination="japon")
 

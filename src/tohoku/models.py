@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import BaseModel, Field
 
 from tohoku.sources import Platform
 
@@ -73,9 +73,8 @@ class Otro(BaseModel):
 
 
 class Extraction(BaseModel):
-    # Antes relacionado_japon / confianza_japon: se aceptan al leer resultados ya guardados en state.db.
-    relacionado_destino: bool = Field(validation_alias=AliasChoices("relacionado_destino", "relacionado_japon"))
-    confianza_destino: float = Field(ge=0, le=1, validation_alias=AliasChoices("confianza_destino", "confianza_japon"))
+    relacionado_destino: bool
+    confianza_destino: float = Field(ge=0, le=1)
     idioma: str
     resumen_fuente: str
     lugares: list[Lugar] = []
@@ -140,11 +139,6 @@ class Outcome(StrEnum):
     REVISAR = "revisar"
     DESCARTADO = "descartado"
     ERROR = "error"
-
-    @classmethod
-    def _missing_(cls, value: object) -> "Outcome | None":
-        # Valor guardado antes por el contenido ajeno al destino: se lee como descartado.
-        return cls.DESCARTADO if value == "no-japon" else None
 
 
 class PublishedNote(BaseModel):

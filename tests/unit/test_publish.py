@@ -69,7 +69,7 @@ def test_create_lugar(env):
     assert labels["googlePlaceId"] == "P1" and labels["fuentes"] == "1" and labels["jrTipo"] == "lugar"
     content = env.trilium.get_content(note_id)
     assert "Ramen en Ichiran Shibuya" in content and "https://youtu.be/b1" in content and "Mis notas" in content
-    assert [a.title for a in env.trilium.list_attachments(note_id)] == ["japan-reader.json"]
+    assert [a.title for a in env.trilium.list_attachments(note_id)] == ["tohoku.json"]
     assert result.outcome == Outcome.PROCESADO
     assert env.state.published("b1")["lugar:0"].note_id == note_id
 
@@ -213,7 +213,7 @@ def test_synthetic_summary_note_and_alias(env):
 
 
 class _FlakyAttachmentTrilium(FakeTrilium):
-    """Falla la primera vez que se intenta crear el adjunto `japan-reader.json`."""
+    """Falla la primera vez que se intenta crear el adjunto `tohoku.json`."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -254,7 +254,7 @@ def test_create_is_crash_safe_and_resumes_without_duplicating(tmp_path, settings
     assert len(children) == 1
     note_id = children[0]
     assert result.notes[0].note_id == note_id
-    assert [a.title for a in trilium.list_attachments(note_id)] == ["japan-reader.json"]
+    assert [a.title for a in trilium.list_attachments(note_id)] == ["tohoku.json"]
     labels = trilium.labels(note_id)
     assert labels["googlePlaceId"] == "P1"
     assert labels["jrItem"] == "b1:lugar:P1"

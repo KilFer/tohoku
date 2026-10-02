@@ -38,7 +38,7 @@ def _config():
     }
     return DestinationsConfig(
         listas={}, destinos=dest, clasificador=ClassifierConfig(confianza_minima=0.5, margen_revision=0.15),
-        destino_legado="japon",
+        destino_por_defecto="japon",
     )
 
 
@@ -70,7 +70,7 @@ def test_candidato_unico_omite(tmp_path, state):
     assert fake.calls == [] and r.cost_usd == 0
 
 
-def test_job_anterior_usa_legado(tmp_path, state):
+def test_job_without_candidates_uses_the_default_destination(tmp_path, state):
     stage, ctx, fake, _ = _run(tmp_path, state, [], candidates=None)
     r = stage.run(ctx)
     assert (r.destino, r.omitido, fake.calls) == ("japon", True, [])
@@ -169,7 +169,7 @@ def test_stale_candidates_are_dropped_before_deciding(tmp_path, state):
     assert fake.calls == []
 
 
-def test_all_candidates_stale_falls_back_to_destino_legado(tmp_path, state):
+def test_all_candidates_stale_falls_back_to_destino_por_defecto(tmp_path, state):
     ctx = make_ctx(tmp_path, make_job(candidates=["borrado", "otro_borrado"]))
     fake = FakeClassifier([])
     result = ClassifyStage(_config(), fake, DailyQuota(state, "openrouter_usd", 10.0)).run(ctx)

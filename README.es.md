@@ -10,7 +10,7 @@ Japón es el ejemplo de referencia en toda la documentación: el proyecto nació
 
 <!-- CAPTURA: Geo Map de un viaje con los lugares (docs/img/geo-map.png) -->
 
-> **Nombre.** Antes se llamaba *japan-reader*. El prefijo `jr` de etiquetas (`jr:*` en Karakeep), atributos (`#jr*` en Trilium) y del adjunto `japan-reader.json` se mantiene a propósito: son las siglas de *Japan Reader* y de **JR**, la compañía de la Tohoku Shinkansen.
+> **Nombre.** Antes se llamaba *japan-reader*. El prefijo `jr` de etiquetas (`jr:*` en Karakeep) y atributos (`#jr*` en Trilium) se mantiene a propósito: son las siglas de *Japan Reader* y de **JR**, la compañía de la Tohoku Shinkansen.
 
 > **Idioma de las notas generadas.** Las notas que Tohoku escribe en Trilium (nombres de secciones, encabezados como «Mis notas», motivos de revisión) están hoy en español.
 
@@ -99,7 +99,7 @@ El servicio consulta Karakeep cada `POLL_INTERVAL_MINUTES` (10 por defecto).
 listas:
   <id-lista-karakeep>: [japon]            # una lista → un destino
   <id-lista-bandeja>: [japon, recetas]    # varios → decide el clasificador
-destino_legado: japon                     # obligatorio con varios destinos
+destino_por_defecto: japon                     # obligatorio con varios destinos
 destinos:
   japon:
     flujo: viaje

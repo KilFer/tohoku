@@ -10,7 +10,7 @@ Japan is the reference example throughout this documentation: the project was bu
 
 <!-- CAPTURE: Geo Map of a trip with its places (docs/img/geo-map.png) -->
 
-> **Name.** The project used to be called *japan-reader*. The `jr` prefix of labels (`jr:*` in Karakeep), attributes (`#jr*` in Trilium) and the `japan-reader.json` attachment is kept on purpose: it stands for *Japan Reader* and for **JR**, the company that runs the Tohoku Shinkansen.
+> **Name.** The project used to be called *japan-reader*. The `jr` prefix of labels (`jr:*` in Karakeep) and attributes (`#jr*` in Trilium) is kept on purpose: it stands for *Japan Reader* and for **JR**, the company that runs the Tohoku Shinkansen.
 
 > **Language of the generated notes.** The notes Tohoku writes to Trilium (section names, headings such as "Mis notas", review reasons) are currently in Spanish. The documentation uses those literal names, with a translation where it helps.
 
@@ -99,7 +99,7 @@ The service polls Karakeep every `POLL_INTERVAL_MINUTES` (10 by default).
 listas:
   <karakeep-list-id>: [japon]            # one list → one destination
   <karakeep-tray-list-id>: [japon, recetas]   # several → the classifier decides
-destino_legado: japon                    # required with several destinations
+destino_por_defecto: japon                    # required with several destinations
 destinos:
   japon:
     flujo: viaje

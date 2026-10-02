@@ -154,7 +154,7 @@ def eval_cmd(
     cases: Annotated[Path, typer.Option(help="Fichero YAML de casos")] = Path("eval/cases.yaml"),
     model: Annotated[str | None, typer.Option(help="Modelo de OpenRouter a evaluar (por defecto OPENROUTER_MODEL)")] = None,
     keyframes: Annotated[bool, typer.Option("--keyframes/--no-keyframes", help="Enviar fotogramas clave de los vídeos")] = True,
-    destino: Annotated[str | None, typer.Option(help="Destino cuyo prompt se evalúa (por defecto, el destino legado)")] = None,
+    destino: Annotated[str | None, typer.Option(help="Destino cuyo prompt se evalúa (por defecto, el destino por defecto)")] = None,
 ) -> None:
     """Compara modelos y el uso de fotogramas con casos reales (el coste cuenta en el presupuesto diario)."""
     loaded = _load()

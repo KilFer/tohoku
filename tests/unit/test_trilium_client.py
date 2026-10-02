@@ -61,22 +61,22 @@ def test_attributes_branches_and_attachments(client):
     branch = respx.post(host=HOST, path="/etapi/branches").mock(return_value=httpx.Response(201, json={"branchId": "b9"}))
     attach = respx.post(host=HOST, path="/etapi/attachments").mock(return_value=httpx.Response(201, json={"attachmentId": "x9"}))
     respx.get(host=HOST, path="/etapi/notes/n1/attachments").mock(
-        return_value=httpx.Response(200, json=[{"attachmentId": "x9", "title": "japan-reader.json", "mime": "application/json", "role": "file"}])
+        return_value=httpx.Response(200, json=[{"attachmentId": "x9", "title": "tohoku.json", "mime": "application/json", "role": "file"}])
     )
 
     assert client.add_label("n1", "ciudad", "Tokio") == "a9"
     assert client.add_relation("n1", "template", "t1") == "a9"
     client.update_attribute("a9", "Kioto")
     assert client.clone("n1", "rev") == "b9"
-    assert client.create_attachment("n1", "japan-reader.json", "application/json", "{}") == "x9"
-    assert client.list_attachments("n1")[0].title == "japan-reader.json"
+    assert client.create_attachment("n1", "tohoku.json", "application/json", "{}") == "x9"
+    assert client.list_attachments("n1")[0].title == "tohoku.json"
 
     assert json.loads(attr.calls[0].request.content) == {"noteId": "n1", "type": "label", "name": "ciudad", "value": "Tokio", "isInheritable": False}
     assert json.loads(attr.calls[1].request.content)["type"] == "relation"
     assert json.loads(patch.calls[0].request.content) == {"value": "Kioto"}
     assert json.loads(branch.calls[0].request.content) == {"noteId": "n1", "parentNoteId": "rev"}
     assert json.loads(attach.calls[0].request.content) == {
-        "ownerId": "n1", "role": "file", "mime": "application/json", "title": "japan-reader.json", "content": "{}", "position": 10,
+        "ownerId": "n1", "role": "file", "mime": "application/json", "title": "tohoku.json", "content": "{}", "position": 10,
     }
 
 

@@ -27,28 +27,15 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-# Único cambio intencionado respecto a la línea base: los campos de relevancia ya no se llaman "japon".
-RENAMES = {
-    "relacionado_japon": "relacionado_destino",
-    "confianza_japon": "confianza_destino",
-    "Relacionado Japon": "Relacionado Destino",
-    "Confianza Japon": "Confianza Destino",
-}
-
-
-def _renamed(text: str) -> str:
-    for old, new in RENAMES.items():
-        text = text.replace(old, new)
-    return text
 
 
 def test_japan_prompt_renders_as_baseline():
     rendered = render_extract_prompt(_read(REPO / "config/prompts/japon.md"), JAPAN_PARAMS)
-    assert rendered == _renamed(_read(BASELINE / "extract_prompt.md"))
+    assert rendered == _read(BASELINE / "extract_prompt.md")
 
 
 def test_japan_extraction_schema_matches_baseline():
-    assert extraction_schema(JAPAN_PARAMS) == json.loads(_renamed(_read(BASELINE / "extraction_schema.json")))
+    assert extraction_schema(JAPAN_PARAMS) == json.loads(_read(BASELINE / "extraction_schema.json"))
 
 
 def test_name_keys_match_baseline():
@@ -71,8 +58,8 @@ def test_real_extract_keeps_its_values_and_is_saved_with_new_names():
     raw = json.loads(_read(STATE / "rich_extract.json"))
     result = ExtractResult.model_validate(raw)
 
-    assert result.extraction.confianza_destino == raw["extraction"]["confianza_japon"]
-    assert result.extraction.relacionado_destino == raw["extraction"]["relacionado_japon"]
+    assert result.extraction.confianza_destino == raw["extraction"]["confianza_destino"]
+    assert result.extraction.relacionado_destino == raw["extraction"]["relacionado_destino"]
     dumped = json.loads(result.model_dump_json())["extraction"]
     assert "confianza_destino" in dumped and "confianza_japon" not in dumped
     assert ExtractResult.model_validate_json(result.model_dump_json()) == result
@@ -108,7 +95,7 @@ def test_real_results_resolve_like_baseline_and_publish(tmp_path, settings):
 
 def test_real_not_japan_result_publishes_nothing(tmp_path, settings):
     trilium, layout = _japan_trilium()
-    ctx = _real_ctx(tmp_path, "no_japon")
+    ctx = _real_ctx(tmp_path, "discarded")
     ctx.results["resolve"] = ResolveStage(trilium, lambda: layout, Thresholds()).run(ctx)
     state = StateStore(tmp_path / "state.db")
     result = PublishStage(trilium, lambda: layout, FakeLLM([]), settings, DailyQuota(state, "openrouter_usd", 10), state).run(ctx)

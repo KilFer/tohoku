@@ -1,7 +1,7 @@
 {
   "extraction": {
-    "relacionado_japon": true,
-    "confianza_japon": 0.99,
+    "relacionado_destino": true,
+    "confianza_destino": 0.99,
     "idioma": "inglés",
     "resumen_fuente": "La publicación comparte consejos para visitar Tokyo DisneySea: comprar entradas con antelación, planificar la jornada y prepararse para las colas. También destaca Arabian Coast y las palomitas y cubos de edición especial del parque.",
     "lugares": [

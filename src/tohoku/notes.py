@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field, TypeAdapter
 from tohoku.models import GeoMatch, SourceMeta
 from tohoku.text import normalize_name
 
-# Nombre histórico (japan-reader): lo llevan todas las notas ya publicadas. No cambiar.
-DATA_ATTACHMENT_TITLE = "japan-reader.json"
+# Título del adjunto con los datos estructurados de cada nota (fuente de verdad de las fusiones).
+DATA_ATTACHMENT_TITLE = "tohoku.json"
 MIS_NOTAS_HEADING = "<h2>Mis notas</h2>"
 _MIS_NOTAS = re.compile(r"<h2[^>]*>(?:\s|<[^>]+>)*Mis notas(?:\s|<[^>]+>)*</h2>", re.I)
 _EMPTY_PARAGRAPH = "<p></p>"

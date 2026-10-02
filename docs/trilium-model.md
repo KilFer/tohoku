@@ -4,7 +4,7 @@
 
 The root is a note of yours (in the reference example, **`Home › Viajes › Ideas de Japón`**), marked by hand once with `#jrRoot`. Each destination's root label is the `raiz` key of `config/destinos.yaml` (Japan: `jrRoot`; a new destination would use `jrRoot<Destination>`, for example `jrRootNZ`). The structure below it is created with `tohoku init-trilium [--destino X]`. The service finds everything by attributes, so you can move or rename the notes.
 
-The `jr` prefix of all attributes and of the `japan-reader.json` attachment comes from the project's original name (*japan-reader*, now Tohoku) and is kept on purpose.
+The `jr` prefix of all labels and attributes (`#jr*`, and `jr:*` in Karakeep) is kept on purpose: it stands for *Japan Reader*, the project's original name, and for **JR**, the company that runs the Tohoku Shinkansen.
 
 Note titles are generated in Spanish (the English meaning is in parentheses).
 
@@ -41,7 +41,7 @@ It carries `#jrItem="<bookmark_id>:fallo"` and `#jrTipo=fallo`. Body: link, erro
 
 ## Structured data
 
-Every note carries a `japan-reader.json` attachment with its data (summary, tips, sources, Google card). It is the source of truth for merges: do not delete it.
+Every note carries a `tohoku.json` attachment with its data (summary, tips, sources, Google card). It is the source of truth for merges: do not delete it.
 
 ## Merge rules
 
@@ -71,5 +71,5 @@ A destination with `flujo: receta` (for example root `#jrRootRecetas`; see `docs
 - `probada` (tried) and `valoracion` (rating) (and any attribute in `atributos_usuario` or added by hand) are yours: the service never writes them.
 - Body: cover, Resumen, Ingredientes (grouped by `grupo`), Preparación, Consejos, Fuentes and, under "Mis notas", your own content (always kept).
 - Cover: an image attachment `portada.jpg` (JPEG, longest side `IMAGE_MAX_SIDE`) embedded with `<img src="api/attachments/<id>/image/portada.jpg">` (format verified on Trilium 0.106).
-- A `japan-reader.json` attachment with the structured data (source of truth; do not delete it).
+- A `tohoku.json` attachment with the structured data (source of truth; do not delete it).
 - No merging between sources: one link = one recipe. If another one with a similar title exists, the new one is cloned into the tray with `posible-duplicado`.

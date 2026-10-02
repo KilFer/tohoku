@@ -194,10 +194,10 @@
     }
   },
   "properties": {
-    "confianza_japon": {
+    "confianza_destino": {
       "maximum": 1,
       "minimum": 0,
-      "title": "Confianza Japon",
+      "title": "Confianza Destino",
       "type": "number"
     },
     "cosas": {
@@ -228,8 +228,8 @@
       "title": "Otros",
       "type": "array"
     },
-    "relacionado_japon": {
-      "title": "Relacionado Japon",
+    "relacionado_destino": {
+      "title": "Relacionado Destino",
       "type": "boolean"
     },
     "resumen_fuente": {
@@ -238,8 +238,8 @@
     }
   },
   "required": [
-    "relacionado_japon",
-    "confianza_japon",
+    "relacionado_destino",
+    "confianza_destino",
     "idioma",
     "resumen_fuente"
   ],
