@@ -5,7 +5,7 @@ from tohoku.models import ExtractResult, Transcript
 
 CASE = EvalCase.model_validate({
     "id": "ramen", "url": "https://www.youtube.com/shorts/abc",
-    "expect": {"japan": True, "lugares": ["Ichiran Shibuya", "Fushimi Inari"], "cosas": ["CoCo Ichibanya"]},
+    "expect": {"destino": True, "lugares": ["Ichiran Shibuya", "Fushimi Inari"], "cosas": ["CoCo Ichibanya"]},
 })
 
 
@@ -17,7 +17,7 @@ def test_count_matches_is_tolerant():
 def test_score_case():
     extraction = make_extraction(lugares=[make_lugar(), make_lugar("Tokyo Tower")], cosas=[make_cosa()])
     score = score_case(CASE, ExtractResult(extraction=extraction, cost_usd=0.02), Thresholds())
-    assert score.japan_ok is True
+    assert score.destino_ok is True
     assert (score.lugares_found, score.lugares_expected) == (1, 2)
     assert (score.cosas_found, score.cosas_expected) == (1, 1)
     assert score.extra == 1
@@ -26,7 +26,7 @@ def test_score_case():
 
 def test_score_failed_extraction():
     score = score_case(CASE, ExtractResult(extraction=None, error="JSON"), Thresholds())
-    assert score.japan_ok is False and score.error == "JSON"
+    assert score.destino_ok is False and score.error == "JSON"
 
 
 def test_format_table_totals():
@@ -39,8 +39,8 @@ def test_format_table_totals():
 
 def test_load_cases(tmp_path):
     path = tmp_path / "cases.yaml"
-    path.write_text("- id: a\n  url: https://youtu.be/x\n  expect: {japan: false}\n", encoding="utf-8")
-    assert load_cases(path)[0].expect.japan is False
+    path.write_text("- id: a\n  url: https://youtu.be/x\n  expect: {destino: false}\n", encoding="utf-8")
+    assert load_cases(path)[0].expect.destino is False
     path.write_text("# vacío\n", encoding="utf-8")
     assert load_cases(path) == []
 

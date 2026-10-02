@@ -1,1 +1,1 @@
-"""Flujo `viaje`: lugares (Geo Map), cosas y otros. Japón y Nueva Zelanda son destinos de este flujo."""
+"""Flujo `viaje`: lugares (Geo Map), cosas y otros. Cualquier país es un destino de este flujo (Japón es el ejemplo de referencia)."""

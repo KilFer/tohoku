@@ -16,7 +16,7 @@ NAME_MATCH = 0.8
 
 
 class Expect(BaseModel):
-    japan: bool
+    destino: bool
     lugares: list[str] = []
     cosas: list[str] = []
 
@@ -29,7 +29,7 @@ class EvalCase(BaseModel):
 
 class CaseScore(BaseModel):
     id: str
-    japan_ok: bool
+    destino_ok: bool
     lugares_found: int = 0
     lugares_expected: int = 0
     cosas_found: int = 0
@@ -59,29 +59,29 @@ def score_case(case: EvalCase, result: ExtractResult, thresholds: Thresholds) ->
     extraction = result.extraction
     if extraction is None:
         return CaseScore(
-            id=case.id, japan_ok=False, lugares_expected=expected_l, cosas_expected=expected_c,
+            id=case.id, destino_ok=False, lugares_expected=expected_l, cosas_expected=expected_c,
             cost_usd=result.cost_usd, error=result.error or "extracción fallida",
         )
-    is_japan = destination_decision(extraction, thresholds) != "no"
+    on_destination = destination_decision(extraction, thresholds) != "no"
     lugar_names = [l.nombre for l in extraction.lugares] + [l.nombre_local for l in extraction.lugares if l.nombre_local]
     found_l = count_matches(case.expect.lugares, lugar_names)
     found_c = count_matches(case.expect.cosas, [c.nombre for c in extraction.cosas])
     return CaseScore(
-        id=case.id, japan_ok=is_japan == case.expect.japan,
+        id=case.id, destino_ok=on_destination == case.expect.destino,
         lugares_found=found_l, lugares_expected=expected_l, cosas_found=found_c, cosas_expected=expected_c,
         extra=max(0, len(extraction.lugares) + len(extraction.cosas) - found_l - found_c), cost_usd=result.cost_usd,
     )
 
 
 def format_table(scores: list[CaseScore], model: str, keyframes: bool) -> str:
-    lines = [f"Modelo: {model} · fotogramas: {'sí' if keyframes else 'no'}", "caso | japón | lugares | cosas | extra | coste USD | error"]
+    lines = [f"Modelo: {model} · fotogramas: {'sí' if keyframes else 'no'}", "caso | destino | lugares | cosas | extra | coste USD | error"]
     for s in scores:
         lines.append(
-            f"{s.id} | {'ok' if s.japan_ok else 'FALLO'} | {s.lugares_found}/{s.lugares_expected} | "
+            f"{s.id} | {'ok' if s.destino_ok else 'FALLO'} | {s.lugares_found}/{s.lugares_expected} | "
             f"{s.cosas_found}/{s.cosas_expected} | {s.extra} | {s.cost_usd:.4f} | {s.error or ''}"
         )
     lines.append(
-        f"TOTAL · Japón {sum(s.japan_ok for s in scores)}/{len(scores)} · "
+        f"TOTAL · destino {sum(s.destino_ok for s in scores)}/{len(scores)} · "
         f"Lugares {sum(s.lugares_found for s in scores)}/{sum(s.lugares_expected for s in scores)} · "
         f"Cosas {sum(s.cosas_found for s in scores)}/{sum(s.cosas_expected for s in scores)} · "
         f"Extra {sum(s.extra for s in scores)} · Coste {sum(s.cost_usd for s in scores):.4f} USD"
@@ -131,5 +131,5 @@ class EvalRunner:
                     ctx.results["fetch"] = ctx.result("fetch", FetchResult).model_copy(update={"keyframes": []})
                 scores.append(score_case(case, extract.run(ctx), thresholds))
             except (TohokuError, ValueError) as exc:
-                scores.append(CaseScore(id=case.id, japan_ok=False, error=str(exc)))
+                scores.append(CaseScore(id=case.id, destino_ok=False, error=str(exc)))
         return scores

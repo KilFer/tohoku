@@ -1,3 +1,4 @@
+from datetime import timedelta
 import pytest
 
 from builders import JAPAN_PARAMS, make_ctx, make_extraction, make_geo, make_lugar
@@ -272,15 +273,21 @@ def test_result_in_japan_is_rejected_for_a_new_zealand_destination(tmp_path, sta
     assert outcome.match is None and outcome.review_reason == "geocodificacion-fallida"
 
 
-def test_places_cache_is_per_country_and_japan_keeps_its_entries(tmp_path, state):
-    state.put_places_cache("Ichiran Shibuya Tokyo", [SHIBUYA.model_dump()])  # entrada sin prefijo de país (Japón)
+def test_places_cache_is_per_country(tmp_path, state):
+    state.put_places_cache("JP|Ichiran Shibuya Tokyo", [SHIBUYA.model_dump()])
     jp, nz = FakePlaces({"Ichiran Shibuya Tokyo": [SHIBUYA]}), FakePlaces({})
 
     _run(tmp_path, state, jp, [make_lugar()])
     _run_nz(tmp_path, state, nz, make_lugar())
 
-    assert jp.queries == []  # Japón reutiliza su caché de siempre
+    assert jp.queries == []  # Japón reutiliza su entrada
     assert nz.queries == ["Ichiran Shibuya Tokyo"]  # Nueva Zelanda no la comparte
+
+
+def test_every_country_stores_its_searches_with_the_country_prefix(tmp_path, state):
+    _run(tmp_path, state, FakePlaces({"Ichiran Shibuya Tokyo": [SHIBUYA]}), [make_lugar()])
+    assert state.get_places_cache("JP|Ichiran Shibuya Tokyo", timedelta(days=1)) is not None
+    assert state.get_places_cache("Ichiran Shibuya Tokyo", timedelta(days=1)) is None
 
 
 def test_in_country_uses_code_bounds_and_names():

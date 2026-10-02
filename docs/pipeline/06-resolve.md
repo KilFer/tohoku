@@ -20,7 +20,7 @@
 - Thing (`cosa`): looks for `#jrTipo=cosa #jrNombreNorm="<normalized>"` in "Comprar y comer" → `merge`; otherwise it compares against all things and, if one has similarity ≥ 0.85, `create` + `posible-duplicado`. The same normalized name twice → `alias`.
 - Other → always `create`. If the content belongs to the destination but there are no items → `otro:resumen` with the source's summary.
 
-**Configuration:** `JAPAN_MIN_CONFIDENCE`, `JAPAN_REVIEW_CONFIDENCE`, `ITEM_REVIEW_CONFIDENCE`, `COSA_DUPLICATE_SIMILARITY` (the `JAPAN_*` names are historical; they apply to every destination).
+**Configuration:** `DESTINATION_MIN_CONFIDENCE`, `DESTINATION_REVIEW_CONFIDENCE`, `ITEM_REVIEW_CONFIDENCE`, `COSA_DUPLICATE_SIMILARITY` (they apply to every destination).
 
 **Failures:** Trilium errors → retry; missing structure → `ConfigError`.
 

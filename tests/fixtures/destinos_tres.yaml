@@ -1,4 +1,5 @@
 # Configuración de tests con tres destinos: japon, recetas y nueva_zelanda (prompts reales de config/).
+palabras_genericas: [japan, japon]
 listas:
   L1: [japon]
   L2: [recetas]

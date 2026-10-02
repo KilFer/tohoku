@@ -24,6 +24,7 @@ from tohoku.stages.mark import MarkStage
 from tohoku.stages.transcribe import TranscribeStage, WhisperTranscriber
 from tohoku.state import StateStore
 from tohoku.trilium_layout import LayoutCache
+from tohoku.text import configure_generic_words
 
 
 @dataclass
@@ -100,6 +101,7 @@ def build_app(settings: Settings) -> App:
         WhisperTranscriber(settings.whisper_model, settings.whisper_compute_type, settings.whisper_download_root, settings.whisper_threads)
     )
     destinations = load_destinations(settings.destinos_file, FLOWS)
+    configure_generic_words(destinations.palabras_genericas)
     destination = destinations.destinos[destinations.destino_por_defecto]
     deps = FlowDeps(settings=settings, state=state, trilium=trilium, llm=llm, places=places,
                     llm_budget=llm_budget, places_quota=places_quota)

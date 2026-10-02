@@ -30,8 +30,8 @@ class GeocodeStage:
         self._th = thresholds
         self._cache = cache
         self._params = params
-        # Japón (el destino de referencia) no lleva prefijo; el resto, sí, para no mezclar búsquedas de países distintos.
-        self._cache_prefix = "" if self._params.pais == "JP" else f"{self._params.pais}|"
+        # La caché de búsquedas es por país: una búsqueda de un destino nunca reutiliza la de otro.
+        self._cache_prefix = f"{self._params.pais}|"
 
     def _in_country(self, match: GeoMatch) -> bool:
         p = self._params
@@ -52,21 +52,21 @@ class GeocodeStage:
     def _geocode(self, index: int, lugar: Lugar) -> GeoOutcome:
         queries = list(dict.fromkeys(q for q in (lugar.consulta_busqueda, lugar.nombre_local) if q))
         aliases = self._params.alias_ciudad
-        japan_only: GeoMatch | None = None
+        fallback_match: GeoMatch | None = None
         for query in queries:
             results = self._search(query)
             in_dest = [r for r in results if self._in_country(r)]
             valid = [r for r in in_dest if city_matches(r, lugar.ciudad, aliases)]
-            # Nombre exacto en Japón aunque la ciudad no cuadre: el LLM suele equivocar la ciudad
+            # Nombre exacto en el país del destino aunque la ciudad no cuadre: el LLM suele equivocar la ciudad
             # de sitios de las afueras (Tokyo DisneySea está en Chiba), no el nombre.
             candidates = valid or [r for r in in_dest if name_score(r, lugar, aliases) >= 2]
             if candidates:
                 match, clear = _choose(candidates, lugar, aliases)
                 return GeoOutcome(lugar_index=index, match=match, review_reason=None if clear else "geocodificacion-ambigua")
-            if in_dest and japan_only is None:
-                japan_only = in_dest[0]
-        if japan_only:
-            return GeoOutcome(lugar_index=index, match=japan_only, review_reason="geocodificacion-ambigua")
+            if in_dest and fallback_match is None:
+                fallback_match = in_dest[0]
+        if fallback_match:
+            return GeoOutcome(lugar_index=index, match=fallback_match, review_reason="geocodificacion-ambigua")
         return GeoOutcome(lugar_index=index, review_reason="geocodificacion-fallida")
 
 

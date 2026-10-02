@@ -15,6 +15,8 @@
 # guardan 'retencion_dias' (0 = borrarlos todos al terminar). Nunca se borran la tabla jobs ni las publicaciones.
 # limpieza:
 #   retencion_dias: 30
+# Palabras que se ignoran al normalizar nombres (claves de deduplicación), normalmente el nombre del país. Global, no por destino.
+palabras_genericas: [japan, japon]
 listas:
   seo5xdpquppqfy4hmzzeekfh: [japon]   # lista "Japón" de Karakeep
   # <id-lista-recetas>: [recetas]        # lista de Karakeep de recetas (descomentar con el bloque `recetas`)

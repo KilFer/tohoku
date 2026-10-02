@@ -130,7 +130,7 @@ def reprocess_cmd(
 @app.command("import-instagram")
 def import_instagram(
     path: Path,
-    collection: Annotated[str | None, typer.Option(help="Importar solo esta colección (p. ej. 'Japón')")] = None,
+    collection: Annotated[str | None, typer.Option(help="Importar solo esta colección (nombre exacto)")] = None,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Solo contar, sin crear nada")] = False,
     limit: Annotated[int | None, typer.Option(help="Máximo de enlaces NUEVOS en esta tanda (relanzar = siguiente tanda)")] = None,
     lista: Annotated[str | None, typer.Option(help="Lista de Karakeep destino (por defecto, la única de config/destinos.yaml)")] = None,

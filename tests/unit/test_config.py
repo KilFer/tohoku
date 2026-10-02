@@ -37,7 +37,7 @@ def test_settings_read_from_environment_with_defaults(monkeypatch):
     assert s.destinos_file == Path("config/destinos.yaml")
     assert s.text_model == "vision/model"
     assert s.thresholds == Thresholds(
-        japan_min=0.4, japan_review=0.7, item_review=0.7, cosa_duplicate=0.85
+        destination_min=0.4, destination_review=0.7, item_review=0.7, cosa_duplicate=0.85
     )
 
 

@@ -22,6 +22,7 @@ When you are done: remove `#revisar` and remove the clone from the tray (right c
 ## Destinations: `config/destinos.yaml`
 Which Karakeep lists are processed and how each one is published. A list can have several candidate destinations; then `classify` picks one with an LLM. Structure:
 
+    palabras_genericas: [japan, japon]    # optional: words ignored in item names (usually the country name); global
     listas:
       <karakeep-list-id>: [japon]         # Karakeep list id → candidate destinations
     destinos:
@@ -74,7 +75,7 @@ A new trip destination (New Zealand, Portugal…) is configuration only: nothing
 6. `docker compose restart tohoku`. **Always after `init-trilium`**: if the service starts with a destination that has no structure, the preflight fails in `refresh()` and all queues are paused, with a configuration-error notification in ntfy.
 7. Try a few links (`import-instagram ... --lista <id> --limit 5`) and review the tray before importing more.
 
-Particularities of non-Japan destinations: the Places search cache key carries a `<COUNTRY>|` prefix except for Japan; `palabras_genericas` is global (it does not distinguish destinations); categories without an icon use the generic pin; the `JAPAN_*_CONFIDENCE` thresholds in `.env` apply to every trip destination (the name was kept so existing `.env` files need no edits).
+Notes on destinations: the Places search cache key carries a `<COUNTRY>|` prefix; the top-level `palabras_genericas` list (words ignored when normalizing names, usually the country name) is global, it does not distinguish destinations; categories without an icon use the generic pin; the `DESTINATION_*_CONFIDENCE` thresholds in `.env` apply to every destination.
 
 Code layout: the `viaje` flow lives in `src/tohoku/stages/` (+ `geo.py`, `trilium_layout.py`, `notes.py`) and the `receta` flow in `src/tohoku/flows/receta/`. Shared utilities are in neutral modules (`publishing.py`, `llm_json.py`). `reprocess --from extract` also repeats `cover` in recipes (canonical stage order).
 

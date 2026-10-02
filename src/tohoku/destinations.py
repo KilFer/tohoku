@@ -12,7 +12,7 @@ from tohoku.errors import ConfigError
 from tohoku.text import label_key
 
 _BASE_KEYS = ("flujo", "raiz", "descripcion", "prompt")
-_TOP_KEYS = {"listas", "destinos", "clasificador", "destino_por_defecto", "limpieza"}
+_TOP_KEYS = {"listas", "destinos", "clasificador", "destino_por_defecto", "limpieza", "palabras_genericas"}
 _LABEL = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 
 
@@ -50,6 +50,7 @@ class DestinationsConfig:
     clasificador: ClassifierConfig
     destino_por_defecto: str  # destino de reserva para los jobs sin candidatos
     limpieza: CleanupConfig = CleanupConfig()
+    palabras_genericas: tuple[str, ...] = ()  # se ignoran al normalizar nombres (p. ej. el nombre del país)
 
     def candidates_for(self, list_id: str) -> list[str]:
         return list(self.listas.get(list_id, []))
@@ -126,6 +127,9 @@ def load_destinations(path: Path, flows: Mapping[str, HasParams]) -> Destination
             limpieza = CleanupConfig.model_validate(limpieza_raw)
         except ValidationError as exc:
             raise ConfigError(f"{path}: 'limpieza' inválido:\n{exc}") from exc
+    genericas = raw.get("palabras_genericas", [])
+    if not isinstance(genericas, list) or not all(isinstance(w, str) and w.strip() for w in genericas):
+        raise ConfigError(f"{path}: 'palabras_genericas' debe ser una lista de palabras no vacías")
     por_defecto = raw.get("destino_por_defecto")
     if por_defecto is None:
         if len(destinos) != 1:
@@ -135,6 +139,7 @@ def load_destinations(path: Path, flows: Mapping[str, HasParams]) -> Destination
         raise ConfigError(f"{path}: 'destino_por_defecto' apunta a un destino que no existe: {por_defecto}")
     return DestinationsConfig(
         listas=listas, destinos=destinos, clasificador=clasificador, destino_por_defecto=por_defecto, limpieza=limpieza,
+        palabras_genericas=tuple(genericas),
     )
 
 

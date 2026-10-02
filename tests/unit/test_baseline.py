@@ -5,12 +5,15 @@ Las fixtures son una referencia congelada: estos tests no se regeneran, se cumpl
 import json
 from pathlib import Path
 
+import pytest
+
 from builders import JAPAN_PARAMS, make_ctx, make_fetch
 from fakes import FakeLLM, FakeTrilium
 from tohoku.config import Thresholds
 from tohoku.flows.viaje.prompt import extraction_schema, render_extract_prompt
 from tohoku.models import ExtractResult, GeocodeResult, Outcome, ResolveResult, Transcript
 from tohoku.notes import name_key
+from tohoku.text import configure_generic_words
 from tohoku.quota import DailyQuota
 from tohoku.stages.publish import PublishStage
 from tohoku.stages.resolve import ResolveStage
@@ -21,6 +24,11 @@ FIXTURES = Path(__file__).parents[1] / "fixtures"
 BASELINE = FIXTURES / "baseline"
 STATE = FIXTURES / "state_results"
 REPO = Path(__file__).parents[2]
+
+
+@pytest.fixture(autouse=True)
+def _japan_generic_words():
+    configure_generic_words(["japan", "japon"])  # como en config/destinos.example.yaml
 
 
 def _read(path: Path) -> str:

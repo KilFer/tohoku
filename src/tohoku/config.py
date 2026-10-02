@@ -9,8 +9,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Thresholds:
     """Umbrales de la red de seguridad."""
 
-    japan_min: float = 0.4
-    japan_review: float = 0.7
+    destination_min: float = 0.4
+    destination_review: float = 0.7
     item_review: float = 0.7
     cosa_duplicate: float = 0.85
 
@@ -57,8 +57,8 @@ class Settings(BaseSettings):
     data_dir: Path = Path("data")
     destinos_file: Path = Path("config/destinos.yaml")
 
-    japan_min_confidence: float = 0.4
-    japan_review_confidence: float = 0.7
+    destination_min_confidence: float = 0.4
+    destination_review_confidence: float = 0.7
     item_review_confidence: float = 0.7
     cosa_duplicate_similarity: float = 0.85
 
@@ -78,8 +78,8 @@ class Settings(BaseSettings):
     @property
     def thresholds(self) -> Thresholds:
         return Thresholds(
-            japan_min=self.japan_min_confidence,
-            japan_review=self.japan_review_confidence,
+            destination_min=self.destination_min_confidence,
+            destination_review=self.destination_review_confidence,
             item_review=self.item_review_confidence,
             cosa_duplicate=self.cosa_duplicate_similarity,
         )

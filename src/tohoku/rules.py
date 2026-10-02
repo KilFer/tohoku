@@ -14,9 +14,9 @@ class HasDestinationConfidence(Protocol):
 
 def destination_decision(extraction: HasDestinationConfidence, th: Thresholds) -> DestinationDecision:
     """Clasifica con `confianza_destino`: ¿trata el contenido sobre el destino?"""
-    if extraction.confianza_destino < th.japan_min:
+    if extraction.confianza_destino < th.destination_min:
         return "no"
-    if extraction.confianza_destino < th.japan_review:
+    if extraction.confianza_destino < th.destination_review:
         return "uncertain"
     return "yes"
 

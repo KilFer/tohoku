@@ -1,8 +1,10 @@
 import re
 import unicodedata
+from collections.abc import Sequence
 from difflib import SequenceMatcher
 
-_GENERIC_WORDS = {"japan", "japon", "tienda", "store", "shop", "the"}
+_BASE_GENERIC_WORDS = frozenset({"tienda", "store", "shop", "the"})
+_generic_words = _BASE_GENERIC_WORDS
 _FENCE = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.S)
 
 
@@ -10,6 +12,13 @@ def fold(text: str) -> str:
     """Minúsculas y sin acentos, conservando todas las palabras y la puntuación."""
     decomposed = unicodedata.normalize("NFKD", text.casefold())
     return "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+
+
+def configure_generic_words(extra: Sequence[str]) -> None:
+    """Palabras que `normalize_name` ignora además de las base (p. ej. el nombre del país). Global: las fija la
+    carga de `destinos.yaml` (clave `palabras_genericas`), porque las claves de deduplicación no dependen del destino."""
+    global _generic_words
+    _generic_words = _BASE_GENERIC_WORDS | {fold(word).strip() for word in extra if word.strip()}
 
 
 def label_key(text: str) -> str:
@@ -25,7 +34,7 @@ def label_key(text: str) -> str:
 def normalize_name(text: str) -> str:
     """Minúsculas, sin acentos ni puntuación y sin palabras genéricas (clave de deduplicación)."""
     cleaned = re.sub(r"[^\w\s]", " ", fold(text))
-    return " ".join(word for word in cleaned.split() if word not in _GENERIC_WORDS)
+    return " ".join(word for word in cleaned.split() if word not in _generic_words)
 
 
 def similarity(a: str, b: str) -> float:

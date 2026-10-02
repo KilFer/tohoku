@@ -20,7 +20,7 @@
 - Cosa: busca `#jrTipo=cosa #jrNombreNorm="<normalizado>"` en "Comprar y comer" → `merge`; si no, compara con todas las cosas y, si alguna tiene similitud ≥ 0.85, `create` + `posible-duplicado`. Mismo nombre normalizado dos veces → `alias`.
 - Otros → siempre `create`. Si el contenido es del destino pero no hay ningún elemento → `otro:resumen` con el resumen de la fuente.
 
-**Configuración:** `JAPAN_MIN_CONFIDENCE`, `JAPAN_REVIEW_CONFIDENCE`, `ITEM_REVIEW_CONFIDENCE`, `COSA_DUPLICATE_SIMILARITY`.
+**Configuración:** `DESTINATION_MIN_CONFIDENCE`, `DESTINATION_REVIEW_CONFIDENCE`, `ITEM_REVIEW_CONFIDENCE`, `COSA_DUPLICATE_SIMILARITY`.
 
 **Fallos:** errores de Trilium → reintento; estructura ausente → `ConfigError`.
 

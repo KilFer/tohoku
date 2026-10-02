@@ -3,7 +3,7 @@ import pytest
 from tohoku.config import Thresholds
 from tohoku.models import Extraction, Outcome, PublishedNote
 from tohoku.rules import decide_outcome, destination_decision
-from tohoku.text import fold, normalize_name, similarity, strip_fences
+from tohoku.text import configure_generic_words, fold, normalize_name, similarity, strip_fences
 
 
 def test_fold_keeps_words():
@@ -17,7 +17,7 @@ def test_fold_keeps_words():
         ("Tienda Don Quijote", "don quijote"),
         ("Kiyomizu-dera", "kiyomizu dera"),
         ("Café Ñandú", "cafe nandu"),
-        ("CoCo Ichibanya (Japan)", "coco ichibanya"),
+        ("CoCo Ichibanya (Japan)", "coco ichibanya japan"),  # los nombres de país no son palabras genéricas
     ],
 )
 def test_normalize_name(raw, expected):
@@ -40,7 +40,7 @@ def _extraction(conf: float) -> Extraction:
 
 
 @pytest.mark.parametrize(("conf", "expected"), [(0.1, "no"), (0.39, "no"), (0.4, "uncertain"), (0.69, "uncertain"), (0.7, "yes"), (1.0, "yes")])
-def test_japan_decision(conf, expected):
+def test_destination_decision(conf, expected):
     assert destination_decision(_extraction(conf), Thresholds()) == expected
 
 
@@ -50,3 +50,13 @@ def test_decide_outcome():
     assert decide_outcome("no", []) == Outcome.DESCARTADO
     assert decide_outcome("yes", [ok]) == Outcome.PROCESADO
     assert decide_outcome("yes", [ok, review]) == Outcome.REVISAR
+
+
+def test_configured_generic_words_are_removed_from_names():
+    assert normalize_name("Verano en Japón") == "verano en japon"  # sin configuración, ningún país es palabra genérica
+    configure_generic_words(["Japan", "Japón"])
+    assert normalize_name("Verano en Japón") == "verano en"
+    assert normalize_name("Japan Travel by NAVITIME") == "travel by navitime"
+    assert normalize_name("The Shop X") == "x"  # las palabras genéricas base siguen
+    configure_generic_words([])
+    assert normalize_name("Verano en Japón") == "verano en japon"

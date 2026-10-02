@@ -3,6 +3,14 @@ from pathlib import Path
 import pytest
 
 from tohoku.config import Settings
+from tohoku.text import configure_generic_words
+
+
+@pytest.fixture(autouse=True)
+def _reset_generic_words():
+    """Las palabras genéricas de los nombres son globales (se fijan al cargar destinos.yaml): sin fugas entre tests."""
+    yield
+    configure_generic_words([])
 
 
 @pytest.fixture

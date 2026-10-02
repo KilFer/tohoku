@@ -1,4 +1,5 @@
 # Configuración de tests: la lista L1 de la fixture `settings` y el prompt real de Japón.
+palabras_genericas: [japan, japon]
 listas:
   L1: [japon]
 destinos:

@@ -21,6 +21,7 @@ Al terminar: quita `#revisar` y quita el clon de la bandeja (clic derecho → "E
 ## Destinos: `config/destinos.yaml`
 Qué listas de Karakeep se procesan y cómo se publica cada una. Una lista puede tener varios destinos candidatos; entonces `classify` elige uno con un LLM. Estructura:
 
+    palabras_genericas: [japan, japon]    # opcional: palabras que se ignoran en los nombres (normalmente el país); global
     listas:
       <id-lista-karakeep>: [japon]         # id de la lista de Karakeep → destinos candidatos
     destinos:
@@ -73,7 +74,7 @@ Un destino de viaje nuevo (Nueva Zelanda, Portugal...) es solo configuración: n
 6. `docker compose restart tohoku`. **Siempre después de `init-trilium`**: si el servicio arranca con un destino sin estructura, el preflight falla en `refresh()` y se pausan todas las colas (también las de Japón) con un aviso de error de configuración en ntfy.
 7. Prueba con unos pocos enlaces (`import-instagram ... --lista <id> --limit 5`) y revisa la Bandeja antes de importar más.
 
-Particularidades de los destinos que no son Japón: la caché de búsquedas de Places lleva el prefijo `<PAIS>|` salvo en Japón; `palabras_genericas` es global (no distingue destinos); las categorías sin icono usan el pin genérico; los umbrales `JAPAN_*_CONFIDENCE` del `.env` valen para todos los destinos de viaje (el nombre no se cambió para no obligar a editar `.env`).
+Notas sobre los destinos: la clave de la caché de búsquedas de Places lleva el prefijo `<PAIS>|`; la lista `palabras_genericas` de primer nivel (palabras que se ignoran al normalizar nombres, normalmente el nombre del país) es global, no distingue destinos; las categorías sin icono usan el pin genérico; los umbrales `DESTINATION_*_CONFIDENCE` del `.env` valen para todos los destinos.
 
 Organización del código: el flujo `viaje` vive en `src/tohoku/stages/` (+ `geo.py`, `trilium_layout.py`, `notes.py`) y el flujo `receta` en `src/tohoku/flows/receta/`. Las utilidades comunes están en módulos neutros (`publishing.py`, `llm_json.py`). `reprocess --from extract` también repite `cover` en recetas (orden canónico de etapas).
 

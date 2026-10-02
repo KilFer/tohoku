@@ -42,7 +42,7 @@ def in_country(match: GeoMatch, code: str, names: Sequence[str], lat: tuple[floa
     if match.country_code:
         return match.country_code.upper() == code.upper()
     # Sin postalAddress: el país tiene que aparecer en la dirección.
-    # fold y no normalize_name: normalize_name elimina "japon"/"japan" por ser palabras genéricas.
+    # fold y no normalize_name: normalize_name elimina palabras genéricas y podría quitar una parte del nombre del país.
     address = fold(match.address)
     return any(fold(word) in address for word in names)
 

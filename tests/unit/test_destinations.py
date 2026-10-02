@@ -84,6 +84,19 @@ def test_example_config_japan_block_is_the_reference_japan_params():
     # El destino de referencia vive en la configuración de ejemplo, no en el código.
     config = load_destinations(REPO / "config" / "destinos.example.yaml", FLOWS)
     assert config.destinos["japon"].params == JAPAN_PARAMS
+    assert config.palabras_genericas == ("japan", "japon")
+
+
+def test_palabras_genericas_default_and_values(tmp_path):
+    assert load_destinations(_write(tmp_path), FLOWS).palabras_genericas == ()
+    config = load_destinations(_write(tmp_path, "palabras_genericas: [Japan, japon]\n" + JAPON), FLOWS)
+    assert config.palabras_genericas == ("Japan", "japon")
+
+
+@pytest.mark.parametrize("value", ["japan", "[japan, '']", "[1]", "{a: b}"])
+def test_palabras_genericas_must_be_a_list_of_words(tmp_path, value):
+    with pytest.raises(ConfigError, match="palabras_genericas"):
+        load_destinations(_write(tmp_path, f"palabras_genericas: {value}\n" + JAPON), FLOWS)
 
 
 def test_new_zealand_params(tmp_path):

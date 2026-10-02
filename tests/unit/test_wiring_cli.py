@@ -361,3 +361,11 @@ def test_build_app_builds_a_vision_classifier_with_the_multimodal_model(settings
 
 def test_build_app_single_destination_has_no_vision_classifier(settings):
     assert build_app(settings).vision_classifier is None
+
+
+def test_build_app_applies_the_configured_generic_words(settings):
+    from tohoku.text import normalize_name
+
+    assert normalize_name("Verano en Japón") == "verano en japon"
+    build_app(settings)  # la fixture de destinos declara palabras_genericas: [japan, japon]
+    assert normalize_name("Verano en Japón") == "verano en"

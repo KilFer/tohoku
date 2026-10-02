@@ -16,6 +16,8 @@
 # 'retencion_dias' days (0 = delete them all on completion). The jobs table and the publications are never deleted.
 # limpieza:
 #   retencion_dias: 30
+# Words ignored when normalizing item names (deduplication keys), usually the country name. Global, not per destination.
+palabras_genericas: [japan, japon]
 listas:
   <karakeep-list-id>: [japon]            # the Karakeep list (its id is in the list's URL)
   # <karakeep-recipes-list-id>: [recetas]   # uncomment together with the `recetas` block
