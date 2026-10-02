@@ -1,30 +1,32 @@
-# Etapa 5 — geocode
+# Stage 5 — geocode
 
-**Qué hace:** busca cada lugar extraído en Google Places y obtiene coordenadas, dirección, `place_id` y enlace a Google Maps.
+**English** · [Español](05-geocode.es.md)
 
-**Entrada:** `Extraction.lugares` (solo si el contenido no se descartó como "no Japón").
-**Salida:** `GeocodeResult {outcomes: [GeoOutcome {lugar_index, match, review_reason}]}`.
+**What it does:** looks up every extracted place in Google Places and gets coordinates, address, `place_id` and a Google Maps link.
 
-**Dependencias:** Google Places API (New) — Text Search Pro; contador diario `places_calls` en `state.db`.
+**Input:** `Extraction.lugares` (only if the content was not discarded for not belonging to the destination).
+**Output:** `GeocodeResult {outcomes: [GeoOutcome {lugar_index, match, review_reason}]}`.
 
-**Configuración:** `GOOGLE_PLACES_API_KEY`, `PLACES_DAILY_LIMIT` (150 por defecto). Del destino (`config/destinos.yaml`, flujo `viaje`): `pais` (código ISO, `JP`; es también el `regionCode` de la petición), `nombres_pais`, `latitud`/`longitud` (caja de coordenadas) y `alias_ciudad`; si no se indican, valen los de Japón. Los ejemplos de esta página describen Japón.
+**Dependencies:** Google Places API (New) — Text Search Pro; daily `places_calls` counter in `state.db`.
 
-**Petición:** `POST places:searchText` con `regionCode=JP`, `languageCode=es`, `pageSize=5` y `X-Goog-FieldMask` limitado a campos Pro (`id, displayName, formattedAddress, location, googleMapsUri, types, postalAddress, addressComponents`). No se piden horarios ni valoraciones (Enterprise).
+**Configuration:** `GOOGLE_PLACES_API_KEY`, `PLACES_DAILY_LIMIT` (150 by default). From the destination (`config/destinos.yaml`, `viaje` flow): `pais` (ISO code, `JP`; it is also the request's `regionCode`), `nombres_pais`, `latitud`/`longitud` (coordinate box) and `alias_ciudad`; if they are not given, Japan's apply. The examples on this page describe Japan.
 
-**Validación y decisión:**
-1. Consulta `consulta_busqueda`; si no hay resultado válido, segunda consulta con `nombre_local`.
-2. Válido = dentro de Japón (caja de coordenadas + país `JP`, tomado de `postalAddress.regionCode` o, si falta, del componente `country` de `addressComponents`: las áreas —ciudades, barrios, islas— no traen `postalAddress`; con `regionCode=JP` Google omite el país en `formattedAddress`, así que el texto "Japón/Japan/日本" solo se usa si faltan ambos) y en la ciudad esperada, buscada en la dirección y en la prefectura/localidad de `postalAddress` y `addressComponents` (con alias: Tokio/Tokyo/東京, Kioto/Kyoto/京都...).
-3. Un único válido → aceptado. Si hay varios, se elige el de **nombre más parecido** al extraído (no necesariamente el primero de Google): igual > uno contiene al otro > similitud ≥ 0.6. "Igual" admite otro orden de palabras, palabras genéricas traducidas (shrine/santuario/jinja/jingu, tower/torre, lake/lago, station/estación/eki, temple/templo, park/parque...) y alias de ciudad (Kioto/Kyoto): "Torre de Kioto" = "Kyoto Tower". Esta equivalencia solo se usa para comparar nombres, no en las claves `#jrNombreNorm`. Si ese mejor es único, se acepta sin revisión; si empata con otros que están a menos de 300 m (`SAME_PLACE_RADIUS_M`: la zona y su punto de interés, el edificio y la torre; medido en casos reales: 4-165 m), también, porque son el mismo sitio.
-3b. Sin válidos en la ciudad esperada pero con un resultado en Japón de **nombre igual** → se acepta aplicando la regla 3 a esos resultados (el LLM equivoca la ciudad de sitios de las afueras: Tokyo DisneySea está en Chiba).
-4. Varios válidos sin ningún nombre parecido (se usa el primero), o empate entre los mejores a más de 300 m (p. ej. dos sucursales), o solo resultados en Japón en otra ciudad y sin nombre igual → va a revisión (`geocodificacion-ambigua`).
-5. Nada en Japón → sin coordenadas y a revisión (`geocodificacion-fallida`).
+**Request:** `POST places:searchText` with `regionCode=JP`, `languageCode=es`, `pageSize=5` and an `X-Goog-FieldMask` limited to Pro fields (`id, displayName, formattedAddress, location, googleMapsUri, types, postalAddress, addressComponents`). Opening hours and ratings (Enterprise) are not requested.
 
-**Cuota:** contador diario `places_calls` limitado por `PLACES_DAILY_LIMIT` (150 por defecto ≈ 4.500/mes, por debajo de las 5.000 gratis). El "día" de los contadores de cuota es el de **hora del Pacífico**, como el de Google (renueva a medianoche PT = 09:00 en España en verano): así el servicio no llama a Google cuando su cuota del día ya está agotada. Al llegar al límite el job se reprograma a la siguiente medianoche del Pacífico + 5 min y la pasada sigue con los demás jobs: los que lleguen a `geocode` con búsquedas nuevas se aparcan igual sin llamar a Google; los que lo tengan todo en caché, o estén en etapas anteriores, avanzan. Configura además una cuota diaria en Google Cloud Console (APIs → Places API (New) → Cuotas) igual a `PLACES_DAILY_LIMIT`.
+**Validation and decision:**
+1. Query `consulta_busqueda`; if there is no valid result, a second query with `nombre_local`.
+2. Valid = inside Japan (coordinate box + country `JP`, taken from `postalAddress.regionCode` or, if missing, from the `country` component of `addressComponents`: areas — cities, neighbourhoods, islands — come without `postalAddress`; with `regionCode=JP` Google omits the country from `formattedAddress`, so the text "Japón/Japan/日本" is only used if both are missing) and in the expected city, searched in the address and in the prefecture/locality of `postalAddress` and `addressComponents` (with aliases: Tokio/Tokyo/東京, Kioto/Kyoto/京都…).
+3. A single valid result → accepted. If there are several, the one with the **most similar name** to the extracted one is chosen (not necessarily Google's first): equal > one contains the other > similarity ≥ 0.6. "Equal" allows a different word order, translated generic words (shrine/santuario/jinja/jingu, tower/torre, lake/lago, station/estación/eki, temple/templo, park/parque…) and city aliases (Kioto/Kyoto): "Torre de Kioto" = "Kyoto Tower". This equivalence is only used to compare names, not in the `#jrNombreNorm` keys. If that best match is unique, it is accepted without review; if it ties with others within 300 m (`SAME_PLACE_RADIUS_M`: the area and its point of interest, the building and the tower; measured on real cases: 4-165 m), it is accepted too, because they are the same place.
+3b. No valid results in the expected city but a result in Japan with an **equal name** → accepted by applying rule 3 to those results (the LLM gets the city wrong for places on the outskirts: Tokyo DisneySea is in Chiba).
+4. Several valid results with no similar name (the first is used), or a tie between the best ones more than 300 m apart (for example two branches), or only results in Japan in another city and no equal name → goes to review (`geocodificacion-ambigua`).
+5. Nothing in Japan → no coordinates and goes to review (`geocodificacion-fallida`).
 
-**Caché de búsquedas:** la clave incluye el país del destino: las de Japón van sin prefijo (las entradas anteriores a la fase 2 siguen valiendo) y las de otro país con el prefijo `<PAIS>|`, así que una búsqueda de Nueva Zelanda nunca reutiliza una de Japón. Cada consulta a Places (normalizada: minúsculas y espacios) se guarda en la tabla `places_cache` de `state.db` durante 30 días (`CACHE_MAX_AGE`), también las que no devuelven nada. Una consulta repetida ("dotonbori osaka" aparece en 18 vídeos) se resuelve sin llamar a Google ni gastar cuota. Medido el 2026-09-29: el 31 % de las consultas eran repetidas. Si cambia el cliente de Places (campos pedidos o su interpretación), vaciar la tabla: `DELETE FROM places_cache`.
+**Quota:** the daily `places_calls` counter is limited by `PLACES_DAILY_LIMIT` (150 by default ≈ 4,500 a month, below the 5,000 free). The quota counters' "day" is the **Pacific time** one, like Google's (it renews at Pacific midnight): this way the service does not call Google when its quota for the day is already exhausted. On reaching the limit the job is rescheduled to the next Pacific midnight + 5 min and the pass continues with the other jobs: those reaching `geocode` with new searches are parked the same way without calling Google; those that have everything cached, or are in earlier stages, advance. Also set a daily quota in Google Cloud Console (APIs → Places API (New) → Quotas) equal to `PLACES_DAILY_LIMIT`.
 
-**Fallos:** API key inválida → `ConfigError`; 429/5xx → reintento.
+**Search cache:** the key includes the destination's country: Japan's go without a prefix and another country's carry the prefix `<COUNTRY>|`, so a New Zealand search never reuses a Japan one. Every Places query (normalized: lowercase and spaces) is stored in the `places_cache` table of `state.db` for 30 days (`CACHE_MAX_AGE`), including those that return nothing. A repeated query ("dotonbori osaka" appears in 18 videos) is resolved without calling Google or spending quota. Measured on a real import: 31% of queries were repeats. If the Places client changes (requested fields or their interpretation), empty the table: `DELETE FROM places_cache`.
 
-**Cómo probarla:** `uv run pytest tests/unit/test_geocode.py tests/unit/test_places_client.py`.
+**Failures:** invalid API key → `ConfigError`; 429/5xx → retry.
 
-**Áreas (2026-09-29):** ciudades, barrios e islas (Kioto, Akihabara, Hokkaido…) se geocodifican como cualquier lugar: pin en el punto central que da Google y deduplicación por `googlePlaceId`. Antes se descartaban por no traer `postalAddress` y acababan en la Bandeja como `geocodificacion-fallida`, repetidas en cada fuente.
+**How to test it:** `uv run pytest tests/unit/test_geocode.py tests/unit/test_places_client.py`.
+
+**Areas:** cities, neighbourhoods and islands (Kyoto, Akihabara, Hokkaido…) are geocoded like any place: a pin at the central point Google gives and deduplication by `googlePlaceId`.

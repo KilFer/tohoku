@@ -1,21 +1,23 @@
-# Etapa 8 — mark
+# Stage 8 — mark
 
-**Qué hace:** deja constancia del resultado en Karakeep y limpia la Home.
+**English** · [Español](08-mark.es.md)
 
-**Entrada:** `bookmark_id` y el resultado (`Outcome`) calculado por `publish`, o `error`.
-**Salida:** `MarkResult {tag, archived}`.
-**Dependencias:** Karakeep (`GET /bookmarks/{id}`, `POST/DELETE /bookmarks/{id}/tags`, `PATCH /bookmarks/{id}`).
-**Configuración:** `KARAKEEP_URL`, `KARAKEEP_API_KEY`. La etapa no tiene ajustes propios; las etiquetas son fijas (ver tabla).
+**What it does:** records the result in Karakeep and tidies the Home page.
 
-| Resultado | Etiqueta | Archivar |
+**Input:** `bookmark_id` and the result (`Outcome`) computed by `publish`, or `error`.
+**Output:** `MarkResult {tag, archived}`.
+**Dependencies:** Karakeep (`GET /bookmarks/{id}`, `POST/DELETE /bookmarks/{id}/tags`, `PATCH /bookmarks/{id}`).
+**Configuration:** `KARAKEEP_URL`, `KARAKEEP_API_KEY`. The stage has no settings of its own; the tags are fixed (see the table).
+
+| Result | Tag | Archive |
 |---|---|---|
-| procesado | `jr:procesado` | sí |
-| revisar | `jr:revisar` | sí |
-| descartado | `jr:descartado` | sí |
+| procesado (processed) | `jr:procesado` | yes |
+| revisar (to review) | `jr:revisar` | yes |
+| descartado (discarded) | `jr:descartado` | yes |
 | error | `jr:error` | no |
 
-Además añade `jr:destino:<destino>` con el destino decidido por `classify`, salvo en `descartado`: **un `descartado` nunca lleva `jr:destino`**, ni cuando `classify` no eligió destino ni cuando el flujo del destino descarta el contenido (p. ej. el flujo `viaje` con contenido que no es de ese país). Un `error` lo lleva solo si el job ya tenía destino. Quita las etiquetas `jr:` de resultado o de destino anteriores que difieran de las nuevas (útil al reprocesar). La etiqueta antigua `jr:no-japon` se sigue reconociendo como ya procesado (ingest no recrea el job) y se sustituye al reprocesar. El resto de etiquetas del usuario no se tocan.
+It also adds `jr:destino:<destination>` with the destination decided by `classify`, except for `descartado`: **a `descartado` never carries `jr:destino`**, neither when `classify` chose no destination nor when the destination's flow discards the content (for example the `viaje` flow with content that is not from that country). An `error` carries it only if the job already had a destination. It removes previous result or destination `jr:` tags that differ from the new ones (useful when reprocessing). The user's other tags are not touched.
 
-**Fallos:** red/5xx → reintento del job (las etapas anteriores no se repiten); si falla marcando un error definitivo, el job queda en error igualmente y se registra en el log.
+**Failures:** network/5xx → the job is retried (earlier stages are not repeated); if marking a definitive error fails, the job stays in error anyway and it is logged.
 
-**Cómo probarla:** `uv run pytest tests/unit/test_ingest_mark.py -k mark`.
+**How to test it:** `uv run pytest tests/unit/test_ingest_mark.py -k mark`.

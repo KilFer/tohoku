@@ -1,54 +1,56 @@
-# Flujo `receta`
+# `receta` flow
 
-**Qué hace:** convierte un Reel, Short o post de Instagram de cocina en **una nota de receta** (ingredientes, pasos, consejos, portada) dentro del Recetario de Trilium. Un enlace = una receta. No hay fusión entre fuentes: dos enlaces con la misma receta dan dos notas, y si el título se parece mucho la nueva va a la Bandeja como `posible-duplicado`.
+**English** · [Español](receta.es.md)
 
-Se activa con un destino de `config/destinos.yaml` con `flujo: receta`. Las etapas comunes (`fetch`, `transcribe`, `classify`) son las de siempre; las propias del flujo son `extract → cover → resolve → publish`. Estado: desplegado (fase 5) y desactivado: el bloque `recetas` está comentado en `config/destinos.yaml`.
+**What it does:** turns a cooking Reel, Short or Instagram post into **a recipe note** (ingredients, steps, tips, cover) inside the Trilium recipe book. One link = one recipe. There is no merging between sources: two links with the same recipe give two notes, and if the titles are very similar the new one goes to the tray as `posible-duplicado`.
 
-## Estructura en Trilium
+It is enabled with a destination in `config/destinos.yaml` with `flujo: receta`. The common stages (`fetch`, `transcribe`, `classify`) are the usual ones; the flow's own stages are `extract → cover → resolve → publish`. It is disabled by default: the `recetas` block is commented out in `config/destinos.example.yaml`.
 
-    Recetas                           #jrRootRecetas (la raíz la creas tú a mano)
-     ├── Recetario                    #jrColeccion (book, #viewType=<vista>)
+## Structure in Trilium
+
+    Recetas                           #jrRootRecetas (you create the root by hand)
+     ├── Recetario                    #jrColeccion (book, #viewType=<view>)
      │    └── <Receta>                #jrTipo=receta #jrItem #jrNombreNorm (~template=Receta)
      ├── Bandeja de revisión          #jrRevision
      └── Plantillas                   #jrPlantillas
-          └── Receta                  #template + atributos promovidos
+          └── Receta                  #template + promoted attributes
 
-Detalle de la nota en `docs/trilium-model.md`. `tohoku init-trilium --destino recetas` crea lo que falte (idempotente).
+Note details are in `docs/trilium-model.md`. `tohoku init-trilium --destino recetas` creates whatever is missing (idempotent).
 
-## Etapas
+## Stages
 
-| Etapa | Qué hace |
+| Stage | What it does |
 |---|---|
-| `extract` | LLM multimodal (`config/prompts/recetas.md`, sin marcadores): relevancia (`relacionado_destino`, `confianza_destino`), título, resumen, ingredientes (con `grupo`), pasos, consejos, atributos y `portada` (índice entre imágenes + fotogramas). Necesita los ficheros del job. |
-| `cover` | Elige la imagen de portada y la guarda como `cover.jpg` (lado máximo `IMAGE_MAX_SIDE`). Si el LLM no indica `portada`, un post usa su primera imagen y un vídeo su último fotograma (suele ser el plato terminado); sin imágenes ni fotogramas no hay portada. |
-| `resolve` | Decide: no es receta → sin elementos (`descartado`); si no, un solo elemento con motivos de revisión (`clasificacion-incierta`, `clasificacion-dudosa`, `baja-confianza`, `posible-duplicado`). Extracción fallida → nota de fallo en la Bandeja. |
-| `publish` | Crea o actualiza la nota (identidad `#jrItem="<bookmark>:receta:<name_key(título)>"`; al reprocesar se retoma la nota del mismo enlace aunque cambie el título; el título solo se actualiza si la nota no fue renombrada por el usuario), sube la portada como adjunto, conserva "Mis notas" y sincroniza la Bandeja. |
+| `extract` | Multimodal LLM (`config/prompts/recetas.md`, no markers): relevance (`relacionado_destino`, `confianza_destino`), title, summary, ingredients (with `grupo`), steps, tips, attributes and `portada` (an index among images + frames). It needs the job's files. |
+| `cover` | Chooses the cover image and stores it as `cover.jpg` (longest side `IMAGE_MAX_SIDE`). If the LLM gives no `portada`, a post uses its first image and a video its last frame (usually the finished dish); with no images or frames there is no cover. |
+| `resolve` | Decides: not a recipe → no items (`descartado`); otherwise a single item with review reasons (`clasificacion-incierta`, `clasificacion-dudosa`, `baja-confianza`, `posible-duplicado`). Failed extraction → a failure note in the tray. |
+| `publish` | Creates or updates the note (identity `#jrItem="<bookmark>:receta:<name_key(title)>"`; on reprocessing the note of the same link is reused even if the title changes; the title is only updated if the user has not renamed the note), uploads the cover as an attachment, keeps "Mis notas" and syncs the tray. |
 
-## Configuración
+## Configuration
 
     recetas:
       flujo: receta
       raiz: jrRootRecetas
-      descripcion: "Recetas de cocina: ..."
+      descripcion: "Cooking recipes: ..."
       prompt: prompts/recetas.md
       vista: table                  # table | grid | list
-      # opcionales; por defecto: tipo_plato, cocina, tiempo_min, raciones, dificultad, probada, valoracion
-      atributos: {tipo_plato: text, cocina: text, probada: boolean}   # promovidos de la plantilla (text|number|boolean)
-      atributos_usuario: [probada]                                    # nunca los escribe el servicio
+      # optional; defaults: tipo_plato, cocina, tiempo_min, raciones, dificultad, probada, valoracion
+      atributos: {tipo_plato: text, cocina: text, probada: boolean}   # promoted on the template (text|number|boolean)
+      atributos_usuario: [probada]                                    # never written by the service
 
-- El servicio solo **escribe** los atributos que son campos de la extracción (`tipo_plato`, `cocina`, `tiempo_min`, `raciones`, `dificultad`), y respeta los que corrijas tú (misma regla que en viaje). `atributos_usuario` no se escriben nunca. Cualquier otro atributo que añadas a mano es tuyo.
-- `atributos` solo se aplica al crear la plantilla: `init-trilium` **no añade** atributos promovidos nuevos a una plantilla `Receta` existente (añádelos a mano en Trilium).
-- Cómo activarlo: ver "Activar Recetas" en `docs/operations.md`.
+- The service only **writes** the attributes that are extraction fields (`tipo_plato`, `cocina`, `tiempo_min`, `raciones`, `dificultad`), and respects those you correct (same rule as in `viaje`). `atributos_usuario` are never written. Any other attribute you add by hand is yours.
+- `atributos` only applies when the template is created: `init-trilium` does **not add** new promoted attributes to an existing `Receta` template (add them by hand in Trilium).
+- How to enable it: see "Activating recipes" in `docs/operations.md`.
 
-## Fallos
+## Failures
 
-- Falta algo del Recetario → `ConfigError` en el preflight ("ejecuta `tohoku init-trilium --destino …`").
-- Extracción inválida tras el reintento → nota `jrTipo=fallo` en la Bandeja, motivo `extraccion-fallida`.
-- Contenido que no es una receta → `descartado`: sin nota y sin etiqueta `jr:destino:<d>`.
-- La portada falla al subirse (error transitorio) → el job se reintenta; la nota no queda duplicada (idempotente vía `#jrItem`).
-- Reels de Instagram con restricción de audiencia o "empty media": igual que en el flujo viaje (docs/pipeline/02-fetch.md).
+- Something in the recipe book is missing → `ConfigError` in the preflight ("run `tohoku init-trilium --destino …`").
+- Invalid extraction after the retry → a `jrTipo=fallo` note in the tray, reason `extraccion-fallida`.
+- Content that is not a recipe → `descartado`: no note and no `jr:destino:<d>` tag.
+- The cover fails to upload (transient error) → the job is retried; the note is not duplicated (idempotent through `#jrItem`).
+- Instagram Reels with audience restriction or "empty media": same as in the `viaje` flow (docs/pipeline/02-fetch.md).
 
-## Cómo probarlo
+## How to test it
 
-- Sin red: `uv run pytest tests/unit/test_flow_receta.py tests/unit/test_receta_*.py`.
-- Integración manual (con confirmación, usa servicios reales): nota `#jrRootRecetasTest`, `init-trilium --destino recetas` y 2-3 Reels de recetas; comprobar a mano la vista Tabla y la portada. Reprocesar con `reprocess <id> --from extract` (también repite `cover`).
+- Offline: `uv run pytest tests/unit/test_flow_receta.py tests/unit/test_receta_*.py`.
+- Manual integration (real services, ask first): a `#jrRootRecetasTest` note, `init-trilium --destino recetas` and 2-3 recipe Reels; check the Table view and the cover by hand. Reprocess with `reprocess <id> --from extract` (it also repeats `cover`).

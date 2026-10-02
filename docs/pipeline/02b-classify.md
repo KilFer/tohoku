@@ -1,39 +1,41 @@
-# Etapa 2b — classify
+# Stage 2b — classify
 
-**Qué hace:** decide a qué destino de `config/destinos.yaml` va el enlace entre los candidatos de su lista. Va entre `transcribe` y `extract` (orden: fetch, transcribe, classify, extract, geocode, resolve, publish). El resto del pipeline usa el flujo del destino elegido.
+**English** · [Español](02b-classify.es.md)
 
-**Entrada:** `job.candidates` (destinos de las listas donde está el bookmark), `job.destination` (si ya hay uno forzado), y los resultados de `fetch` y `transcribe`.
+**What it does:** decides which destination of `config/destinos.yaml` the link goes to, among the candidates of its list. It sits between `transcribe` and `extract` (order: fetch, transcribe, classify, extract, geocode, resolve, publish). The rest of the pipeline uses the chosen destination's flow.
 
-**Salida:** `Classification {destino | None, confianza, alternativa, confianza_alternativa, dudosa, omitido, cost_usd}`. Se guarda el resultado de la etapa y `jobs.destination`. `destino=None` significa `ninguno` y el job termina como `descartado`.
+**Input:** `job.candidates` (the destinations of the lists the bookmark is in), `job.destination` (if one is already forced), and the `fetch` and `transcribe` results.
 
-**Dependencias:** OpenRouter (solo si hay varios candidatos; con imágenes, `OPENROUTER_MODEL`), contador diario `openrouter_usd`, `src/tohoku/prompts/classify.md`, `src/tohoku/classify/` (clasificadores `json_schema` y `etiqueta`, registro `CLASSIFIERS`).
+**Output:** `Classification {destino | None, confianza, alternativa, confianza_alternativa, dudosa, omitido, cost_usd}`. The stage result and `jobs.destination` are stored. `destino=None` means `ninguno` (none) and the job ends as `descartado`.
 
-**Configuración:** en `config/destinos.yaml`:
-- `clasificador.modelo` (por defecto `OPENROUTER_TEXT_MODEL`, o `OPENROUTER_MODEL`) para clasificar con texto; con imágenes se usa siempre `OPENROUTER_MODEL` (multimodal, comprobado en el preflight) en el mismo `modo`, porque el modelo de texto puede no admitir imágenes. El clasificador se monta si algún bookmark puede tener varios candidatos: una lista con varios destinos **o** listas con destinos distintos (la ingesta une los candidatos de todas las listas del bookmark). `clasificador.modo` (`json_schema` | `etiqueta`, por defecto `json_schema`), `clasificador.confianza_minima` (0,5), `clasificador.margen_revision` (0,15).
-- `destino_legado`: destino de los jobs anteriores a la fase 3 (`candidates` NULL). Opcional si solo hay un destino; obligatorio con varios.
+**Dependencies:** OpenRouter (only if there are several candidates; with images, `OPENROUTER_MODEL`), the daily `openrouter_usd` counter, `src/tohoku/prompts/classify.md`, `src/tohoku/classify/` (the `json_schema` and `etiqueta` classifiers, `CLASSIFIERS` registry).
+
+**Configuration:** in `config/destinos.yaml`:
+- `clasificador.modelo` (default `OPENROUTER_TEXT_MODEL`, or `OPENROUTER_MODEL`) to classify with text; with images `OPENROUTER_MODEL` (multimodal, checked in the preflight) is always used in the same `modo`, because the text model may not accept images. The classifier is mounted if some bookmark can have several candidates: a list with several destinations **or** lists with different destinations (ingest joins the candidates of all the lists of a bookmark). `clasificador.modo` (`json_schema` | `etiqueta`, default `json_schema`), `clasificador.confianza_minima` (0.5), `clasificador.margen_revision` (0.15).
+- `destino_legado`: fallback destination for jobs without candidates (`candidates` NULL). Optional with a single destination; required with several.
 - `OPENROUTER_DAILY_BUDGET_USD`.
 
-**Reglas:**
-- Con destino ya guardado (`reprocess --destino`) o con un solo candidato: no hay llamada al LLM (`omitido=true`).
-- Los candidatos que ya no existen en `destinos.yaml` se descartan; si no queda ninguno se usa `destino_legado`.
-- Con varios candidatos: se pasa al clasificador la descripción de cada destino, el texto (caption, hashtags, transcripción) y, si no hay texto (caption y transcripción vacíos), hasta 2 imágenes, que van al clasificador de `OPENROUTER_MODEL`. Si la respuesta no es válida o nombra un destino que no es candidato, un reintento con el error; si vuelve a fallar, `TransientError`.
-- `ninguno` o `confianza` < `confianza_minima` → `destino=None` (`descartado`, etiqueta `jr:descartado`).
-- Si hay una alternativa candidata distinta y `confianza - confianza_alternativa` < `margen_revision` → `dudosa=true`; el `resolve` del flujo `viaje` añade el motivo de revisión `clasificacion-dudosa`.
-- Los nombres de destino se comparan sin distinguir mayúsculas, acentos ni separadores: espacios, guiones y guiones bajos son equivalentes (`Nueva Zelanda` = `nueva-zelanda` = `nueva_zelanda`); una `alternativa` desconocida se ignora. Por eso `destinos.yaml` rechaza (`ConfigError` con los dos nombres) dos destinos que solo difieren en eso (`japon` y `Japón`).
-- Ficheros: la etapa solo necesita `data/jobs/<id>/` si va a mandar imágenes. Tras la limpieza (`files_purged`) el pipeline solo vuelve a descargar por `classify` en ese caso; un job anterior a la fase 3 (sin resultado de `classify`) reprocesado desde `geocode`/`resolve`/`publish` toma `destino_legado` sin descargar.
-- Modo `etiqueta`: confianza 1,0 y sin alternativa (no hay logprobs). Los adaptadores específicos quedan abiertos (registro `CLASSIFIERS`).
+**Rules:**
+- With an already stored destination (`reprocess --destino`) or with a single candidate: no LLM call (`omitido=true`).
+- Candidates that no longer exist in `destinos.yaml` are dropped; if none is left, `destino_legado` is used.
+- With several candidates: the classifier gets each destination's description, the text (caption, hashtags, transcript) and, if there is no text (empty caption and transcript), up to 2 images, which go to the `OPENROUTER_MODEL` classifier. If the response is invalid or names a destination that is not a candidate, one retry with the error; if it fails again, `TransientError`.
+- `ninguno` or `confianza` < `confianza_minima` → `destino=None` (`descartado`, tag `jr:descartado`).
+- If there is a different candidate alternative and `confianza - confianza_alternativa` < `margen_revision` → `dudosa=true`; the `viaje` flow's `resolve` adds the review reason `clasificacion-dudosa`.
+- Destination names are compared ignoring case, accents and separators: spaces, hyphens and underscores are equivalent (`Nueva Zelanda` = `nueva-zelanda` = `nueva_zelanda`); an unknown `alternativa` is ignored. That is why `destinos.yaml` rejects (`ConfigError` naming both) two destinations that differ only in that (`japon` and `Japón`).
+- Files: the stage only needs `data/jobs/<id>/` if it is going to send images. After cleanup (`files_purged`) the pipeline only downloads again for `classify` in that case; a job without a `classify` result reprocessed from `geocode`/`resolve`/`publish` takes `destino_legado` without downloading.
+- `etiqueta` mode: confidence 1.0 and no alternative (there are no logprobs). Provider-specific adapters are left open (`CLASSIFIERS` registry).
 
-**Fallos:** varios candidatos sin clasificador → `ConfigError`; respuesta inválida tras el reintento o 429/5xx → reintento del job; presupuesto agotado → `QuotaExceeded` (espera al día siguiente). Un destino decidido o forzado que ya no existe en el YAML hace fallar solo ese job (`jr:error`), no la cola.
+**Failures:** several candidates without a classifier → `ConfigError`; an invalid response after the retry or 429/5xx → the job is retried; budget exhausted → `QuotaExceeded` (waits until the next day). A decided or forced destination that no longer exists in the YAML fails only that job (`jr:error`), not the queue.
 
-**Ejemplo con dos flujos** (`japon` con flujo `viaje`, `recetas` con flujo `receta`):
+**Example with two flows** (`japon` with flow `viaje`, `recetas` with flow `receta`):
 
     listas:
-      L_JAPON: [japon]
-      L_RECETAS: [recetas]
+      L_JAPAN: [japon]
+      L_RECIPES: [recetas]
     destinos: {japon: {flujo: viaje, ...}, recetas: {flujo: receta, ...}}
     destino_legado: japon
 
-- Un bookmark solo en `L_RECETAS` tiene un candidato (`recetas`): no hay llamada al LLM y sigue el flujo `receta`. Uno solo en `L_JAPON` sigue el flujo `viaje`. Uno en las dos listas tiene dos candidatos y lo decide el clasificador (hay clasificador porque hay más de un destino en total, aunque cada lista tenga uno solo).
-- Un Reel que el clasificador manda a `recetas` pero no es una receta termina `descartado`: sin nota y sin `jr:destino`.
+- A bookmark only in `L_RECIPES` has one candidate (`recetas`): no LLM call and it follows the `receta` flow. One only in `L_JAPAN` follows the `viaje` flow. One in both lists has two candidates and the classifier decides (there is a classifier because there is more than one destination overall, even if each list has only one).
+- A Reel that the classifier sends to `recetas` but is not a recipe ends `descartado`: no note and no `jr:destino`.
 
-**Cómo probarla:** `uv run pytest tests/unit/test_classify.py`. Con casos reales: `tohoku eval --destino X`. Para forzar: `tohoku reprocess <id> --destino X` (ver `docs/operations.md`).
+**How to test it:** `uv run pytest tests/unit/test_classify.py`. With real cases: `tohoku eval --destino X`. To force: `tohoku reprocess <id> --destino X` (see `docs/operations.md`).

@@ -1,71 +1,75 @@
-# Modelo de datos en Trilium
+# Data model in Trilium
 
-La raíz es la nota **`Home › Viajes › Ideas de Japón`**, marcada a mano una vez con `#jrRoot`. La etiqueta de la raíz de cada destino es la clave `raiz` de `config/destinos.yaml` (Japón: `jrRoot`; un destino nuevo usaría `jrRoot<Destino>`, p. ej. `jrRootNZ`). La estructura de debajo se crea con `tohoku init-trilium [--destino X]`. El servicio encuentra todo por atributos, así que puedes mover o renombrar las notas.
+**English** · [Español](trilium-model.es.md)
 
-El prefijo `jr` de todos los atributos y del adjunto `japan-reader.json` viene del nombre original del proyecto (*japan-reader*, hoy Tohoku) y se mantiene a propósito.
+The root is a note of yours (in the reference example, **`Home › Viajes › Ideas de Japón`**), marked by hand once with `#jrRoot`. Each destination's root label is the `raiz` key of `config/destinos.yaml` (Japan: `jrRoot`; a new destination would use `jrRoot<Destination>`, for example `jrRootNZ`). The structure below it is created with `tohoku init-trilium [--destino X]`. The service finds everything by attributes, so you can move or rename the notes.
+
+The `jr` prefix of all attributes and of the `japan-reader.json` attachment comes from the project's original name (*japan-reader*, now Tohoku) and is kept on purpose.
+
+Note titles are generated in Spanish (the English meaning is in parentheses).
 
     Ideas de Japón                    #jrRoot
      ├── Mapa de lugares              #jrMapa   (book + ~template=_template_geo_map → Geo Map)
-     ├── Comprar y comer              #jrComprar
-     │    └── Souvenirs · Comida · Cadenas · Cosmética · Otros   #jrCategoria=<clave>
-     ├── Cultura y curiosidades       #jrCultura
-     ├── Bandeja de revisión          #jrRevision
-     └── Plantillas                   #jrPlantillas
-          ├── Lugar                   #template (+ definiciones promovidas: visitado, prioridad, ciudad, categoria)
+     ├── Comprar y comer              #jrComprar   (things to buy and eat)
+     │    └── Souvenirs · Comida · Cadenas · Cosmética · Otros   #jrCategoria=<key>
+     ├── Cultura y curiosidades       #jrCultura   (culture and curiosities)
+     ├── Bandeja de revisión          #jrRevision  (review tray)
+     └── Plantillas                   #jrPlantillas (templates)
+          ├── Lugar                   #template (+ promoted definitions: visitado, prioridad, ciudad, categoria)
           └── Cosa                    #template (+ comprado, categoria)
 
-`tohoku init-trilium` crea lo que falte (idempotente). Las notas de estructura se buscan solo como hijas directas de la raíz del destino (las categorías, de Comprar y comer), así que la raíz de un destino puede estar anidada dentro de la de otro sin que se confundan sus secciones.
+`tohoku init-trilium` creates whatever is missing (idempotent). Structure notes are looked up only as direct children of the destination's root (categories, of "Comprar y comer"), so one destination's root can be nested inside another's without their sections getting mixed up.
 
-## Nota Lugar (hija de "Mapa de lugares")
+## Lugar note (place; child of "Mapa de lugares")
 
-- **Atributos gestionados:** `#jrItem="<bookmark_id>:<identidad>"` (identidad del elemento **por contenido**, no por posición: `b1:lugar:<place_id>` si tiene ficha de Google, `b1:lugar:n:<nombre normalizado>` si no; primer atributo que se escribe, para poder retomar una creación cortada a medias sin duplicar), `#geolocation="lat,lng"`, `#googlePlaceId`, `#googleMaps`, `#ciudad`, `#region`, `#categoria`, `#nombreLocal`, `#fuentes`, `#iconClass`, `#jrTipo=lugar`, `#jrNombreNorm` (nombre normalizado; clave de deduplicación de los lugares sin ficha de Google), `~template=Lugar`.
-- **Atributos tuyos (nunca se tocan):** `#visitado`, `#prioridad` y cualquier otro que añadas.
-- **Cuerpo:** Resumen · Qué hacer / comer · Consejos prácticos · enlace a Google Maps · Fuentes · **Mis notas**.
+- **Managed attributes:** `#jrItem="<bookmark_id>:<identity>"` (the item's identity **by content**, not by position: `b1:lugar:<place_id>` if it has a Google card, `b1:lugar:n:<normalized name>` if not; the first attribute written, so an interrupted creation can be resumed without duplicating), `#geolocation="lat,lng"`, `#googlePlaceId`, `#googleMaps`, `#ciudad`, `#region`, `#categoria`, `#nombreLocal`, `#fuentes`, `#iconClass`, `#jrTipo=lugar`, `#jrNombreNorm` (normalized name; the deduplication key for places without a Google card), `~template=Lugar`.
+- **Your attributes (never touched):** `#visitado`, `#prioridad` and any other you add.
+- **Body:** Resumen (summary) · Qué hacer / comer (what to do / eat) · Consejos prácticos (practical tips) · Google Maps link · Fuentes (sources) · **Mis notas** (your notes).
 
-## Nota Cosa (hija de su categoría en "Comprar y comer")
+## Cosa note (thing; child of its category in "Comprar y comer")
 
-- **Atributos:** `#jrItem="<bookmark_id>:cosa:<nombre normalizado>"`, `#jrTipo=cosa`, `#jrNombreNorm` (nombre normalizado, clave de deduplicación), `#categoria`, `#fuentes`, `#iconClass`, `~template=Cosa`, `~dondeComprar` → notas Lugar cuando la fuente recomienda un local concreto.
-- **Cuerpo:** Resumen · Dónde conseguirlo · Consejos · Fuentes · **Mis notas**.
+- **Attributes:** `#jrItem="<bookmark_id>:cosa:<normalized name>"`, `#jrTipo=cosa`, `#jrNombreNorm` (normalized name, deduplication key), `#categoria`, `#fuentes`, `#iconClass`, `~template=Cosa`, `~dondeComprar` (where to buy) → Lugar notes when the source recommends a specific shop.
+- **Body:** Resumen · Dónde conseguirlo (where to get it) · Consejos · Fuentes · **Mis notas**.
 
-## Nota Otro (hija de "Cultura y curiosidades")
+## Otro note (other; child of "Cultura y curiosidades")
 
-Título + contenido + fuentes. Sin deduplicación. Lleva `#jrItem="<bookmark_id>:otro:<título normalizado>"`. La nota sintética (contenido de Japón sin elementos) se titula con el título de la fuente; si está vacío, con la primera línea de la descripción (máx. 80 caracteres); si tampoco hay, "Sin título".
+Title + content + sources. No deduplication. It carries `#jrItem="<bookmark_id>:otro:<normalized title>"`. The synthetic note (destination content without items) is titled with the source's title; if that is empty, with the first line of the description (max. 80 characters); if there is none either, "Sin título" (untitled).
 
-## Nota de extracción fallida (en "Bandeja de revisión")
+## Failed-extraction note (in "Bandeja de revisión")
 
-Lleva `#jrItem="<bookmark_id>:fallo"` y `#jrTipo=fallo`. Cuerpo: enlace, error, descripción y transcripción.
+It carries `#jrItem="<bookmark_id>:fallo"` and `#jrTipo=fallo`. Body: link, error, description and transcript.
 
-## Datos estructurados
+## Structured data
 
-Cada nota lleva un adjunto `japan-reader.json` con sus datos (resumen, consejos, fuentes, ficha de Google). Es la fuente de verdad para las fusiones: no lo borres.
+Every note carries a `japan-reader.json` attachment with its data (summary, tips, sources, Google card). It is the source of truth for merges: do not delete it.
 
-## Reglas de fusión
+## Merge rules
 
-- **Lugar:** mismo `#googlePlaceId` → misma nota; si no, mismo `#jrNombreNorm` con el pin a menos de 300 m (dos fichas de Google para el mismo sitio) → misma nota; sin ficha de Google, mismo `#jrNombreNorm`. Se añade la fuente, `#fuentes` sube y el LLM reescribe Resumen, Qué hacer y Consejos integrando lo nuevo.
-- **Cosa:** mismo `#jrNombreNorm` → misma nota. Si hay una parecida pero no idéntica (similitud ≥ 0.85), se crea una nota nueva y se manda a revisión (`posible-duplicado`).
-- **Misma fuente otra vez** (reprocesado): su entrada se actualiza; no se duplica ni se llama al LLM. Si la nota **solo** tiene esa fuente, se regenera entera con la extracción nueva (conservando la ficha de Google si la nueva no la trae, y siempre "Mis notas"). Si otras fuentes también contribuyeron, solo se sustituye la entrada de esta fuente.
-- **Clave natural antes de crear:** aunque el plan diga `create`, si ya existe una nota con el mismo `#googlePlaceId` (lugar) o `#jrNombreNorm` (cosa), se fusiona en ella.
-- **Atributos gestionados que corriges tú:** si cambias o corriges un atributo gestionado (`#geolocation`, `#googleMaps`, `#categoria`, `#ciudad`, `#iconClass`...), las fusiones siguientes lo respetan: solo se reescribe si falta o si aún tiene el valor que escribió el servicio. `#fuentes` y `#jrTipo` se escriben siempre.
-- **Mis notas:** todo lo que haya debajo del encabezado "Mis notas" se conserva siempre. Si borras el encabezado, en la siguiente fusión todo el contenido anterior pasa debajo de un "Mis notas" nuevo.
+- **Lugar:** same `#googlePlaceId` → same note; otherwise same `#jrNombreNorm` with the pin within 300 m (two Google cards for the same place) → same note; without a Google card, same `#jrNombreNorm`. The source is added, `#fuentes` goes up and the LLM rewrites Resumen, Qué hacer and Consejos to integrate the new material.
+- **Cosa:** same `#jrNombreNorm` → same note. If there is a similar but not identical one (similarity ≥ 0.85), a new note is created and sent to review (`posible-duplicado`).
+- **Same source again** (reprocessing): its entry is updated; it is not duplicated and the LLM is not called. If the note has **only** that source, it is regenerated entirely with the new extraction (keeping the Google card if the new one lacks it, and always "Mis notas"). If other sources also contributed, only this source's entry is replaced.
+- **Natural key before creating:** even if the plan says `create`, if a note with the same `#googlePlaceId` (place) or `#jrNombreNorm` (thing) already exists, it is merged into it.
+- **Managed attributes you correct:** if you change or correct a managed attribute (`#geolocation`, `#googleMaps`, `#categoria`, `#ciudad`, `#iconClass`…), later merges respect it: it is rewritten only if it is missing or still has the value the service wrote. `#fuentes` and `#jrTipo` are always written.
+- **Mis notas:** everything under the "Mis notas" heading is always kept. If you delete the heading, on the next merge all the previous content moves under a new "Mis notas".
 
-## Bandeja de revisión
+## Review tray
 
-Las notas dudosas se **clonan** en la bandeja (siguen también en su sitio) con `#revisar=<motivos>`: `geocodificacion-fallida`, `geocodificacion-ambigua`, `posible-duplicado`, `baja-confianza`, `clasificacion-incierta`, `clasificacion-dudosa` (el clasificador dudó entre dos destinos: comprueba que la nota está en el destino correcto; si no, `reprocess --destino`), `extraccion-fallida`. Revisar = corregir la nota, quitar `#revisar` y quitar el clon de la bandeja. El servicio no vuelve a meter en la bandeja una nota que el usuario sacó salvo que llegue una fuente nueva con motivos; y la saca él mismo si un reprocesado resuelve todos sus motivos.
+Doubtful notes are **cloned** into the tray (they also stay in their place) with `#revisar=<reasons>`: `geocodificacion-fallida`, `geocodificacion-ambigua`, `posible-duplicado`, `baja-confianza`, `clasificacion-incierta`, `clasificacion-dudosa` (the classifier hesitated between two destinations: check that the note is in the right destination; if not, `reprocess --destino`), `extraccion-fallida`. Reviewing = fixing the note, removing `#revisar` and removing the clone from the tray. The service does not put a note back in the tray if you took it out, unless a new source with reasons arrives; and it takes the note out itself if a reprocess resolves all its reasons.
 
-## Flujo `receta`: Recetario y nota Receta
+## `receta` flow: recipe book and Receta note
 
-Destino con `flujo: receta` (p. ej. raíz `#jrRootRecetas`; ver `docs/flujos/receta.md`):
+A destination with `flujo: receta` (for example root `#jrRootRecetas`; see `docs/flujos/receta.md`):
 
     Recetas                           #jrRootRecetas
      ├── Recetario                    #jrColeccion (book, #viewType=table|grid|list)
      ├── Bandeja de revisión          #jrRevision
      └── Plantillas                   #jrPlantillas
-          └── Receta                  #template + #label:<atributo>=promoted,single,<tipo>
+          └── Receta                  #template + #label:<attribute>=promoted,single,<type>
 
-**Nota Receta** (hija del Recetario, con `~template=Receta`):
-- Atributos: `#jrTipo=receta`, `#jrItem="<bookmark_id>:receta:<título normalizado>"`, `#jrNombreNorm`, `#fuentes`, `#iconClass`, más los promovidos que escribe el servicio: `tipo_plato`, `cocina`, `tiempo_min`, `raciones`, `dificultad` (se respetan los que corrijas tú).
-- `probada` y `valoracion` (y cualquier atributo de `atributos_usuario` o añadido a mano) son tuyos: el servicio no los escribe nunca.
-- Cuerpo: portada, Resumen, Ingredientes (agrupados por `grupo`), Preparación, Consejos, Fuentes y, debajo de "Mis notas", lo tuyo (se conserva siempre).
-- Portada: adjunto de imagen `portada.jpg` (JPEG, lado máximo `IMAGE_MAX_SIDE`) incrustado con `<img src="api/attachments/<id>/image/portada.jpg">` (formato verificado en Trilium 0.106).
-- Adjunto `japan-reader.json` con los datos estructurados (fuente de verdad; no lo borres).
-- Sin fusión entre fuentes: un enlace = una receta. Si ya hay otra de título parecido, la nueva se clona en la Bandeja con `posible-duplicado`.
+**Receta note** (child of the Recetario, with `~template=Receta`):
+- Attributes: `#jrTipo=receta`, `#jrItem="<bookmark_id>:receta:<normalized title>"`, `#jrNombreNorm`, `#fuentes`, `#iconClass`, plus the promoted ones the service writes: `tipo_plato` (dish type), `cocina` (cuisine), `tiempo_min` (minutes), `raciones` (servings), `dificultad` (difficulty) (those you correct are respected).
+- `probada` (tried) and `valoracion` (rating) (and any attribute in `atributos_usuario` or added by hand) are yours: the service never writes them.
+- Body: cover, Resumen, Ingredientes (grouped by `grupo`), Preparación, Consejos, Fuentes and, under "Mis notas", your own content (always kept).
+- Cover: an image attachment `portada.jpg` (JPEG, longest side `IMAGE_MAX_SIDE`) embedded with `<img src="api/attachments/<id>/image/portada.jpg">` (format verified on Trilium 0.106).
+- A `japan-reader.json` attachment with the structured data (source of truth; do not delete it).
+- No merging between sources: one link = one recipe. If another one with a similar title exists, the new one is cloned into the tray with `posible-duplicado`.

@@ -1,37 +1,39 @@
-# Etapa 2 — fetch
+# Stage 2 — fetch
 
-**Qué hace:** descarga el contenido y sus metadatos y prepara los medios para las etapas siguientes.
+**English** · [Español](02-fetch.es.md)
 
-**Entrada:** job (`url`, `platform`, `hint`).
-**Salida:** `FetchResult {meta, audio_files, subtitles, images, keyframes}`; ficheros en `data/jobs/<bookmark_id>/` (`audio/NN.wav`, `images/NN.jpg`, `frames/VV_NN.jpg`). El vídeo original se borra al terminar la etapa.
+**What it does:** downloads the content and its metadata and prepares the media for the following stages.
 
-**Atención (limpieza y reprocesado):** cuando el job termina (salvo `error`, que conserva los ficheros hasta que un reprocesado lo termine) se borra `data/jobs/<id>/`, pero el resultado de `fetch` **se conserva** con sus metadatos (título, autor, caption, URL, que usa `publish`) y la marca `files_purged: true` (los resultados antiguos sin la clave se leen como `false`). El pipeline vuelve a ejecutar `fetch` solo si va a ejecutar una etapa que necesita los ficheros y el `fetch` guardado tiene `files_purged`; como mucho una vez por job. Necesitan los ficheros `transcribe` y `extract` (`needs_files`) y `classify` solo cuando va a mandar imágenes al clasificador (`needs_files_for`: varios candidatos vigentes, sin destino forzado, y caption y transcripción vacíos); un job anterior a la fase 3 sin resultado de `classify` no descarga nada por él (se resuelve con `destino_legado`).
-- `reprocess --from geocode`, `--from resolve` o `--from publish`: no descarga nada ni falla si el Reel ya no existe (dentro de la retención).
-- `--from extract` o `--from classify`: vuelve a descargar (`extract` necesita fotogramas; `classify` solo si clasifica con imágenes); falla si el original ya no está disponible. (`transcribe` también necesita los ficheros; se repite con `--from fetch`.)
-- `--from fetch`: como siempre.
-- Pasada la retención (`retencion_dias`), o con `retencion_dias: 0`: no quedan resultados de etapa y se rehace todo (descarga, Whisper, LLM y Places).
+**Input:** job (`url`, `platform`, `hint`).
+**Output:** `FetchResult {meta, audio_files, subtitles, images, keyframes}`; files in `data/jobs/<bookmark_id>/` (`audio/NN.wav`, `images/NN.jpg`, `frames/VV_NN.jpg`). The original video is deleted when the stage ends.
 
-Ver la sección "Limpieza" de `docs/operations.md`.
+**Note (cleanup and reprocessing):** when the job finishes (except `error`, which keeps its files until a reprocess finishes it) `data/jobs/<id>/` is deleted, but the `fetch` result is **kept** with its metadata (title, author, caption, URL, used by `publish`) and the `files_purged: true` mark (older results without the key are read as `false`). The pipeline runs `fetch` again only if it is going to run a stage that needs the files and the stored `fetch` has `files_purged`; at most once per job. `transcribe` and `extract` need the files (`needs_files`), and `classify` only when it is going to send images to the classifier (`needs_files_for`: several current candidates, no forced destination, and empty caption and transcript); a job with no `classify` result downloads nothing for it (it is resolved with `destino_legado`).
+- `reprocess --from geocode`, `--from resolve` or `--from publish`: downloads nothing and does not fail if the Reel no longer exists (within the retention).
+- `--from extract` or `--from classify`: downloads again (`extract` needs frames; `classify` only if it classifies with images); fails if the original is no longer available. (`transcribe` also needs the files; it is repeated with `--from fetch`.)
+- `--from fetch`: as always.
+- After the retention (`retencion_dias`), or with `retencion_dias: 0`: no stage results remain and everything is redone (download, Whisper, LLM and Places).
 
-| Tipo | Herramienta | Qué se obtiene |
+See the "Cleanup" section of `docs/operations.md`.
+
+| Type | Tool | What it gets |
 |---|---|---|
-| Vídeo (Short, Reel) | yt-dlp | vídeo ≤720p, subtítulos **manuales** (es > en > ja), metadatos |
-| Post de imagen / carrusel | gallery-dl; si falla de forma permanente, yt-dlp | imágenes (y vídeos del carrusel), caption, autor, fecha |
+| Video (Short, Reel) | yt-dlp | video ≤720p, **manual** subtitles (es > en > ja), metadata |
+| Image post / carousel | gallery-dl; if it fails permanently, yt-dlp | images (and carousel videos), caption, author, date |
 
-- Audio: WAV mono 16 kHz con ffmpeg (si el vídeo tiene audio).
-- Fotogramas clave (si `REEL_KEYFRAMES_ENABLED=true`): primer fotograma + cambios de escena (umbral 0.3), completado con muestreo uniforme, sin casi-duplicados, máximo `KEYFRAMES_MAX`.
-- Imágenes: máximo `POST_IMAGES_MAX`, redimensionadas a `IMAGE_MAX_SIDE` px (JPEG).
-- Vídeos de más de `MAX_VIDEO_DURATION_MIN` se rechazan antes de descargar.
-- Instagram: entre dos descargas consecutivas (yt-dlp o gallery-dl) pasan al menos `INSTAGRAM_MIN_INTERVAL_SECONDS` segundos (por defecto 20); si hace falta, la etapa espera.
-- El directorio temporal `raw/` (vídeo original y copia de las cookies) se borra siempre al terminar, también si la descarga falla.
+- Audio: mono 16 kHz WAV with ffmpeg (if the video has audio).
+- Key frames (if `REEL_KEYFRAMES_ENABLED=true`): first frame + scene changes (threshold 0.3), completed with uniform sampling, without near-duplicates, at most `KEYFRAMES_MAX`.
+- Images: at most `POST_IMAGES_MAX`, resized to `IMAGE_MAX_SIDE` px (JPEG).
+- Videos longer than `MAX_VIDEO_DURATION_MIN` are rejected before downloading.
+- Instagram: at least `INSTAGRAM_MIN_INTERVAL_SECONDS` seconds (20 by default) pass between two consecutive downloads (yt-dlp or gallery-dl); the stage waits if needed.
+- The temporary `raw/` directory (original video and the cookies copy) is always deleted at the end, even if the download fails.
 
-**Plan B para posts:** sin cookies, gallery-dl recibe "HTTP redirect to login page" en cualquier post (comprobado el 2026-09-29). Ante un error permanente de gallery-dl se prueba yt-dlp con `ignore_no_formats_error`: devuelve el caption y, por cada elemento del carrusel, la miniatura a tamaño original (p. ej. 1440×1800), que se descarga como imagen; los elementos con vídeo se descargan como vídeo. Solo pide una petición extra a Instagram por post.
+**Plan B for posts:** without cookies, gallery-dl gets "HTTP redirect to login page" on any post. On a permanent gallery-dl error, yt-dlp is tried with `ignore_no_formats_error`: it returns the caption and, for each carousel element, the thumbnail at original size (for example 1440×1800), which is downloaded as an image; elements with video are downloaded as video. It costs only one extra request to Instagram per post.
 
-**Respaldo:** si Instagram falla de forma permanente (p. ej. requiere login), se usan el vídeo o la imagen que Karakeep archivó del bookmark. No se usa cuando el vídeo se rechaza por demasiado largo.
+**Fallback:** if Instagram fails permanently (for example it requires login), the video or image that Karakeep archived for the bookmark is used. It is not used when the video is rejected for being too long.
 
-**Dependencias:** yt-dlp, gallery-dl, ffmpeg/ffprobe, Pillow, Karakeep (respaldo).
-**Configuración:** `INSTAGRAM_COOKIES_FILE` (se usa una copia; el original nunca se modifica), `REEL_KEYFRAMES_ENABLED`, `KEYFRAMES_MAX`, `POST_IMAGES_MAX`, `IMAGE_MAX_SIDE`, `MAX_VIDEO_DURATION_MIN`, `INSTAGRAM_MIN_INTERVAL_SECONDS`. `INSTAGRAM_COOKIES_FILE=` vacío equivale a no configurarlo.
+**Dependencies:** yt-dlp, gallery-dl, ffmpeg/ffprobe, Pillow, Karakeep (fallback).
+**Configuration:** `INSTAGRAM_COOKIES_FILE` (a copy is used; the original is never modified), `REEL_KEYFRAMES_ENABLED`, `KEYFRAMES_MAX`, `POST_IMAGES_MAX`, `IMAGE_MAX_SIDE`, `MAX_VIDEO_DURATION_MIN`, `INSTAGRAM_MIN_INTERVAL_SECONDS`. An empty `INSTAGRAM_COOKIES_FILE=` is the same as not setting it.
 
-**Fallos:** privado/borrado/login requerido/redirección a login/restricción de audiencia ("isn't available to everyone")/404/demasiado largo → `PermanentError` (`jr:error`); timeouts, 5xx, 429 y límites de ritmo ("rate-limit", "too many requests", "please wait", aunque el mensaje también diga "login required") → `TransientError` (reintento); fichero de cookies inexistente → `ConfigError`.
+**Failures:** private/deleted/login required/redirect to login/audience restriction ("isn't available to everyone")/404/too long → `PermanentError` (`jr:error`); timeouts, 5xx, 429 and rate limits ("rate-limit", "too many requests", "please wait", even if the message also says "login required") → `TransientError` (retry); a cookies file that does not exist → `ConfigError`.
 
-**Cómo probarla:** `uv run pytest tests/unit/test_fetch.py tests/unit/test_downloaders.py tests/unit/test_media.py`. Descarga real: `uv run pytest -m integration -k ytdlp`.
+**How to test it:** `uv run pytest tests/unit/test_fetch.py tests/unit/test_downloaders.py tests/unit/test_media.py`. Real download: `uv run pytest -m integration -k ytdlp`.

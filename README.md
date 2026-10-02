@@ -1,152 +1,160 @@
 # Tohoku
 
-Convierte los vídeos y posts que guardas en [Karakeep](https://karakeep.app) (YouTube Shorts, Instagram Reels y posts de Instagram) en notas estructuradas de [Trilium Notes](https://github.com/TriliumNext/Trilium): lugares en un mapa, cosas que comprar o comer, curiosidades… o recetas de cocina con ingredientes y pasos.
+**English** · [Español](README.es.md)
 
-Cada lista de Karakeep se asigna a uno o varios **destinos** (un viaje, un recetario…) en `config/destinos.yaml`. Tohoku descarga el contenido, lo transcribe, se lo pasa a un LLM multimodal, geolocaliza los lugares, deduplica contra lo que ya tienes y publica en Trilium. Lo que no tiene claro va a una **Bandeja de revisión**.
+A cataloguer for travel videos. Tohoku turns the videos and posts you save in [Karakeep](https://karakeep.app) (YouTube Shorts, Instagram Reels and Instagram posts) into structured notes in [Trilium Notes](https://github.com/TriliumNext/Trilium): places on a map, things to buy or eat, curiosities… or cooking recipes with ingredients and steps.
 
-<!-- CAPTURA: Geo Map de un viaje con los lugares (docs/img/geo-map.png) -->
+Each Karakeep list is assigned to one or more **destinations** (a trip, a recipe book…) in `config/destinos.yaml`. Tohoku downloads the content, transcribes it, passes it to a multimodal LLM, geolocates the places, deduplicates against what you already have and publishes to Trilium. Anything it is unsure about goes to a **review tray**.
 
-> **Nombre.** Antes se llamaba *japan-reader*. El prefijo `jr` de etiquetas (`jr:*` en Karakeep), atributos (`#jr*` en Trilium) y del adjunto `japan-reader.json` se mantiene a propósito: son las siglas de *Japan Reader* y de **JR**, la compañía de la Tohoku Shinkansen.
+Japan is the reference example throughout this documentation: the project was built to plan a trip to Japan from hundreds of saved Reels, and the default settings (country, cities, categories, prompt) describe Japan. A new trip destination (New Zealand, Portugal…) is just configuration.
 
-## Qué obtienes
+<!-- CAPTURE: Geo Map of a trip with its places (docs/img/geo-map.png) -->
 
-**Flujo `viaje`** (un destino por país; Japón es el ejemplo de referencia):
-- **Geo Map** con una nota por lugar (dirección, coordenadas y ficha de Google Places, categoría, fuentes, "Mis notas").
-- **Comprar y comer**: productos, platos y cadenas, agrupados por categoría.
-- **Cultura y curiosidades**: lo que no es ni un lugar ni una compra.
+> **Name.** The project used to be called *japan-reader*. The `jr` prefix of labels (`jr:*` in Karakeep), attributes (`#jr*` in Trilium) and the `japan-reader.json` attachment is kept on purpose: it stands for *Japan Reader* and for **JR**, the company that runs the Tohoku Shinkansen.
 
-<!-- CAPTURA: nota de un lugar con sus fuentes (docs/img/lugar.png) -->
-<!-- CAPTURA: sección "Comprar y comer" (docs/img/comprar.png) -->
+> **Language of the generated notes.** The notes Tohoku writes to Trilium (section names, headings such as "Mis notas", review reasons) are currently in Spanish. The documentation uses those literal names, with a translation where it helps.
 
-**Flujo `receta`**:
-- **Recetario** en vista Tabla con columnas para tipo de plato, cocina, tiempo, raciones, dificultad, y `probada`/`valoracion` para ti.
-- Cada receta lleva portada (un fotograma o imagen del post), resumen, ingredientes agrupados, pasos numerados, consejos y fuentes.
+## What you get
 
-<!-- CAPTURA: Recetario en vista Tabla (docs/img/recetario-tabla.png) -->
-<!-- CAPTURA: Recetario en vista Cuadrícula con portadas (docs/img/recetario-cuadricula.png) -->
-<!-- CAPTURA: nota de una receta (docs/img/receta.png) -->
+**`viaje` flow** (one destination per country; Japan is the reference example):
+- A **Geo Map** with one note per place (address, coordinates and Google Places card, category, sources, "Mis notas" for your own notes).
+- **Comprar y comer** (things to buy and eat): products, dishes and chains, grouped by category.
+- **Cultura y curiosidades** (culture and curiosities): whatever is neither a place nor a purchase.
 
-**En todos los destinos:**
-- **Bandeja de revisión**: baja confianza, geolocalización dudosa, posibles duplicados o clasificación incierta.
-- **Tus cambios se respetan**: al reprocesar un enlace se regenera el contenido generado, pero no se tocan "Mis notas", los atributos que hayas corregido ni el título si lo cambiaste.
-- **Clasificador**: si una lista alimenta varios destinos, un LLM decide a cuál va cada enlace (o lo descarta).
-- **Avisos** opcionales por [ntfy](https://ntfy.sh).
+<!-- CAPTURE: a place note with its sources (docs/img/lugar.png) -->
+<!-- CAPTURE: the "Comprar y comer" section (docs/img/comprar.png) -->
 
-<!-- CAPTURA: Bandeja de revisión (docs/img/bandeja.png) -->
+**`receta` flow**:
+- A **recipe book** in Table view with columns for dish type, cuisine, time, servings, difficulty, and `probada` (tried) / `valoracion` (rating) for you.
+- Each recipe has a cover (a frame or image from the post), summary, grouped ingredients, numbered steps, tips and sources.
 
-## Cómo funciona
+<!-- CAPTURE: recipe book in Table view (docs/img/recetario-tabla.png) -->
+<!-- CAPTURE: recipe book in Grid view with covers (docs/img/recetario-cuadricula.png) -->
+<!-- CAPTURE: a recipe note (docs/img/receta.png) -->
+
+**In every destination:**
+- **Review tray** (`Bandeja de revisión`): low confidence, doubtful geolocation, possible duplicates or uncertain classification.
+- **Your edits are respected**: reprocessing a link regenerates the generated content, but never touches "Mis notas", the attributes you corrected or a title you changed.
+- **Classifier**: if a list feeds several destinations, an LLM decides where each link goes (or discards it).
+- Optional notifications through [ntfy](https://ntfy.sh).
+
+<!-- CAPTURE: review tray (docs/img/bandeja.png) -->
+
+## How it works
 
 ```
-Karakeep (listas)
-  → ingest      enlaces nuevos de las listas configuradas
-  → fetch       yt-dlp / gallery-dl + ffmpeg (audio, fotogramas clave, imágenes)
+Karakeep (lists)
+  → ingest      new links from the configured lists
+  → fetch       yt-dlp / gallery-dl + ffmpeg (audio, key frames, images)
   → transcribe  faster-whisper (CPU)
-  → classify    solo si el enlace tiene varios destinos posibles
-  → flujo del destino
-      viaje:  extract (LLM) → geocode (Google Places) → resolve (deduplicación) → publish
-      receta: extract (LLM) → cover (portada) → resolve → publish
-  → mark        etiqueta jr:* en Karakeep y archiva el marcador
+  → classify    only if the link has several possible destinations
+  → destination flow
+      viaje:  extract (LLM) → geocode (Google Places) → resolve (deduplication) → publish
+      receta: extract (LLM) → cover → resolve → publish
+  → mark        jr:* tag in Karakeep, and the bookmark is archived
 ```
 
-Cada etapa guarda su resultado en SQLite: un fallo transitorio se reintenta desde donde se quedó y `reprocess --from <etapa>` repite solo lo necesario. Detalle de cada etapa en [`docs/pipeline/`](docs/pipeline/).
+Every stage stores its result in SQLite: a transient failure is retried from where it stopped, and `reprocess --from <stage>` repeats only what is needed. Each stage is described in [`docs/pipeline/`](docs/pipeline/).
 
-## Requisitos
+## Requirements
 
-- **Docker** y Docker Compose (o Python 3.12 con [uv](https://docs.astral.sh/uv/) para desarrollo).
-- **Karakeep** con una clave de API.
-- **Trilium Notes** ≥ 0.106 con un token de ETAPI.
-- **OpenRouter**: clave de API y un modelo multimodal (acepta imágenes).
-- **Google Places API (New)**: solo para destinos de tipo `viaje` (Text Search Pro).
-- **ntfy** (opcional) para avisos.
-- **CPU y memoria**: Whisper `large-v3` en CPU tarda ~90 s por Reel; el contenedor está limitado a 6 CPU / 6 GB. Los modelos pequeños de Whisper fallan con nombres propios.
+- **Docker** and Docker Compose (or Python 3.12 with [uv](https://docs.astral.sh/uv/) for development).
+- **Karakeep** with an API key.
+- **Trilium Notes** ≥ 0.106 with an ETAPI token.
+- **OpenRouter**: an API key and a multimodal model (one that accepts images).
+- **Google Places API (New)**: only for `viaje` destinations (Text Search Pro).
+- **ntfy** (optional) for notifications.
+- **CPU and memory**: Whisper `large-v3` on CPU takes ~90 s per Reel; the reference deployment is limited to 6 CPUs / 6 GB. Small Whisper models get proper nouns wrong.
 
-### Costes orientativos
+### Approximate costs
 
-Medidos con ~1.400 enlaces reales:
-- **LLM**: ~0,001 $ por enlace.
-- **Google Places**: ~1,2 llamadas por lugar y ~3 lugares por enlace en contenido de viajes. Con el cupo gratuito de Text Search Pro (5.000 al mes) y la caché de búsquedas de 30 días, unos 150 enlaces al día caben de sobra. Limita el gasto con `PLACES_DAILY_LIMIT` y con la cuota diaria en Google Cloud Console.
-- **Tiempo**: ~1-2 min por Reel (sobre todo la transcripción).
+Measured with ~1,400 real links:
+- **LLM**: ~$0.001 per link.
+- **Google Places**: ~1.2 calls per place and ~3 places per link for travel content. With the free Text Search Pro allowance (5,000 a month) and the 30-day search cache, about 150 links a day fit comfortably. Cap the spend with `PLACES_DAILY_LIMIT` and with a daily quota in Google Cloud Console.
+- **Time**: ~1-2 min per Reel (mostly transcription).
 
-## Puesta en marcha
+## Getting started
 
-1. Copia la configuración de ejemplo y rellénala:
+1. Copy the example configuration and fill it in:
    ```
    cp .env.example .env
-   cp config/destinos.example.yaml config/destinos.yaml   # PENDIENTE: crear el ejemplo (ver docs/publicacion.md)
+   cp config/destinos.example.yaml config/destinos.yaml   # TODO: example file not created yet (see docs/publicacion.md)
    ```
-2. **Red de Docker**: `docker-compose.yml` usa una red externa para llegar a Karakeep y Trilium por nombre de contenedor. Ajusta el nombre de la red y `KARAKEEP_URL` / `TRILIUM_URL` en `.env` a tu instalación. <!-- PENDIENTE: hacer la red configurable -->
-3. En `config/destinos.yaml`, asigna cada lista de Karakeep a sus destinos y define cada destino (flujo, etiqueta de la nota raíz en Trilium, prompt). Ver [Destinos](#destinos).
-4. En Trilium, añade la etiqueta de la raíz (p. ej. `#jrRoot`) a la nota bajo la que quieres la estructura del destino.
-5. Crea la estructura y arranca:
+2. **Docker network**: `docker-compose.yml` uses an external network to reach Karakeep and Trilium by container name. Set the network name, and `KARAKEEP_URL` / `TRILIUM_URL` in `.env`, to match your installation. <!-- TODO: make the network configurable -->
+3. In `config/destinos.yaml`, assign each Karakeep list to its destinations and define each destination (flow, label of the root note in Trilium, prompt). See [Destinations](#destinations).
+4. In Trilium, add the root label (for example `#jrRoot`) to the note under which you want the destination's structure.
+5. Create the structure and start:
    ```
    docker compose build
-   docker compose run --rm tohoku tohoku init-trilium --destino <nombre>
+   docker compose run --rm tohoku tohoku init-trilium --destino <name>
    docker compose up -d
    docker compose logs -f tohoku
    ```
 
-El servicio consulta Karakeep cada `POLL_INTERVAL_MINUTES` (10 por defecto).
+The service polls Karakeep every `POLL_INTERVAL_MINUTES` (10 by default).
 
-## Destinos
+## Destinations
 
 ```yaml
 listas:
-  <id-lista-karakeep>: [japon]            # una lista → un destino
-  <id-lista-bandeja>: [japon, recetas]    # varios → decide el clasificador
-destino_legado: japon                     # obligatorio con varios destinos
+  <karakeep-list-id>: [japon]            # one list → one destination
+  <karakeep-tray-list-id>: [japon, recetas]   # several → the classifier decides
+destino_legado: japon                    # required with several destinations
 destinos:
   japon:
     flujo: viaje
-    raiz: jrRoot                          # etiqueta de la nota raíz en Trilium
-    descripcion: "Viaje a Japón: lugares, comida, compras y cultura"
+    raiz: jrRoot                         # label of the root note in Trilium
+    descripcion: "Trip to Japan: places, food, shopping and culture"
     prompt: prompts/japon.md
     pais: JP
   recetas:
     flujo: receta
     raiz: jrRootRecetas
-    descripcion: "Recetas de cocina: platos y bebidas con ingredientes y pasos"
+    descripcion: "Cooking recipes: dishes and drinks with ingredients and steps"
     prompt: prompts/recetas.md
 ```
 
-- Un destino de viaje nuevo (p. ej. Nueva Zelanda) se añade **solo con configuración**: un bloque en el YAML y un prompt. Hay un ejemplo comentado en `config/destinos.yaml`.
-- Orden para activar un destino: editar el YAML → `init-trilium --destino <nombre>` → reiniciar el servicio.
-- Las raíces de dos destinos **de distinto tipo** pueden ir una dentro de otra; dos del mismo tipo, no.
+- A new trip destination (for example New Zealand) is added **with configuration only**: a block in the YAML and a prompt. A commented example is included in `config/destinos.example.yaml`.
+- To activate a destination: edit the YAML → `init-trilium --destino <name>` → restart the service.
+- Root notes of two destinations of **different types** can be nested one inside the other; two of the same type cannot.
 
-Guía completa: [`docs/operations.md`](docs/operations.md) ("Destinos", "Cómo añadir un destino").
+Full guide: [`docs/operations.md`](docs/operations.md) ("Destinations", "Adding a destination").
 
-## Comandos
+## Commands
 
-Dentro del contenedor: `docker compose exec tohoku tohoku <comando>`.
+Inside the container: `docker compose exec tohoku tohoku <command>`.
 
-| Comando | Para qué |
+| Command | Purpose |
 |---|---|
-| `run` | Servicio en bucle (lo que arranca el contenedor). |
-| `run-once` | Un solo ciclo (con el servicio parado: comparten candado). |
-| `init-trilium [--destino X]` | Crea la estructura del destino en Trilium (idempotente). |
-| `status` | Trabajos por estado, consumo del día, reintentos y últimos errores. |
-| `reprocess <id>... \| --all-errors [--from <etapa>] [--destino X]` | Vuelve a procesar enlaces desde una etapa. |
-| `import-instagram <export.json> [--collection] [--lista ID] [--limit N] [--dry-run]` | Importa a Karakeep tus guardados de una exportación de Instagram, por tandas. |
-| `eval [--model] [--keyframes/--no-keyframes] [--destino X]` | Compara modelos o ajustes con casos reales (solo destinos `viaje`). |
+| `run` | The service loop (what the container starts). |
+| `run-once` | A single cycle (with the service stopped: they share a lock). |
+| `init-trilium [--destino X]` | Creates the destination's structure in Trilium (idempotent). |
+| `status` | Jobs by state, the day's usage, retries and latest errors. |
+| `reprocess <id>... \| --all-errors [--from <stage>] [--destino X]` | Processes links again from a given stage. |
+| `import-instagram <export.json> [--collection] [--lista ID] [--limit N] [--dry-run]` | Imports your saved posts from an Instagram data export into Karakeep, in batches. |
+| `eval [--model] [--keyframes/--no-keyframes] [--destino X]` | Compares models or settings on real cases (`viaje` destinations only). |
 
-## Documentación
+## Documentation
 
-- Etapas del pipeline: [`docs/pipeline/`](docs/pipeline/) (`01-ingest.md` … `08-mark.md`, `02b-classify.md`).
-- Flujo de recetas: [`docs/flujos/receta.md`](docs/flujos/receta.md).
-- Estructura en Trilium (notas, etiquetas, plantillas): [`docs/trilium-model.md`](docs/trilium-model.md).
-- Operación diaria, destinos, reprocesados, limpieza y errores frecuentes: [`docs/operations.md`](docs/operations.md).
+- Pipeline stages: [`docs/pipeline/`](docs/pipeline/) (`01-ingest.md` … `08-mark.md`, `02b-classify.md`).
+- Recipe flow: [`docs/flujos/receta.md`](docs/flujos/receta.md).
+- Structure in Trilium (notes, labels, templates): [`docs/trilium-model.md`](docs/trilium-model.md).
+- Daily operation, destinations, reprocessing, cleanup and common errors: [`docs/operations.md`](docs/operations.md).
 
-## Desarrollo
+Every document has a Spanish version next to it, with the `.es.md` suffix.
+
+## Development
 
 ```
 uv sync
-uv run pytest                  # unitarios, sin red
-uv run pytest -m integration   # contra servicios reales (ver tests/integration/test_live.py)
+uv run pytest                  # unit tests, no network
+uv run pytest -m integration   # against real services (see tests/integration/test_live.py)
 ```
 
-## Aviso
+## Notice
 
-Tohoku descarga contenido de Instagram y YouTube con yt-dlp y gallery-dl para uso personal: organizar lo que tú mismo has guardado. Descargar contenido puede ir contra las condiciones de uso de esas plataformas; úsalo bajo tu responsabilidad y respeta los derechos de los autores. Las notas guardan siempre el enlace y el autor de la fuente.
+Tohoku downloads content from Instagram and YouTube with yt-dlp and gallery-dl for personal use: organising what you yourself have saved. Downloading content may go against those platforms' terms of service; use it at your own risk and respect the rights of the authors. Notes always keep the link and the author of the source.
 
-## Licencia
+## License
 
-<!-- PENDIENTE: elegir licencia (MIT, GPL-3.0…) y añadir el fichero LICENSE. Ver docs/publicacion.md -->
+[MIT](LICENSE).

@@ -1,26 +1,27 @@
-# Etapa 6 — resolve
+# Stage 6 — resolve
 
-**Qué hace:** compara lo extraído con lo que ya hay en Trilium y decide, elemento a elemento, crear, fusionar o marcar como alias; además calcula los motivos de revisión.
+**English** · [Español](06-resolve.es.md)
 
-**Entrada:** `ExtractResult`, `GeocodeResult`, estructura de Trilium.
+**What it does:** compares what was extracted with what already exists in Trilium and decides, item by item, whether to create, merge or mark as an alias; it also computes the review reasons.
 
-**Salida:** `ResolveResult {items: [PlannedItem {key, kind, index, action, existing_note_id, alias_of, review_reasons}]}`.
+**Input:** `ExtractResult`, `GeocodeResult`, the Trilium structure.
 
-**Dependencias:** Trilium ETAPI (búsqueda de notas por atributos bajo la raíz `#jrRoot`), resultados de `extract` y `geocode`.
+**Output:** `ResolveResult {items: [PlannedItem {key, kind, index, action, existing_note_id, alias_of, review_reasons}]}`.
 
-**Reglas:**
-- Extracción fallida → un único elemento `fallo` con `extraccion-fallida`.
-- `confianza_destino` < 0.4 → sin elementos (resultado `descartado`; las filas antiguas `no-japon` se leen como `descartado`).
-- 0.4 ≤ `confianza_destino` < 0.7 → todos los elementos con `clasificacion-incierta`.
-- Los resultados guardados con el nombre antiguo (`confianza_japon` / `relacionado_japon`) se siguen aceptando al leerlos; al guardar se escriben `confianza_destino` / `relacionado_destino`.
-- Si `classify` marcó la clasificación como dudosa (alternativa cercana), todos los elementos llevan además `clasificacion-dudosa`.
-- Elemento con `confianza` < 0.7 → `baja-confianza`.
-- Lugar: busca `#googlePlaceId` bajo la raíz; si no hay, un lugar con el mismo `#jrNombreNorm` cuyo `#geolocation` esté a menos de 300 m (Google a veces tiene dos fichas para el mismo sitio: "Omoide Yokocho", dos placeId a 45 m) → `merge` (conserva la ficha de la nota existente) o `create`. Sin coordenadas → busca `#jrTipo=lugar #jrNombreNorm="<normalizado>"` bajo la raíz → `merge` o `create`, siempre con el motivo de geocodificación (así un lugar que Google no encuentra no se repite en cada fuente). Mismo `place_id` (o, sin ficha, mismo nombre normalizado) dos veces en la misma fuente → `alias` del primero.
-- Cosa: busca `#jrTipo=cosa #jrNombreNorm="<normalizado>"` en "Comprar y comer" → `merge`; si no, compara con todas las cosas y, si alguna tiene similitud ≥ 0.85, `create` + `posible-duplicado`. Mismo nombre normalizado dos veces → `alias`.
-- Otros → siempre `create`. Si el contenido es de Japón pero no hay ningún elemento → `otro:resumen` con el resumen de la fuente.
+**Dependencies:** Trilium ETAPI (searching notes by attributes under the `#jrRoot` root), the `extract` and `geocode` results.
 
-**Configuración:** `JAPAN_MIN_CONFIDENCE`, `JAPAN_REVIEW_CONFIDENCE`, `ITEM_REVIEW_CONFIDENCE`, `COSA_DUPLICATE_SIMILARITY`.
+**Rules:**
+- Failed extraction → a single `fallo` (failure) item with `extraccion-fallida`.
+- `confianza_destino` < 0.4 → no items (result `descartado`).
+- 0.4 ≤ `confianza_destino` < 0.7 → all items with `clasificacion-incierta`.
+- If `classify` marked the classification as doubtful (a close alternative), all items also carry `clasificacion-dudosa`.
+- Item with `confianza` < 0.7 → `baja-confianza`.
+- Place: looks for `#googlePlaceId` under the root; if there is none, a place with the same `#jrNombreNorm` whose `#geolocation` is within 300 m (Google sometimes has two cards for the same place: "Omoide Yokocho", two placeIds 45 m apart) → `merge` (keeps the existing note's card) or `create`. Without coordinates → looks for `#jrTipo=lugar #jrNombreNorm="<normalized>"` under the root → `merge` or `create`, always with the geocoding reason (so a place Google cannot find is not repeated in every source). The same `place_id` (or, without a card, the same normalized name) twice in the same source → `alias` of the first.
+- Thing (`cosa`): looks for `#jrTipo=cosa #jrNombreNorm="<normalized>"` in "Comprar y comer" → `merge`; otherwise it compares against all things and, if one has similarity ≥ 0.85, `create` + `posible-duplicado`. The same normalized name twice → `alias`.
+- Other → always `create`. If the content belongs to the destination but there are no items → `otro:resumen` with the source's summary.
 
-**Fallos:** errores de Trilium → reintento; estructura ausente → `ConfigError`.
+**Configuration:** `JAPAN_MIN_CONFIDENCE`, `JAPAN_REVIEW_CONFIDENCE`, `ITEM_REVIEW_CONFIDENCE`, `COSA_DUPLICATE_SIMILARITY` (the `JAPAN_*` names are historical; they apply to every destination).
 
-**Cómo probarla:** `uv run pytest tests/unit/test_resolve.py`.
+**Failures:** Trilium errors → retry; missing structure → `ConfigError`.
+
+**How to test it:** `uv run pytest tests/unit/test_resolve.py`.
