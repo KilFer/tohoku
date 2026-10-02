@@ -4,11 +4,11 @@ Lista de comprobación preparada el 2026-10-01. Este repositorio sigue siendo el
 
 ## Decisiones pendientes (del usuario)
 
-- [ ] **Idioma** del README y de la documentación pública: español (como ahora), inglés o los dos (p. ej. `README.md` en inglés + `README.es.md`).
-- [ ] **Licencia**: MIT, GPL-3.0 u otra. Añadir el fichero `LICENSE` y completar la sección "Licencia" del README.
-- [ ] **Historial**: recomendado, un repositorio nuevo con historial limpio (un commit inicial). La alternativa es reescribir este historial (`git filter-repo`), más arriesgada: los 124 commits llevan versiones antiguas de `CLAUDE.md` con datos personales.
-- [ ] **Autoría de los commits**: email real o el `noreply` de GitHub.
-- [ ] Qué se publica de `docs/superpowers/` (specs y planes): nada (recomendado), solo las specs (limpias) o todo.
+- [x] **Idioma** (decidido 2026-10-02): inglés + español. El inglés es la base (`README.md`) y el español la versión accesible (`README.es.md`). Igual para toda la documentación pública (`docs/`: etapas, flujos, operación, modelo de Trilium): versión inglesa como principal y la española al lado. Pendiente de concretar: estructura de carpetas (`docs/en/` + `docs/es/` o sufijo `.es.md`), y qué pasa con los docstrings/comentarios del código, los prompts de `config/prompts/` y los mensajes del CLI, hoy en español.
+- [x] **Licencia** (decidido 2026-10-02): MIT. Falta añadir el fichero `LICENSE` y completar la sección "Licencia" del README (en inglés y español).
+- [x] **Historial** (decidido 2026-10-02): repositorio nuevo con historial limpio (un commit inicial). Este repo privado sigue siendo el de trabajo, con todo el historial (los 124 commits llevan versiones antiguas de `CLAUDE.md` con datos personales, por eso no se reescribe). Estado de ramas comprobado ese día: `master` = lo desplegado (`841508a`), `feat/publicacion` va 1 commit por delante (fast-forward limpio) y `feat/tohoku` ya no existe. El árbol público se exporta con `git archive` excluyendo `CLAUDE.md` y `docs/superpowers/`.
+- [x] **Autoría de los commits** (decidido 2026-10-02): el `noreply` de GitHub (`<id>+<usuario>@users.noreply.github.com`), no `fjbelaza@gmail.com`. Email: `290854+KilFer@users.noreply.github.com` (usuario `KilFer`). Configurarlo solo en el repo nuevo (`git config user.email` local), nunca en el global ni en este repo. En GitHub, activar "Keep my email addresses private" y "Block command line pushes that expose my email".
+- [x] **`docs/superpowers/`** (decidido 2026-10-02): no se publica nada, la carpeta entera queda fuera.
 
 ## README
 
