@@ -40,6 +40,21 @@ Borrador nuevo ya escrito en `README.md` (rama `feat/publicacion`). Falta:
 - [ ] Búsqueda final en el árbol que se va a publicar: `git grep -n -iE "belaza|delfos|pangolin|kamo|seo5xdpq|@gmail|/media/1tb-disk"` sin resultados.
 - [ ] Secretos: comprobado el 2026-10-01 que `.env`, `secrets/` y `data/` nunca se han subido y que no hay claves en el historial. Repetir la comprobación en el árbol final (p. ej. con `gitleaks`).
 
+## Progreso (2026-10-02)
+
+Hecho en `feat/publicacion`: README y documentación pública en inglés (base) y español (`.es.md`) sin historia interna ni datos personales; referencias a fases/spec fuera de comentarios y tests; `config/destinos.example.yaml`; `.gitignore` ampliado. Tests en verde (559).
+
+Pendiente de decidir (revisión de código del 2026-10-02):
+- [ ] Las claves del YAML (`listas`, `destinos`, `flujo`, `raiz`…), los títulos de las notas de Trilium y los mensajes del CLI/logs/avisos están en español: ¿se traducen, o se documentan tal cual?
+- [ ] Docstrings y comentarios del código (~40 ficheros) en español: ¿traducir?
+- [ ] Prompts (`config/prompts/*.md`, `src/tohoku/prompts/*.md`): en español; ¿se mantienen o se ofrecen versiones en inglés?
+- [ ] `ViajeParams`: un destino que solo declare `pais: NZ` hereda la caja de coordenadas, los nombres y los alias de Japón y rechaza todos sus lugares. Propuesta: validar (error de configuración) si `pais != JP` y faltan `latitud`/`longitud`/`nombres_pais`. Es un cambio de comportamiento (TDD).
+- [ ] `merge.md` dice «viaje a Japón» para cualquier destino (bug para NZ): parametrizar.
+- [ ] Nombres `japan_*` en `evaluation.py`, `rules.py`, `config.py` (las variables de entorno no se renombran).
+- [ ] Se mantienen, por datos de producción: `japan-reader.json`, `destino_legado`, la lectura de `no-japon` y de `*_japon` en `state.db`.
+- [ ] Fixtures: `tests/fixtures/state_results/rich_geocode.json` lleva 3 `place_id` y `cid` reales de Google (lugares públicos); `baseline/name_keys.json` parece derivado de datos reales. Sustituir por datos sintéticos o aceptar.
+- [ ] Metadatos de `pyproject.toml` (readme, license, authors, urls), `LICENSE` (falta el titular del copyright), red de Docker y `TZ` configurables.
+
 ## Extras recomendables (no bloquean)
 
 - [ ] `CONTRIBUTING.md` breve (cómo correr los tests, TDD, idioma) o una sección en el README.
