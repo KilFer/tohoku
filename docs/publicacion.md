@@ -50,7 +50,7 @@ Pendiente de decidir (revisión de código del 2026-10-02):
 - [ ] Prompts (`config/prompts/*.md`, `src/tohoku/prompts/*.md`): en español; ¿se mantienen o se ofrecen versiones en inglés?
 - [x] (hecho 2026-10-02, desplegado) `ViajeParams`: un destino que solo declare `pais: NZ` hereda la caja de coordenadas, los nombres y los alias de Japón y rechaza todos sus lugares. Propuesta: validar (error de configuración) si `pais != JP` y faltan `latitud`/`longitud`/`nombres_pais`. Es un cambio de comportamiento (TDD).
 - [x] (hecho) `merge.md` dice «viaje a Japón» para cualquier destino (bug para NZ): parametrizar.
-- [ ] Nombres `japan_*` en `evaluation.py`, `rules.py`, `config.py` (las variables de entorno no se renombran).
+- [x] (hecho) Nombres `japan_*` renombrados, incluidas las variables de entorno (`DESTINATION_*_CONFIDENCE`); palabras genéricas en `palabras_genericas`; caché de Places con prefijo para todos los países.
 - [x] Compatibilidad previa eliminada tras migrar producción (ver `CLAUDE.md`); `destino_legado` → `destino_por_defecto`; adjunto → `tohoku.json`.
 - [ ] Fixtures: `tests/fixtures/state_results/rich_geocode.json` lleva 3 `place_id` y `cid` reales de Google (lugares públicos); `baseline/name_keys.json` parece derivado de datos reales. Sustituir por datos sintéticos o aceptar.
 - [ ] Metadatos de `pyproject.toml` (readme, license, authors, urls), `LICENSE` (falta el titular del copyright), red de Docker y `TZ` configurables.
