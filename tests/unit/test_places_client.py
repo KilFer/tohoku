@@ -42,11 +42,11 @@ def test_field_mask_only_pro_fields():
 
 # Formato real devuelto por Google con regionCode=JP: la dirección omite el país.
 REAL_PLACE = {
-    "id": "ChIJIW0uPRUPAWAR6eI6dRzKGns",
+    "id": "SAMPLE_PLACE_ID_FUSHIMI",
     "displayName": {"text": "Fushimi Inari-taisha", "languageCode": "es"},
     "formattedAddress": "68 Fukakusa Yabunouchichō, Fushimi Ward, Kyoto, 612-0882",
     "location": {"latitude": 34.96769, "longitude": 135.77919},
-    "googleMapsUri": "https://maps.google.com/?cid=8870624639634301673",
+    "googleMapsUri": "https://maps.google.com/?cid=1000000000000000099",
     "postalAddress": {
         "regionCode": "JP", "languageCode": "es", "postalCode": "612-0882",
         "administrativeArea": "Prefectura de Kioto",

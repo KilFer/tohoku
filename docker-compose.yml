@@ -15,7 +15,7 @@ services:
       - ./data:/data
       - whisper-models:/models
       - ./secrets:/secrets:ro
-      - ./config:/app/config:ro   # destinos y prompts editables sin reconstruir (reiniciar el contenedor)
+      - ./config:/app/config:ro   # destinations and prompts editable without rebuilding (restart the container)
     networks:
       - pangolin
     deploy:

@@ -5,7 +5,7 @@
       "kind": "lugar",
       "index": 0,
       "action": "merge",
-      "existing_note_id": "sjLra3izfkdB",
+      "existing_note_id": "note_sample_1",
       "alias_of": null,
       "review_reasons": []
     },
@@ -23,7 +23,7 @@
       "kind": "lugar",
       "index": 2,
       "action": "merge",
-      "existing_note_id": "7M52orv6V7qD",
+      "existing_note_id": "note_sample_2",
       "alias_of": null,
       "review_reasons": []
     },

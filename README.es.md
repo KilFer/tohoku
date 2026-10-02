@@ -12,7 +12,7 @@ Japón es el ejemplo de referencia en toda la documentación: el proyecto nació
 
 > **Nombre.** Antes se llamaba *japan-reader*. El prefijo `jr` de etiquetas (`jr:*` en Karakeep) y atributos (`#jr*` en Trilium) se mantiene a propósito: son las siglas de *Japan Reader* y de **JR**, la compañía de la Tohoku Shinkansen.
 
-> **Idioma de las notas generadas.** Las notas que Tohoku escribe en Trilium (nombres de secciones, encabezados como «Mis notas», motivos de revisión) están hoy en español.
+> **Idioma de las notas generadas.** Las notas que Tohoku escribe en Trilium (nombres de secciones, encabezados como «Mis notas», motivos de revisión), las claves del YAML (`listas`, `destinos`, `flujo`…), los mensajes del CLI y de los logs y los prompts de extracción de `config/prompts/` están en español. Los prompts son ficheros de texto que se adaptan por destino: escríbelos en el idioma en que quieras las notas.
 
 ## Qué obtienes
 

@@ -12,7 +12,7 @@ Japan is the reference example throughout this documentation: the project was bu
 
 > **Name.** The project used to be called *japan-reader*. The `jr` prefix of labels (`jr:*` in Karakeep) and attributes (`#jr*` in Trilium) is kept on purpose: it stands for *Japan Reader* and for **JR**, the company that runs the Tohoku Shinkansen.
 
-> **Language of the generated notes.** The notes Tohoku writes to Trilium (section names, headings such as "Mis notas", review reasons) are currently in Spanish. The documentation uses those literal names, with a translation where it helps.
+> **Language of the generated notes.** The notes Tohoku writes to Trilium (section names, headings such as "Mis notas", review reasons), the YAML configuration keys (`listas`, `destinos`, `flujo`…), the CLI and log messages and the extraction prompts in `config/prompts/` are in Spanish. The documentation uses those literal names, with a translation where it helps. The prompts are plain text files you adapt per destination: write them in the language you want the notes in.
 
 ## What you get
 

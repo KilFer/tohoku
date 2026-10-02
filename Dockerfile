@@ -3,7 +3,7 @@ FROM python:3.12-slim
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ffmpeg ca-certificates tzdata \
  && rm -rf /var/lib/apt/lists/*
-# Fija esta etiqueta a la versión de `uv --version` usada en desarrollo.
+# Pin this tag to the `uv --version` used in development.
 COPY --from=ghcr.io/astral-sh/uv:0.12.9 /uv /usr/local/bin/uv
 
 WORKDIR /app

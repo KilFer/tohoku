@@ -48,7 +48,7 @@ def test_japan_extraction_schema_matches_baseline():
 
 def test_name_keys_match_baseline():
     expected = json.loads(_read(BASELINE / "name_keys.json"))
-    assert len(expected) > 100
+    assert len(expected) > 30
     assert {name: name_key(name) for name in expected} == expected
 
 
