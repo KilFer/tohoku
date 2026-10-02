@@ -44,10 +44,10 @@ class App:
     pipeline: Pipeline
     service: Service
     destinations: DestinationsConfig
-    destination: Destination  # el destino por defecto
+    destination: Destination  # the default destination
     runtimes: dict[str, FlowRuntime]
-    classifier: Classifier | None  # None si ningún bookmark puede tener varios candidatos
-    vision_classifier: Classifier | None = None  # mismo modo con OPENROUTER_MODEL: solo cuando se mandan imágenes
+    classifier: Classifier | None  # None if no bookmark can have several candidates
+    vision_classifier: Classifier | None = None  # same mode with OPENROUTER_MODEL: only when images are sent
 
 
 def preflight(
@@ -58,9 +58,9 @@ def preflight(
     classifier_model: str | None = None,
     classifier_mode: str = "json_schema",
 ) -> None:
-    """Comprobaciones antes de procesar: Trilium accesible y estructurado, modelos válidos, cookies.
+    """Checks before processing: Trilium reachable and structured, valid models, cookies.
 
-    `classifier_model` solo se indica si alguna lista tiene varios destinos (hay clasificador).
+    `classifier_model` is only given if some list has several destinations (there is a classifier).
     """
     trilium.app_info()
     for layout in layouts:
@@ -109,8 +109,8 @@ def build_app(settings: Settings) -> App:
     cfg = destinations.clasificador
     classifier_model = (cfg.modelo or settings.text_model) if destinations.needs_classifier() else None
     classifier = CLASSIFIERS[cfg.modo](llm, classifier_model) if classifier_model else None
-    # Sin caption ni transcripción se clasifica con imágenes: con el modelo multimodal (preflight lo comprueba),
-    # porque clasificador.modelo / OPENROUTER_TEXT_MODEL puede ser solo de texto.
+    # Without caption or transcript, classification uses images: with the multimodal model (preflight checks it),
+    # because clasificador.modelo / OPENROUTER_TEXT_MODEL may be text-only.
     vision_classifier = CLASSIFIERS[cfg.modo](llm, settings.openrouter_model) if classifier_model else None
     common: list[Stage] = [
         FetchStage(settings, ytdlp, gallery, karakeep), transcribe,

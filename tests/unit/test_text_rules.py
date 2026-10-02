@@ -17,7 +17,7 @@ def test_fold_keeps_words():
         ("Tienda Don Quijote", "don quijote"),
         ("Kiyomizu-dera", "kiyomizu dera"),
         ("Café Ñandú", "cafe nandu"),
-        ("CoCo Ichibanya (Japan)", "coco ichibanya japan"),  # los nombres de país no son palabras genéricas
+        ("CoCo Ichibanya (Japan)", "coco ichibanya japan"),  # country names are not generic words
     ],
 )
 def test_normalize_name(raw, expected):
@@ -53,10 +53,10 @@ def test_decide_outcome():
 
 
 def test_configured_generic_words_are_removed_from_names():
-    assert normalize_name("Verano en Japón") == "verano en japon"  # sin configuración, ningún país es palabra genérica
+    assert normalize_name("Verano en Japón") == "verano en japon"  # with no configuration, no country is a generic word
     configure_generic_words(["Japan", "Japón"])
     assert normalize_name("Verano en Japón") == "verano en"
     assert normalize_name("Japan Travel by NAVITIME") == "travel by navitime"
-    assert normalize_name("The Shop X") == "x"  # las palabras genéricas base siguen
+    assert normalize_name("The Shop X") == "x"  # the base generic words still apply
     configure_generic_words([])
     assert normalize_name("Verano en Japón") == "verano en japon"

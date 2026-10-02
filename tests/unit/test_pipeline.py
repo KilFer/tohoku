@@ -33,7 +33,7 @@ class Step:
 
 
 class QuotaStep(Step):
-    """Agota la cuota solo para los bookmarks indicados (los demás no la necesitan: p. ej. todo en caché)."""
+    """Exhausts the quota only for the given bookmarks (the others do not need it, e.g. everything cached)."""
 
     def __init__(self, name, key, for_bookmarks):
         super().__init__(name)
@@ -158,7 +158,7 @@ def test_quota_waits_until_tomorrow_and_notifies_once(tmp_path, state):
 
     job = state.get_job("b1")
     assert job.attempts == 0
-    # Medianoche del Pacífico (cuando Google renueva la cuota) + 5 min: 28/09 10:00 UTC → 29/09 07:05 UTC.
+    # Pacific midnight (when Google renews the quota) + 5 min: 28/09 10:00 UTC → 29/09 07:05 UTC.
     assert job.next_attempt_at == datetime(2026, 9, 29, 7, 5, tzinfo=UTC)
     assert len(notifier.sent) == 1
     assert state.get_job("b2").next_attempt_at == datetime(2026, 9, 29, 7, 5, tzinfo=UTC)
@@ -207,7 +207,7 @@ def test_quota_exceeded_parks_job_and_pass_continues(tmp_path, state):
     assert b1.status == JobStatus.PENDING and b1.attempts == 0
     assert b1.next_attempt_at == datetime(2026, 9, 29, 7, 5, tzinfo=UTC)
     assert b2.status == JobStatus.DONE and b2.outcome == Outcome.PROCESADO
-    assert state.load_stage("b1", "fetch", Dummy) == Dummy()  # lo hecho antes de la cuota queda guardado
+    assert state.load_stage("b1", "fetch", Dummy) == Dummy()  # what was done before the quota is kept
     assert len(notifier.sent) == 1
 
 
@@ -219,7 +219,7 @@ def test_parked_job_resumes_at_the_quota_stage(tmp_path, state):
     pipeline = Pipeline(state, [fetch, geocode, publish], FakeMark(), FakeNotifier(), tmp_path / "data", clock=lambda: NOW)
     pipeline.run_due()
 
-    geocode.for_bookmarks.clear()  # vuelve la cuota
+    geocode.for_bookmarks.clear()  # the quota is back
     pipeline.run_job(state.get_job("b1"))
 
     assert fetch.calls == 1 and geocode.calls == 2 and publish.calls == 1
@@ -276,11 +276,11 @@ def test_no_destination_is_descartado_without_flow_stages(tmp_path, state):
     pipeline.run_due()
     assert (japon.calls, recetas.calls) == (0, 0)
     assert state.get_job("b1").outcome == Outcome.DESCARTADO
-    assert mark.calls == [("b1", Outcome.DESCARTADO)]  # sin destino: FakeMark registra el par
+    assert mark.calls == [("b1", Outcome.DESCARTADO)]  # no destination: FakeMark records the pair
 
 
 def test_unknown_destination_fails_only_that_job(tmp_path, state):
-    """Un destino borrado del YAML marca jr:error solo ese job; la cola sigue (ruling del controlador)."""
+    """A destination deleted from the YAML marks only that job jr:error; the queue continues (controller ruling)."""
     _add(state, "b1")
     _add(state, "b2")
     fetch = Step("fetch")
@@ -309,7 +309,7 @@ def test_mark_failed_tags_the_destination_of_the_job(tmp_path, state):
 
 
 class ByJobStep(Step):
-    """Devuelve un resultado distinto por bookmark."""
+    """Returns a different result per bookmark."""
 
     def __init__(self, name, results):
         super().__init__(name, result=next(iter(results.values())))
@@ -320,7 +320,7 @@ class ByJobStep(Step):
         return self.results[ctx.job.bookmark_id]
 
 
-# --- limpieza -----------------------------------------------------------
+# --- cleanup -----------------------------------------------------------
 
 
 class RecordingCleaner:
@@ -335,7 +335,7 @@ class RecordingCleaner:
 
 
 class WritingStep(Step):
-    """Deja un fichero en el directorio del job, como fetch."""
+    """Leaves a file in the job directory, like fetch."""
 
     def run(self, ctx):
         (ctx.workdir / "video.mp4").write_bytes(b"x")
@@ -399,7 +399,7 @@ def test_reprocess_after_cleanup_from_a_stage_needing_files_downloads_again(tmp_
     assert publish.calls == 2
     assert state.get_job("b1").status == JobStatus.DONE
     assert not (data_dir / "jobs" / "b1").exists()
-    assert state.load_stage("b1", "fetch", FetchResult).files_purged is True  # limpiado otra vez al terminar
+    assert state.load_stage("b1", "fetch", FetchResult).files_purged is True  # cleaned again when finished
 
 
 def test_cleaner_is_called_after_finish_and_on_mark_failed(tmp_path, state):
@@ -430,11 +430,11 @@ def test_cleanup_failure_does_not_change_the_outcome(tmp_path, state, caplog):
     assert "permiso denegado" in caplog.text
 
 
-# --- Re-descarga solo si hace falta ----------------------------------------
+# --- Re-download only if needed ----------------------------------------
 
 
 class LoggedStep(Step):
-    """Step que apunta su nombre en un registro compartido, para comprobar el orden."""
+    """Step that records its name in a shared log, to check the order."""
 
     def __init__(self, name, log, result=None, needs_files=False):
         super().__init__(name, result=result)
@@ -518,7 +518,7 @@ def test_purged_fetch_is_redownloaded_only_once_for_several_stages_needing_files
 
 
 def test_purged_fetch_is_redownloaded_once_across_common_stages_and_flow(tmp_path, state):
-    """`classify` (tramo común) y `extract` (flujo del destino) necesitan ficheros: una sola descarga."""
+    """`classify` (common stretch) and `extract` (destination flow) need files: a single download."""
     _add(state)
     state.save_stage("b1", "fetch", make_fetch(files_purged=True))
     state.save_stage("b1", "transcribe", Dummy())
@@ -601,7 +601,7 @@ def test_stages_that_need_files_are_marked():
 
 
 def test_refetch_failing_permanently_marks_the_job_error_without_running_extract(tmp_path, state):
-    """Caracterización: la re-descarga sigue la política de errores de siempre (p. ej. el Reel ya no existe)."""
+    """Characterization: re-download follows the usual error policy (e.g. the Reel no longer exists)."""
     _add(state)
     state.save_stage("b1", "fetch", make_fetch(files_purged=True))
     log = []
@@ -621,7 +621,7 @@ def test_refetch_failing_permanently_marks_the_job_error_without_running_extract
     assert mark.calls == [("b1", Outcome.ERROR)]
 
 
-# --- C1: classify solo re-descarga si va a mandar imágenes ------------------------------
+# --- C1: classify only re-downloads if it will send images ------------------------------
 
 
 class _ViewClassifier:
@@ -654,7 +654,7 @@ def _reprocess_from_geocode(tmp_path, state, candidates, caption, transcript_tex
     meta = make_fetch().meta.model_copy(update={"description": caption})
     state.save_stage("b1", "fetch", make_fetch(files_purged=True, meta=meta))
     state.save_stage("b1", "transcribe", Transcript(text=transcript_text, origin="whisper"))
-    state.save_stage("b1", "extract", Dummy())  # sin classify: job sin candidatos (o classify borrado)
+    state.save_stage("b1", "extract", Dummy())  # no classify: job without candidates (or classify deleted)
     log = []
     fetch = LoggedStep("fetch", log, result=make_fetch(images=["images/00.jpg"], meta=meta))
     transcribe = LoggedStep("transcribe", log, result=Transcript(), needs_files=True)
@@ -692,11 +692,11 @@ def test_classify_with_text_is_not_redownloaded(tmp_path, state):
     assert state.load_stage("b1", "fetch", FetchResult).files_purged is True
 
 
-# --- I2: DESCARTADO nunca lleva jr:destino ----------------------------------------------
+# --- I2: DESCARTADO never carries jr:destino ----------------------------------------------
 
 
 def test_flow_descartado_is_marked_without_destination(tmp_path, state):
-    """El flujo viaje descarta contenido ajeno al destino: sin `jr:destino:<d>`."""
+    """The viaje flow discards content unrelated to the destination: no `jr:destino:<d>`."""
     _add(state)
     fetch = Step("fetch")
     classify = Step("classify", result=Classification(destino="japon"))

@@ -10,8 +10,8 @@ from tohoku.errors import ApiError, ConfigError, TohokuError, TransientError
 BASE_URL = "https://openrouter.ai/api/v1"
 
 
-# Frases de OpenRouter que indican un modelo mal configurado (nombre erróneo, retirado o sin
-# proveedores que admitan los parámetros pedidos). Un error de longitud de contexto no lo es.
+# OpenRouter phrases that indicate a misconfigured model (wrong name, retired, or no
+# providers supporting the requested parameters). A context-length error is not one.
 _MODEL_ERROR_MARKERS = ("valid model", "no endpoints", "endpoints found", "model not found")
 
 
@@ -43,12 +43,12 @@ class OpenRouterClient:
         self._params_cache: dict[str, list[str] | None] = {}
 
     def _supported_params(self, model: str) -> list[str] | None:
-        """`supported_parameters` del modelo, cacheado; None si no se conoce (modelo o catálogo no disponibles)."""
+        """The model's `supported_parameters`, cached; None if unknown (model or catalogue unavailable)."""
         if model not in self._params_cache:
             try:
                 info = self.model_info(model)
             except TohokuError:
-                return None  # sin catálogo no se cachea: se reintenta en la siguiente llamada
+                return None  # without a catalogue nothing is cached: retried on the next call
             self._params_cache[model] = (info or {}).get("supported_parameters") if info else None
         return self._params_cache[model]
 
@@ -66,13 +66,13 @@ class OpenRouterClient:
         return self._post(model, body)
 
     def chat_text(self, model: str, messages: list[dict]) -> ChatResult:
-        """Chat sin salida estructurada (ni response_format ni require_parameters)."""
+        """Chat without structured output (neither response_format nor require_parameters)."""
         return self._post(model, {"model": model, "messages": messages, "usage": {"include": True}})
 
     def _post(self, model: str, body: dict) -> ChatResult:
-        # Con require_parameters, un parámetro que el modelo no admite (p. ej. temperature en modelos
-        # de razonamiento) deja la petición sin proveedor (404). Solo se envía si consta como admitido
-        # o si no se conoce la ficha del modelo.
+        # With require_parameters, a parameter the model does not support (e.g. temperature on
+        # reasoning models) leaves the request with no provider (404). It is only sent if listed as
+        # supported or if the model's card is unknown.
         params = self._supported_params(model)
         if params is None or "temperature" in params:
             body["temperature"] = 0.2
@@ -89,7 +89,7 @@ class OpenRouterClient:
         return ChatResult(content=content, cost_usd=cost)
 
     def model_info(self, model: str) -> dict | None:
-        """Ficha del modelo en `GET /models` (id, architecture, supported_parameters...) o None si no existe."""
+        """Model card from `GET /models` (id, architecture, supported_parameters...) or None if it does not exist."""
         data = send(self._http, "GET", f"{BASE_URL}/models", self.SERVICE, headers=self._headers).json()
         return next((entry for entry in data.get("data", []) if entry.get("id") == model), None)
 

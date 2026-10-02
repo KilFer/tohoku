@@ -1,4 +1,4 @@
-"""Utilidades de publicación en Trilium compartidas por los flujos (viaje, receta)."""
+"""Trilium publishing utilities shared by the flows (viaje, receta)."""
 
 from tohoku.clients.trilium import TNote, TriliumClient
 from tohoku.models import SourceMeta
@@ -26,11 +26,11 @@ def sync_labels(
     old_labels: dict[str, str],
     always: frozenset[str] = ALWAYS_WRITTEN_LABELS,
 ) -> None:
-    """Como `upsert_labels`, pero respeta las correcciones del usuario en una nota existente.
+    """Like `upsert_labels`, but respects the user's corrections on an existing note.
 
-    Un atributo gestionado se reescribe solo si falta o si sigue teniendo el valor que el servicio
-    escribió la última vez (`old_labels`, calculado del adjunto anterior). Los de `always`
-    (`jrTipo` y `fuentes` por defecto) se escriben siempre.
+    A managed attribute is rewritten only if it is missing or still has the value the service
+    wrote last time (`old_labels`, computed from the previous attachment). Those in `always`
+    (`jrTipo` and `fuentes` by default) are always written.
     """
     for name, value in labels.items():
         current = note.attr("label", name)
@@ -49,14 +49,14 @@ def sync_review(
     item_key: str,
     revision_id: str,
 ) -> None:
-    """Mantiene la Bandeja y `#revisar` al día con los motivos vigentes de todas las fuentes de la nota.
+    """Keeps the Bandeja (review tray) and `#revisar` up to date with the current reasons of all the note's sources.
 
-    `reasons` son los motivos del elemento que se acaba de publicar.
-    - El elemento trae motivos → la nota va (o sigue) en la Bandeja.
-    - No trae y ninguna fuente tiene ya motivos → sale de la Bandeja y se borra `#revisar`.
-    - No trae pero otra fuente sí: si sigue en la Bandeja se actualiza `#revisar`; si el usuario
-      ya la sacó, se respeta.
-    `#revisar` es la unión de los motivos vigentes (no se acumulan motivos ya resueltos).
+    `reasons` are the reasons of the item that was just published.
+    - The item has reasons → the note goes (or stays) in the Bandeja.
+    - It has none and no source has reasons any more → it leaves the Bandeja and `#revisar` is deleted.
+    - It has none but another source does: if it is still in the Bandeja `#revisar` is updated; if the user
+      already took it out, that is respected.
+    `#revisar` is the union of the current reasons (already-resolved reasons are not accumulated).
     """
     all_reasons = _unique(reasons + state.review_reasons_for_note(note_id, exclude=(bookmark_id, item_key)))
     note = trilium.get_note(note_id)
@@ -84,7 +84,7 @@ def create_failure_note(
     transcript: str,
     error: str,
 ) -> str:
-    """Crea (o retoma por `#jrItem="<id>:fallo"`) la nota de extracción fallida en la Bandeja."""
+    """Creates (or resumes via `#jrItem="<id>:fallo"`) the failed-extraction note in the Bandeja."""
     item_id = f"{bookmark_id}:fallo"
     found = trilium.search(f'#jrItem="{item_id}"', ancestor=root_id)
     if found:

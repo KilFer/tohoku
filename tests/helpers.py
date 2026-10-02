@@ -5,7 +5,7 @@ from PIL import Image
 
 
 def make_video(path: Path, colors=("red", "blue", "green"), seconds: int = 1, with_audio: bool = True) -> Path:
-    """Vídeo sintético: un tramo de color liso por cada color (cambios de escena bruscos)."""
+    """Synthetic video: one flat-color segment per color (abrupt scene changes)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     cmd = ["ffmpeg", "-y", "-v", "error"]
     for color in colors:

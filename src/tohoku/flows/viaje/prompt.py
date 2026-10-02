@@ -5,14 +5,14 @@ from tohoku.models import Extraction
 
 
 def render_extract_prompt(template: str, params: ViajeParams) -> str:
-    """Rellena las categorías del destino en el prompt (`{{categorias_lugar}}`, `{{categorias_cosa}}`)."""
+    """Fills the destination's categories into the prompt (`{{categorias_lugar}}`, `{{categorias_cosa}}`)."""
     return template.replace("{{categorias_lugar}}", ", ".join(params.categorias_lugar)).replace(
         "{{categorias_cosa}}", " | ".join(params.categorias_cosa)
     )
 
 
 def extraction_schema(params: ViajeParams) -> dict:
-    """Esquema JSON de `Extraction` con las categorías del destino como `enum`."""
+    """JSON schema of `Extraction` with the destination's categories as `enum`."""
     schema = copy.deepcopy(Extraction.model_json_schema())
     schema["$defs"]["Lugar"]["properties"]["categoria"]["enum"] = list(params.categorias_lugar)
     schema["$defs"]["Cosa"]["properties"]["categoria"]["enum"] = list(params.categorias_cosa)
@@ -20,7 +20,7 @@ def extraction_schema(params: ViajeParams) -> dict:
 
 
 def invalid_categories(extraction: Extraction, params: ViajeParams) -> list[str]:
-    """Categorías que no son del destino, como mensajes para pedir al LLM que corrija."""
+    """Categories not belonging to the destination, as messages asking the LLM to correct them."""
     lugares = ", ".join(params.categorias_lugar)
     cosas = ", ".join(params.categorias_cosa)
     return [

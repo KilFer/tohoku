@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 @dataclass(frozen=True)
 class Thresholds:
-    """Umbrales de la red de seguridad."""
+    """Safety-net thresholds."""
 
     destination_min: float = 0.4
     destination_review: float = 0.7
@@ -16,7 +16,7 @@ class Thresholds:
 
 
 class Settings(BaseSettings):
-    """Configuración del servicio, leída de variables de entorno o de `.env`."""
+    """Service settings, read from environment variables or from `.env`."""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -65,14 +65,14 @@ class Settings(BaseSettings):
     @field_validator("instagram_cookies_file", mode="before")
     @classmethod
     def _empty_path_is_none(cls, value: object) -> object:
-        """`INSTAGRAM_COOKIES_FILE=` (vacío) significa "sin cookies", no `Path('.')`."""
+        """`INSTAGRAM_COOKIES_FILE=` (empty) means "no cookies", not `Path('.')`."""
         if isinstance(value, str) and not value.strip():
             return None
         return value
 
     @property
     def text_model(self) -> str:
-        """Modelo para llamadas sin imágenes (contenido sin imágenes y fusiones)."""
+        """Model for calls without images (content without images, and merges)."""
         return self.openrouter_text_model or self.openrouter_model
 
     @property

@@ -51,7 +51,7 @@ def test_minimal_config_with_explicit_country_data(tmp_path):
 
 
 def test_viaje_params_have_no_country_defaults():
-    # Sin valores por defecto: un destino que solo declara `pais` no hereda la caja ni los nombres de Japón.
+    # No defaults: a destination that only declares `pais` inherits neither the bounding box nor Japan's names.
     with pytest.raises(ValidationError) as exc:
         ViajeParams(pais="NZ")
     missing = {e["loc"][0] for e in exc.value.errors() if e["type"] == "missing"}
@@ -81,7 +81,7 @@ def test_viaje_destination_that_only_declares_the_country_is_a_config_error(tmp_
 
 
 def test_example_config_japan_block_is_the_reference_japan_params():
-    # El destino de referencia vive en la configuración de ejemplo, no en el código.
+    # The reference destination lives in the example config, not in the code.
     config = load_destinations(REPO / "config" / "destinos.example.yaml", FLOWS)
     assert config.destinos["japon"].params == JAPAN_PARAMS
     assert config.palabras_genericas == ("japan", "japon")
@@ -118,7 +118,7 @@ def test_new_zealand_params(tmp_path):
     nz = config.destinos["nz"].params
     assert (nz.pais, nz.latitud, nz.categorias_lugar) == ("NZ", (-48.0, -34.0), ["naturaleza", "pueblo", "otro"])
     assert nz.categorias_cosa == {"souvenirs": "Souvenirs"}
-    assert nz.alias_ciudad == {}  # único parámetro opcional
+    assert nz.alias_ciudad == {}  # the only optional parameter
 
 
 def test_single_list_value_can_be_a_string(tmp_path):
@@ -248,7 +248,7 @@ destino_por_defecto: japon
 
 
 def test_classifier_needed_when_lists_point_to_different_destinations(tmp_path):
-    """Un bookmark en L1 y L2 recibe los dos candidatos (la ingesta los une): hace falta clasificador."""
+    """A bookmark in L1 and L2 gets both candidates (ingest merges them): a classifier is needed."""
     config = load_destinations(_write(tmp_path, SPLIT), FLOWS)
     assert config.needs_classifier()
 

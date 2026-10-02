@@ -179,7 +179,7 @@ def test_reprocess_from_geocode_without_destination_keeps_destination_and_classi
 
 
 def test_reprocess_destination_on_done_job_goes_pending_and_drops_published(state):
-    """Review Focus 4: se borra desde `classify` (incluye `publish`). Las notas antiguas en Trilium NO se borran."""
+    """Review Focus 4: it is deleted from `classify` (includes `publish`). Old notes in Trilium are NOT deleted."""
     _done_job_with_stages(state)
     assert state.published("b1")
 

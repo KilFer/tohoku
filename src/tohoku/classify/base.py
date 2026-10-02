@@ -20,7 +20,7 @@ class Verdict(BaseModel):
 
 
 class ClassifierError(Exception):
-    """La respuesta no se pudo interpretar; `raw` es el texto recibido y `cost_usd` lo gastado."""
+    """The response could not be interpreted; `raw` is the text received and `cost_usd` the cost spent."""
 
     def __init__(self, message: str, raw: str, cost_usd: float) -> None:
         super().__init__(message)

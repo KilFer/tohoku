@@ -33,7 +33,7 @@ class FetchResult(BaseModel):
     subtitles: str | None = None
     images: list[str] = []
     keyframes: list[str] = []
-    # La limpieza borró los ficheros del job; los metadatos siguen valiendo. Las etapas con `needs_files` vuelven a descargar.
+    # Cleanup deleted the job's files; the metadata is still valid. Stages with `needs_files` download again.
     files_purged: bool = False
 
 
@@ -96,8 +96,8 @@ class GeoMatch(BaseModel):
     lng: float
     maps_url: str
     types: list[str] = []
-    country_code: str | None = None  # postalAddress.regionCode o país de addressComponents (ISO 3166-1), p. ej. "JP"
-    area: str = ""  # prefectura, localidad y líneas de postalAddress / addressComponents (para comprobar la ciudad)
+    country_code: str | None = None  # postalAddress.regionCode or country from addressComponents (ISO 3166-1), e.g. "JP"
+    area: str = ""  # prefecture, locality and lines of postalAddress / addressComponents (to check the city)
 
 
 class GeoOutcome(BaseModel):
@@ -119,7 +119,7 @@ class ItemKind(StrEnum):
 
 
 class PlannedItem(BaseModel):
-    """Decisión de `resolve` para un elemento. `index=-1` en OTRO = nota sintética del resumen."""
+    """Decision of `resolve` for one item. `index=-1` on OTRO = synthetic note built from the source summary."""
 
     key: str
     kind: ItemKind
@@ -168,10 +168,10 @@ class MergeOutput(BaseModel):
 class Classification(BaseModel):
     """Resultado de la etapa `classify`."""
 
-    destino: str | None  # None → DESCARTADO
+    destino: str | None  # None → DESCARTADO (discarded)
     confianza: float = 1.0
     alternativa: str | None = None
     confianza_alternativa: float = 0.0
-    omitido: bool = False  # sin llamada: un solo candidato o destino forzado
-    dudosa: bool = False  # alternativa a menos de margen_revision → clasificacion-dudosa
+    omitido: bool = False  # no call made: a single candidate or forced destination
+    dudosa: bool = False  # alternative within margen_revision → clasificacion-dudosa
     cost_usd: float = 0.0

@@ -24,7 +24,7 @@ def _local_now() -> datetime:
 
 
 class Service:
-    """Bucle principal: preflight, ingest, procesar la cola y resumen diario opcional."""
+    """Main loop: preflight, ingest, process the queue and optional daily summary."""
 
     def __init__(
         self,
@@ -100,10 +100,10 @@ def reprocess(
     state: StateStore, karakeep: KarakeepClient, bookmark_id: str, from_stage: str,
     destination: str | None = None, known: Collection[str] = (),
 ) -> Job:
-    """Vuelve a poner un bookmark en la cola desde la etapa indicada.
+    """Puts a bookmark back in the queue from the given stage.
 
-    Con `destination` fuerza ese destino y repite desde `classify` (o antes, si `from_stage` es anterior).
-    Sin él, reprocesar desde fetch/classify olvida el destino para que se vuelva a clasificar.
+    With `destination` it forces that destination and repeats from `classify` (or earlier, if `from_stage` is earlier).
+    Without it, reprocessing from fetch/classify forgets the destination so it is classified again.
     """
     if from_stage not in REPROCESS_FROM:
         raise ValueError(f"etapa no válida: {from_stage}. Opciones: {', '.join(REPROCESS_FROM)}")

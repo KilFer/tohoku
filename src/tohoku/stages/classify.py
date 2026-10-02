@@ -14,10 +14,10 @@ MAX_IMAGES = 2
 
 
 class ClassifyStage:
-    """Decide a qué destino va el enlace entre los candidatos de su lista."""
+    """Decide which destination the link goes to among its list's candidates."""
 
     name = "classify"
-    # Valor por defecto para quien no mire `needs_files_for`; el pipeline usa `needs_files_for`.
+    # Default for callers that do not look at `needs_files_for`; the pipeline uses `needs_files_for`.
     needs_files = True
     result_model = Classification
 
@@ -28,9 +28,9 @@ class ClassifyStage:
         budget: DailyQuota,
         vision_classifier: Classifier | None = None,
     ) -> None:
-        """`classifier` decide con texto; `vision_classifier` (modelo multimodal) solo cuando se mandan imágenes.
+        """`classifier` decides from text; `vision_classifier` (multimodal model) only when images are sent.
 
-        Sin `vision_classifier` nunca se mandan imágenes (el modelo de texto podría no admitirlas).
+        Without `vision_classifier` images are never sent (the text model might not support them).
         """
         self._config = config
         self._classifier = classifier
@@ -38,7 +38,7 @@ class ClassifyStage:
         self._budget = budget
 
     def _names(self, ctx: JobContext) -> list[str]:
-        """Candidatos vigentes: los que ya no están en destinos.yaml no cuentan; si no queda ninguno, el destino por defecto."""
+        """Current candidates: those no longer in destinos.yaml do not count; if none remain, the default destination."""
         return [n for n in ctx.job.candidates or [] if n in self._config.destinos] or [self._config.destino_por_defecto]
 
     def _sends_images(self, fetch: FetchResult, transcript: Transcript) -> bool:
@@ -46,13 +46,13 @@ class ClassifyStage:
         return blank and self._vision_classifier is not None
 
     def needs_files_for(self, ctx: JobContext) -> bool:
-        """Solo necesita los ficheros si va a llamar al clasificador con imágenes (el resto usa texto guardado)."""
+        """Only needs the files if it will call the classifier with images (everything else uses stored text)."""
         if ctx.job.destination or len(self._names(ctx)) == 1:
             return False
         fetch = ctx.results.get("fetch")
         transcript = ctx.results.get("transcribe")
         if not isinstance(fetch, FetchResult) or not isinstance(transcript, Transcript):
-            return True  # sin resultados previos no se puede saber: lo seguro es tener los ficheros
+            return True  # without previous results it cannot be known: the safe choice is to have the files
         return self._sends_images(fetch, transcript)
 
     def run(self, ctx: JobContext) -> Classification:

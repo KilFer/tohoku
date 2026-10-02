@@ -7,13 +7,13 @@ DestinationDecision = Literal["no", "uncertain", "yes"]
 
 
 class HasDestinationConfidence(Protocol):
-    """Cualquier extracción (viaje, receta…) que informe de `confianza_destino`."""
+    """Any extraction (viaje, receta...) that reports `confianza_destino`."""
 
     confianza_destino: float
 
 
 def destination_decision(extraction: HasDestinationConfidence, th: Thresholds) -> DestinationDecision:
-    """Clasifica con `confianza_destino`: ¿trata el contenido sobre el destino?"""
+    """Classifies using `confianza_destino`: is the content about the destination?"""
     if extraction.confianza_destino < th.destination_min:
         return "no"
     if extraction.confianza_destino < th.destination_review:

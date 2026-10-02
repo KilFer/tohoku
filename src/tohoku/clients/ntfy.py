@@ -7,7 +7,7 @@ log = logging.getLogger(__name__)
 
 
 class Notifier:
-    """Avisos por ntfy (publicación JSON en la raíz del servidor). Nunca interrumpe el servicio."""
+    """ntfy notifications (JSON publish at the server root). Never interrupts the service."""
 
     def __init__(self, url: str | None, topic: str | None, token: str | None, http: httpx.Client | None = None) -> None:
         self._url = url.rstrip("/") if url else None

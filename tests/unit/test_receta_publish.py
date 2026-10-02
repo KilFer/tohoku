@@ -114,9 +114,9 @@ def test_render_sections_order_and_groups():
     order = [html.index(h) for h in ("<h2>Resumen", "<h2>Ingredientes", "<h2>Preparación", "<h2>Consejos", "<h2>Fuentes")]
     assert order == sorted(order)
     assert "<ol><li>Pelar patatas</li><li>Cuajar</li></ol>" in html
-    # grupos en orden de aparición: sin grupo, Base (huevos/patatas/cebolla agrupadas), Final
+    # groups in order of appearance: no group, Base (eggs/potatoes/onion grouped), Final
     assert html.index("6 huevos") < html.index("Base</h3>") < html.index("500 g patatas (peladas)") < html.index("1 cebolla") < html.index("Final</h3>") < html.index("sal</li>")
-    assert html.count("<ul>") == 3 + 2  # tres listas de ingredientes + consejos + fuentes
+    assert html.count("<ul>") == 3 + 2  # three ingredient lists + tips + sources
 
 
 def test_render_without_cover():
@@ -174,7 +174,7 @@ def test_reprocess_keeps_user_edits(env):
     cocina["value"] = "vasca"
 
     ctx2 = _ctx(env, extraction=make_receta(cocina="gallega", tiempo_min=55, pasos=["Nuevo paso"], resumen="Otro resumen"))
-    env.state.clear_stages_from("b1", "publish", ("publish",))  # reprocesado: se olvida lo publicado
+    env.state.clear_stages_from("b1", "publish", ("publish",))  # reprocessed: what was published is forgotten
     result = _publish(env, ctx2)
 
     assert [n.note_id for n in result.notes] == [nid]
@@ -247,7 +247,7 @@ def test_possible_duplicate_goes_to_inbox(env):
 
 
 class FlakyUpload(FakeTrilium):
-    """Como Trilium real: el POST del adjunto sale bien y la subida binaria falla."""
+    """Like real Trilium: the attachment POST succeeds and the binary upload fails."""
 
     def __init__(self, source: FakeTrilium) -> None:
         self.__dict__ = source.__dict__

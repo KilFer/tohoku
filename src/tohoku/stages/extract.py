@@ -34,10 +34,10 @@ def build_user_text(fetch: FetchResult, transcript: Transcript) -> str:
 
 
 class ExtractStage:
-    """Etapa 4: clasificación y extracción estructurada con un LLM multimodal."""
+    """Stage 4: classification and structured extraction with a multimodal LLM."""
 
     name = "extract"
-    needs_files = True  # usa los ficheros del job: si la limpieza los borró, el pipeline vuelve a descargar
+    needs_files = True  # uses the job's files: if cleanup deleted them, the pipeline downloads again
     result_model = ExtractResult
 
     def __init__(

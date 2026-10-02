@@ -2,17 +2,17 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ViajeParams(BaseModel):
-    """Parámetros de un destino del flujo `viaje`.
+    """Parameters of a destination of the `viaje` flow.
 
-    No hay valores por defecto de ningún país: cada destino declara los suyos en `config/destinos.yaml`
-    (el bloque `japon` de `config/destinos.example.yaml` es el ejemplo de referencia). Solo `alias_ciudad`
-    es opcional.
+    There are no per-country defaults: every destination declares its own in `config/destinos.yaml`
+    (the `japon` block of `config/destinos.example.yaml` is the reference example). Only `alias_ciudad`
+    is optional.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    pais: str = Field(pattern=r"^[A-Z]{2}$")  # ISO 3166-1: regionCode de Places y país esperado
-    # Para reconocer el país en una dirección sin postalAddress (en minúsculas y sin acentos).
+    pais: str = Field(pattern=r"^[A-Z]{2}$")  # ISO 3166-1: Places regionCode and expected country
+    # To recognise the country in an address without postalAddress (lowercase, no accents).
     nombres_pais: list[str]
     latitud: tuple[float, float]
     longitud: tuple[float, float]
@@ -23,7 +23,7 @@ class ViajeParams(BaseModel):
     @field_validator("nombres_pais")
     @classmethod
     def _sin_nombres_vacios(cls, value: list[str]) -> list[str]:
-        # Un nombre vacío casaría con cualquier dirección en geo.in_country.
+        # An empty name would match any address in geo.in_country.
         if any(not n.strip() for n in value):
             raise ValueError("nombres_pais no puede contener entradas vacías")
         return value

@@ -6,7 +6,7 @@ _HEADERS = ("WEBVTT", "Kind:", "Language:", "NOTE", "STYLE")
 
 
 def vtt_to_text(vtt: str) -> str:
-    """Texto plano de un WebVTT, sin marcas de tiempo, etiquetas ni líneas repetidas seguidas."""
+    """Plain text of a WebVTT, without timestamps, tags or consecutive repeated lines."""
     lines: list[str] = []
     for raw in vtt.splitlines():
         line = raw.strip()

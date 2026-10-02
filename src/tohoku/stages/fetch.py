@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 
 class FetchStage:
-    """Etapa 2: descarga medios y metadatos y los deja listos para transcribir y extraer."""
+    """Stage 2: downloads media and metadata and leaves them ready to transcribe and extract."""
 
     name = "fetch"
     result_model = FetchResult
@@ -53,7 +53,7 @@ class FetchStage:
         try:
             media, images, audio, frames = self._fetch(ctx, raw)
         finally:
-            # `raw/` puede contener la copia de las cookies de Instagram: se borra siempre.
+            # `raw/` may contain the copy of the Instagram cookies: it is always deleted.
             shutil.rmtree(raw, ignore_errors=True)
 
         def rel(path: Path) -> str:
@@ -90,7 +90,7 @@ class FetchStage:
         return media, images, audio, frames
 
     def _wait_for_instagram(self) -> None:
-        """Deja al menos INSTAGRAM_MIN_INTERVAL_SECONDS entre descargas de Instagram (límites de ritmo)."""
+        """Leave at least INSTAGRAM_MIN_INTERVAL_SECONDS between Instagram downloads (rate limits)."""
         if self._last_instagram is None:
             return
         wait = self._settings.instagram_min_interval_seconds - (self._clock() - self._last_instagram)
@@ -121,7 +121,7 @@ class FetchStage:
                 self._last_instagram = self._clock()
 
     def _download_post(self, job: Job, raw: Path) -> DownloadedMedia:
-        """gallery-dl primero; si falla de forma definitiva (p. ej. exige login), yt-dlp."""
+        """gallery-dl first; if it fails permanently (e.g. requires login), yt-dlp."""
         try:
             return self._gallery.download(job.url, raw / "gallery")
         except PermanentError as exc:

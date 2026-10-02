@@ -1,4 +1,4 @@
-"""Llamada al LLM con salida JSON estructurada, validación y un reintento de corrección."""
+"""LLM call with structured JSON output, validation and one correction retry."""
 
 import logging
 from collections.abc import Callable
@@ -29,7 +29,7 @@ def structured_call[T](
     parse: Callable[[str], T],
     check: Callable[[T], list[str]] = lambda _v: [],
 ) -> StructuredResult[T]:
-    """Hasta dos intentos: si la respuesta no valida (o `check` da problemas) se reenvía con la corrección."""
+    """Up to two attempts: if the response does not validate (or `check` reports problems) it is resent with the correction."""
     cost = 0.0
     error = ""
     for _ in range(2):

@@ -31,7 +31,7 @@ def classify_url(url: str) -> tuple[Platform, ContentHint] | None:
 
 
 def canonical_url(url: str) -> str:
-    """Forma canónica para deduplicar enlaces (sin parámetros de seguimiento)."""
+    """Canonical form for deduplicating links (without tracking parameters)."""
     parts = urlsplit(url.strip())
     host = parts.netloc.lower().removeprefix("www.").removeprefix("m.")
     if host == "youtu.be":

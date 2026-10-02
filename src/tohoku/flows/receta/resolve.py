@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 
 class RecetaResolveStage:
-    """Decide si la receta se crea y qué motivos de revisión lleva. Sin fusión entre fuentes."""
+    """Decides whether the recipe is created and which review reasons it carries. No merging across sources."""
 
     name = "resolve"
     result_model = ResolveResult
@@ -47,7 +47,7 @@ class RecetaResolveStage:
         norm = name_key(titulo)
         for note in self._t.search("#jrTipo=receta", ancestor=self._layout().root):
             if (note.label("jrItem") or "").startswith(f"{bookmark_id}:"):
-                continue  # la receta de este mismo enlace (reprocesado)
+                continue  # this same link's recipe (reprocessing)
             known = note.label("jrNombreNorm") or ""
             if known and similarity(norm, known) >= self._th.cosa_duplicate:
                 return True

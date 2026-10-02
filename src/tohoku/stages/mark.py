@@ -11,7 +11,7 @@ DESTINATION_TAG_PREFIX = "jr:destino:"
 
 
 class MarkStage:
-    """Etapa 8: etiqueta el bookmark con el resultado y lo archiva (salvo error)."""
+    """Stage 8: tags the bookmark with the outcome and archives it (except on error)."""
 
     name = "mark"
 

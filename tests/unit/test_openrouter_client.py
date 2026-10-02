@@ -12,7 +12,7 @@ HOST = "openrouter.ai"
 MODELS = {"data": [
     {"id": "vision/model", "architecture": {"input_modalities": ["text", "image"]},
      "supported_parameters": ["response_format", "temperature"]},
-    # Modelo de razonamiento real (openai/gpt-6-luna): no admite temperature.
+    # Real reasoning model (openai/gpt-6-luna): does not support temperature.
     {"id": "reasoning/model", "architecture": {"input_modalities": ["text", "image"]},
      "supported_parameters": ["max_tokens", "reasoning", "response_format", "structured_outputs"]},
 ]}
@@ -42,7 +42,7 @@ def test_chat_json_sends_schema_and_returns_cost():
 
 @respx.mock
 def test_temperature_omitted_when_model_does_not_support_it():
-    """Con require_parameters, enviar un parámetro no admitido deja la petición sin proveedor (404)."""
+    """With require_parameters, sending an unsupported parameter leaves the request with no provider (404)."""
     models = respx.get(host=HOST, path="/api/v1/models").mock(return_value=httpx.Response(200, json=MODELS))
     route = respx.post(host=HOST, path="/api/v1/chat/completions").mock(return_value=httpx.Response(200, json=CHAT_OK))
     client = OpenRouterClient("key")
@@ -52,7 +52,7 @@ def test_temperature_omitted_when_model_does_not_support_it():
 
     for call in route.calls:
         assert "temperature" not in json.loads(call.request.content)
-    assert models.call_count == 1  # la ficha de modelos se consulta una vez y se cachea
+    assert models.call_count == 1  # the model card is fetched once and cached
 
 
 @respx.mock
@@ -105,7 +105,7 @@ def test_model_info():
 )
 @respx.mock
 def test_chat_json_model_errors_are_config_errors(status, body):
-    """Final review 4: modelo inexistente o sin proveedores → ConfigError (pausa y aviso), no jr:error."""
+    """Final review 4: nonexistent model or one with no providers → ConfigError (pause and alert), not jr:error."""
     respx.get(host=HOST, path="/api/v1/models").mock(return_value=httpx.Response(200, json=MODELS))
     respx.post(host=HOST, path="/api/v1/chat/completions").mock(return_value=httpx.Response(status, json=body))
     with pytest.raises(ConfigError, match="modelo"):

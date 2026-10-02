@@ -1,4 +1,4 @@
-"""Modelos de las etapas `extract` y `cover` del flujo `receta`."""
+"""Models for the `extract` and `cover` stages of the `receta` flow."""
 
 from typing import Literal
 
@@ -28,12 +28,12 @@ class RecetaExtraction(BaseModel):
     ingredientes: list[Ingrediente] = []
     pasos: list[str] = []
     consejos: list[str] = []
-    portada: int | None = None  # índice en imágenes + fotogramas enviados al LLM
+    portada: int | None = None  # index into images + keyframes sent to the LLM
     confianza: float
 
 
 class CoverResult(BaseModel):
-    path: str | None = None  # relativa al workdir
+    path: str | None = None  # relative to the workdir
 
 
 class RecetaData(BaseModel):

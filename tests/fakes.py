@@ -10,7 +10,7 @@ _CONDITION = re.compile(r'#([\w:]+)(?:=(?:"([^"]*)"|(\S+)))?')
 
 
 class FakeKarakeep:
-    """Karakeep en memoria con la misma interfaz pública que KarakeepClient."""
+    """In-memory Karakeep with the same public interface as KarakeepClient."""
 
     def __init__(self, bookmarks: list[Bookmark] | None = None) -> None:
         self.bookmarks: dict[str, Bookmark] = {b.id: b for b in bookmarks or []}
@@ -58,7 +58,7 @@ class FakeKarakeep:
 
 
 class FakeLLM:
-    """OpenRouter falso: devuelve las respuestas en orden y registra las llamadas."""
+    """Fake OpenRouter: returns the responses in order and records the calls."""
 
     def __init__(self, responses: list[str], cost: float = 0.001, images: bool = True, models: dict | None = None) -> None:
         self.responses = list(responses)
@@ -79,7 +79,7 @@ class FakeLLM:
         return self.images
 
     def model_info(self, model: str) -> dict | None:
-        """Por defecto cualquier modelo existe y admite salida estructurada; `models` lo sustituye."""
+        """By default any model exists and supports structured output; `models` overrides this."""
         if self.models is not None:
             return self.models.get(model)
         modalities = ["text", "image"] if self.images else ["text"]
@@ -87,7 +87,7 @@ class FakeLLM:
 
 
 class FakeTrilium:
-    """Trilium en memoria. Soporta búsquedas `#etiqueta` y `#etiqueta=valor` combinadas (AND)."""
+    """In-memory Trilium. Supports `#label` and `#label=value` searches combined (AND)."""
 
     def __init__(self) -> None:
         self._ids = itertools.count(1)
@@ -98,7 +98,7 @@ class FakeTrilium:
     def _new_id(self, prefix: str) -> str:
         return f"{prefix}{next(self._ids)}"
 
-    # --- utilidades de test ---
+    # --- test utilities ---
     def add_note(self, parent: str, title: str, labels: dict | None = None, type: str = "text", content: str = "") -> str:
         note_id = self._new_id("n")
         self.notes[note_id] = {"title": title, "type": type, "content": content, "parents": [parent]}
@@ -112,7 +112,7 @@ class FakeTrilium:
     def children(self, parent: str) -> list[str]:
         return [nid for nid, n in self.notes.items() if parent in n["parents"]]
 
-    # --- interfaz de TriliumClient ---
+    # --- TriliumClient interface ---
     def app_info(self) -> dict:
         return {"appVersion": "fake"}
 

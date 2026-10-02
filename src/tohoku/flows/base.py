@@ -15,7 +15,7 @@ from tohoku.state import StateStore
 
 @dataclass(frozen=True)
 class FlowDeps:
-    """Clientes y cuotas compartidos que un flujo necesita para montar sus etapas."""
+    """Shared clients and quotas a flow needs to assemble its stages."""
 
     settings: Settings
     state: StateStore
@@ -27,12 +27,12 @@ class FlowDeps:
 
 
 class FlowRuntime(Protocol):
-    """Un flujo montado para un destino."""
+    """A flow assembled for a destination."""
 
-    stages: list[Stage]  # etapas propias del flujo (después de fetch y transcribe)
+    stages: list[Stage]  # the flow's own stages (after fetch and transcribe)
 
     def refresh(self) -> object:
-        """Vuelve a resolver la estructura del destino en Trilium. ConfigError si está incompleta."""
+        """Re-resolves the destination's structure in Trilium. ConfigError if it is incomplete."""
         ...
 
 
@@ -43,5 +43,5 @@ class Flow(Protocol):
     def build(self, dest: Destination, deps: FlowDeps) -> FlowRuntime: ...
 
     def init_trilium(self, trilium: TriliumClient, dest: Destination) -> str:
-        """Crea lo que falte bajo la raíz del destino (idempotente) y devuelve un resumen para la CLI."""
+        """Creates whatever is missing under the destination root (idempotent) and returns a summary for the CLI."""
         ...

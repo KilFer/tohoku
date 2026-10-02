@@ -1,6 +1,6 @@
-"""Líneas base del comportamiento de Japón (destino de referencia).
+"""Baselines for Japan behaviour (the reference destination).
 
-Las fixtures son una referencia congelada: estos tests no se regeneran, se cumplen.
+The fixtures are a frozen reference: these tests are not regenerated, they must be met.
 """
 import json
 from pathlib import Path
@@ -28,7 +28,7 @@ REPO = Path(__file__).parents[2]
 
 @pytest.fixture(autouse=True)
 def _japan_generic_words():
-    configure_generic_words(["japan", "japon"])  # como en config/destinos.example.yaml
+    configure_generic_words(["japan", "japon"])  # as in config/destinos.example.yaml
 
 
 def _read(path: Path) -> str:

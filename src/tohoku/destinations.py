@@ -1,4 +1,4 @@
-"""Destinos configurables (`config/destinos.yaml`): qué listas de Karakeep van a qué destino y con qué flujo."""
+"""Configurable destinations (`config/destinos.yaml`): which Karakeep lists go to which destination and with which flow."""
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -24,10 +24,10 @@ class HasParams(Protocol):
 class Destination:
     nombre: str
     flujo: str
-    raiz: str  # etiqueta de la nota raíz en Trilium, sin '#'
+    raiz: str  # label of the root note in Trilium, without '#'
     descripcion: str
-    prompt: str  # texto del prompt de extracción (ya leído del fichero)
-    params: BaseModel  # parámetros validados con el `params_model` del flujo
+    prompt: str  # extraction prompt text (already read from the file)
+    params: BaseModel  # parameters validated with the flow's `params_model`
 
 
 class ClassifierConfig(BaseModel):
@@ -40,7 +40,7 @@ class ClassifierConfig(BaseModel):
 
 class CleanupConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
-    retencion_dias: int = Field(30, ge=0)  # días que se guardan los resultados de etapa de un job terminado; 0 = borrar al terminar
+    retencion_dias: int = Field(30, ge=0)  # days a finished job's stage results are kept; 0 = delete on finish
 
 
 @dataclass(frozen=True)
@@ -48,16 +48,16 @@ class DestinationsConfig:
     listas: dict[str, list[str]]
     destinos: dict[str, Destination]
     clasificador: ClassifierConfig
-    destino_por_defecto: str  # destino de reserva para los jobs sin candidatos
+    destino_por_defecto: str  # fallback destination for jobs without candidates
     limpieza: CleanupConfig = CleanupConfig()
-    palabras_genericas: tuple[str, ...] = ()  # se ignoran al normalizar nombres (p. ej. el nombre del país)
+    palabras_genericas: tuple[str, ...] = ()  # ignored when normalizing names (e.g. the country name)
 
     def candidates_for(self, list_id: str) -> list[str]:
         return list(self.listas.get(list_id, []))
 
     def needs_classifier(self) -> bool:
-        """Hay clasificador si un bookmark puede tener varios candidatos: una lista con varios destinos, o
-        listas con destinos distintos (la ingesta une los candidatos de todas las listas del bookmark)."""
+        """There is a classifier if a bookmark can have several candidates: a list with several destinations, or
+        lists with different destinations (ingest merges the candidates of all the bookmark's lists)."""
         if any(len(names) > 1 for names in self.listas.values()):
             return True
         return len({name for names in self.listas.values() for name in names}) > 1

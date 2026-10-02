@@ -89,7 +89,7 @@ def test_images_order_post_then_keyframes(tmp_path, settings, state):
     from tohoku.clients.openrouter import image_part
 
     ctx = _ctx(tmp_path, images=2, frames=1)
-    # marcamos cada imagen con un tamaño distinto para identificar el orden
+    # mark each image with a different size to identify the order
     sizes = {"images/00.jpg": (20, 10), "images/01.jpg": (30, 10), "frames/00_00.jpg": (40, 10)}
     for rel, size in sizes.items():
         make_image(ctx.workdir / rel, size=size)
@@ -145,12 +145,12 @@ def test_cover_post_without_portada_uses_first_image(tmp_path, settings):
 def test_cover_video_without_portada_uses_last_frame(tmp_path, settings):
     ctx = _cover_ctx(tmp_path, None, frames=3, content_type=ContentType.VIDEO)
     last = ctx.result("fetch", FetchResult).keyframes[-1]
-    make_image(ctx.workdir / last, color="blue")  # el último fotograma suele ser el plato terminado
+    make_image(ctx.workdir / last, color="blue")  # the last frame is usually the finished dish
 
     assert CoverStage(settings).run(ctx).path == "cover.jpg"
     with Image.open(ctx.workdir / "cover.jpg") as im:
         r, g, b = im.convert("RGB").getpixel((0, 0))
-        assert b > 200 and r < 50 and g < 50  # azul (JPEG no conserva el valor exacto)
+        assert b > 200 and r < 50 and g < 50  # blue (JPEG does not preserve the exact value)
 
 
 def test_cover_video_without_portada_nor_frames_is_none(tmp_path, settings):

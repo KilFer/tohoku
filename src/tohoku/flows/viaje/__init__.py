@@ -1,1 +1,1 @@
-"""Flujo `viaje`: lugares (Geo Map), cosas y otros. Cualquier país es un destino de este flujo (Japón es el ejemplo de referencia)."""
+"""`viaje` flow: lugares (Geo Map), cosas and others. Any country is a destination of this flow (Japan is the reference example)."""

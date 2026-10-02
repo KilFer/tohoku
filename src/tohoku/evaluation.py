@@ -90,7 +90,7 @@ def format_table(scores: list[CaseScore], model: str, keyframes: bool) -> str:
 
 
 class EvalRunner:
-    """Descarga y transcribe cada caso una vez (caché en disco) y solo repite la extracción."""
+    """Downloads and transcribes each case once (disk cache) and only repeats the extraction."""
 
     def __init__(self, fetch, transcribe, cache_dir: Path) -> None:
         self._fetch = fetch

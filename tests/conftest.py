@@ -8,7 +8,7 @@ from tohoku.text import configure_generic_words
 
 @pytest.fixture(autouse=True)
 def _reset_generic_words():
-    """Las palabras genéricas de los nombres son globales (se fijan al cargar destinos.yaml): sin fugas entre tests."""
+    """Generic name words are global (set when destinos.yaml is loaded): no leaks between tests."""
     yield
     configure_generic_words([])
 

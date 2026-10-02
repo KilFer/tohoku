@@ -5,10 +5,10 @@ from tohoku.errors import ApiError, ConfigError
 from tohoku.models import GeoMatch
 
 SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
-# Solo campos del SKU "Text Search Pro" (5.000 llamadas gratis al mes). No añadir campos Enterprise.
-# postalAddress es Pro y trae el país: con regionCode=JP, formattedAddress lo omite.
-# Las áreas (ciudades, barrios, islas) no traen postalAddress: el país y la ciudad salen de
-# addressComponents (también Pro).
+# Only fields of the "Text Search Pro" SKU (5,000 free calls per month). Do not add Enterprise fields.
+# postalAddress is Pro and carries the country: with regionCode=JP, formattedAddress omits it.
+# Areas (cities, neighbourhoods, islands) have no postalAddress: country and city come from
+# addressComponents (also Pro).
 FIELD_MASK = (
     "places.id,places.displayName,places.formattedAddress,places.location,"
     "places.googleMapsUri,places.types,places.postalAddress,places.addressComponents"

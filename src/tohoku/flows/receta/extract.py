@@ -21,10 +21,10 @@ class RecetaExtractResult(BaseModel):
 
 
 class RecetaExtractStage:
-    """Extracción estructurada de una receta con un LLM multimodal."""
+    """Structured extraction of a recipe with a multimodal LLM."""
 
     name = "extract"
-    needs_files = True  # usa los ficheros del job: si la limpieza los borró, el pipeline vuelve a descargar
+    needs_files = True  # uses the job's files: if cleanup deleted them, the pipeline downloads again
     result_model = RecetaExtractResult
 
     def __init__(self, settings: Settings, llm: OpenRouterClient, budget: DailyQuota, system_prompt: str) -> None:
@@ -36,7 +36,7 @@ class RecetaExtractStage:
     def run(self, ctx: JobContext) -> RecetaExtractResult:
         fetch = ctx.result("fetch", FetchResult)
         transcript = ctx.result("transcribe", Transcript)
-        # `portada` indexa esta lista: imágenes del post primero, después los fotogramas
+        # `portada` indexes this list: post images first, then keyframes
         image_paths = [ctx.workdir / rel for rel in fetch.images + fetch.keyframes]
         model = self._settings.openrouter_model if image_paths else self._settings.text_model
         content = [{"type": "text", "text": build_user_text(fetch, transcript)}] + [image_part(p) for p in image_paths]

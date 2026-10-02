@@ -14,9 +14,9 @@ def _ffmpeg(args: list[str]) -> None:
 
 
 def extract_keyframes(video: Path, out_dir: Path, max_frames: int) -> list[Path]:
-    """Primer fotograma + cambios de escena; si no llegan a `max_frames`, completa con muestreo uniforme.
+    """First frame + scene changes; if they do not reach `max_frames`, fill up with uniform sampling.
 
-    Después descarta los casi idénticos y reparte los restantes a lo largo del vídeo.
+    Then drops near-identical ones and spreads the remaining ones across the video.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     _ffmpeg([
@@ -34,7 +34,7 @@ def extract_keyframes(video: Path, out_dir: Path, max_frames: int) -> list[Path]
 
 
 def _signature(path: Path) -> bytes:
-    # En color: en escala de grises el rojo y el verde puros casi coinciden.
+    # In colour: in greyscale pure red and green almost coincide.
     with Image.open(path) as im:
         return im.convert("RGB").resize((8, 8)).tobytes()
 

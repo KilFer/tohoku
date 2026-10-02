@@ -66,7 +66,7 @@ def _synthetic_title(meta: SourceMeta) -> str:
 
 
 class PublishStage:
-    """Etapa 7: crea o fusiona notas en Trilium y manda lo dudoso a la bandeja de revisión."""
+    """Stage 7: creates or merges notes in Trilium and sends doubtful ones to the review inbox."""
 
     name = "publish"
     result_model = PublishResult
@@ -160,7 +160,7 @@ class PublishStage:
         return OtroData(titulo=otro.titulo, contenido=otro.contenido, fuentes=[entry(otro.contenido[:200])])
 
     def _natural_match(self, data: NoteData, layout: Layout) -> list[TNote]:
-        """Notas existentes con la misma clave natural (ficha de Google; si no la hay, el nombre normalizado)."""
+        """Existing notes with the same natural key (Google record; if there is none, the normalised name)."""
         if isinstance(data, LugarData) and data.place:
             return self._t.search(f'#googlePlaceId="{data.place.place_id}"', ancestor=layout.root) or near_notes(
                 self._t.search(f'#jrTipo=lugar #jrNombreNorm="{name_key(data.nombre)}"', ancestor=layout.root), data.place
@@ -172,7 +172,7 @@ class PublishStage:
         return []
 
     def _create(self, data: NoteData, layout: Layout, bookmark_id: str) -> str:
-        """Crea (o retoma, tras un fallo a medias) la nota de `data`. Idempotente vía `#jrItem` y la clave natural."""
+        """Create (or resume, after a partial failure) the note for `data`. Idempotent via `#jrItem` and the natural key."""
         if isinstance(data, LugarData):
             parent, template = layout.mapa, layout.plantilla_lugar
         elif isinstance(data, CosaData):
@@ -182,16 +182,16 @@ class PublishStage:
         item_id = f"{bookmark_id}:{item_identity(data)}"
         found = self._t.search(f'#jrItem="{item_id}"', ancestor=layout.root)
         if found and self._has_data(found[0].note_id):
-            # La nota ya estaba completa (de una ejecución anterior): se trata como una
-            # fusión para no perder "Mis notas" ni duplicar la fuente ni volver a crearla.
+            # The note was already complete (from a previous run): it is treated as a
+            # merge so as not to lose "Mis notas", duplicate the source or create it again.
             return self._merge(found[0].note_id, data)
         natural = [n for n in self._natural_match(data, layout) if not found or n.note_id != found[0].note_id]
         if natural:
-            # Otra fuente ya creó la nota después de que `resolve` hiciera el plan: se fusiona.
+            # Another source already created the note after `resolve` made the plan: merge.
             return self._merge(natural[0].note_id, data)
         if found:
-            # Retomamos una creación cortada a medias: no hay adjunto todavía, pero puede
-            # haber contenido ya escrito (y hasta ediciones del usuario bajo "Mis notas").
+            # We resume a creation cut off halfway: there is no attachment yet, but there may
+            # be content already written (even user edits under "Mis notas").
             note = found[0]
             existing_content = self._t.get_content(note.note_id)
         else:
@@ -222,8 +222,8 @@ class PublishStage:
             if add_source(data, new.fuentes[0]):
                 self._merge_text(data, new)
             elif type(data) is type(new) and all(f.bookmark_id == new.fuentes[0].bookmark_id for f in data.fuentes):
-                # Reprocesado de una nota que solo tiene esta fuente: se regenera con la extracción
-                # nueva (sin LLM). Si la nueva no tiene ficha de Google, se conserva la anterior.
+                # Reprocessing a note that only has this source: it is regenerated with the new
+                # extraction (no LLM). If the new one has no Google record, the previous one is kept.
                 previous = data
                 data = new.model_copy(deep=True)
                 if isinstance(data, LugarData) and isinstance(previous, LugarData) and data.place is None:
@@ -232,8 +232,8 @@ class PublishStage:
                 data.place = new.place
             if isinstance(data, CosaData) and isinstance(new, CosaData):
                 data.donde = _unique(data.donde + new.donde)
-        # El adjunto se escribe primero: si el reintento se corta después, ya se ve la fuente
-        # como incorporada y no se vuelve a llamar al LLM de pago.
+        # The attachment is written first: if the retry is cut off afterwards, the source already
+        # counts as incorporated and the paid LLM is not called again.
         if attachment is None:
             self._t.create_attachment(note_id, DATA_ATTACHMENT_TITLE, "application/json", dump_data(data))
         else:

@@ -1,1 +1,1 @@
-"""Flujos de procesamiento (viaje, receta…). El registro está en `tohoku.flows.registry`."""
+"""Processing flows (viaje, receta…). The registry is in `tohoku.flows.registry`."""

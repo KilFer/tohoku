@@ -8,7 +8,7 @@ from tohoku.state import Job
 
 @dataclass
 class JobContext:
-    """Lo que ve cada etapa: el job, su directorio de trabajo y los resultados previos."""
+    """What each stage sees: the job, its working directory and the previous results."""
 
     job: Job
     workdir: Path

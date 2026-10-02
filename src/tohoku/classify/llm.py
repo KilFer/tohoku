@@ -12,11 +12,11 @@ NINGUNO = "ninguno"
 _LABEL_SUFFIX = "Responde únicamente con el nombre del destino (o `ninguno`), sin nada más."
 
 
-_key = label_key  # clave de comparación compartida con destinations.py
+_key = label_key  # comparison key shared with destinations.py
 
 
 def _resolve(raw: str, candidates: list[Candidate]) -> tuple[str | None, bool]:
-    """(nombre exacto o None, reconocido). `ninguno` -> (None, True); desconocido -> (None, False)."""
+    """(exact name or None, recognised). `ninguno` -> (None, True); unknown -> (None, False)."""
     key = _key(raw)
     if key == NINGUNO:
         return None, True
@@ -68,7 +68,7 @@ class JsonSchemaClassifier:
             raise ClassifierError(f"respuesta no válida: {exc}", result.content, result.cost_usd) from exc
         destino, known = _resolve(reply.destino, candidates)
         if not known:
-            destino = reply.destino  # ClassifyStage lo rechaza y reintenta
+            destino = reply.destino  # ClassifyStage rejects it and retries
         alternativa = _resolve(reply.alternativa, candidates)[0] if reply.alternativa is not None else None
         return Verdict(
             destino=destino,

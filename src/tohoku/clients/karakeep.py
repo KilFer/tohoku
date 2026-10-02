@@ -36,7 +36,7 @@ class Bookmark(BaseModel):
 
 
 class KarakeepClient:
-    """Cliente mínimo de la API REST de Karakeep (`/api/v1`)."""
+    """Minimal client for the Karakeep REST API (`/api/v1`)."""
 
     SERVICE = "karakeep"
 

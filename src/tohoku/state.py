@@ -17,13 +17,13 @@ def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
-# Google renueva las cuotas diarias (y mide el mes) a medianoche del Pacífico. Los contadores de
-# cuota usan ese mismo día para no llamar a Google cuando su cuota del día ya está agotada.
+# Google renews daily quotas (and measures the month) at Pacific midnight. The quota counters
+# use that same day so as not to call Google when its quota for the day is already exhausted.
 QUOTA_TZ = ZoneInfo("America/Los_Angeles")
 
 
 def next_quota_reset(now: datetime) -> datetime:
-    """Siguiente medianoche del Pacífico + 5 min, en UTC."""
+    """Next Pacific midnight + 5 min, in UTC."""
     tomorrow = now.astimezone(QUOTA_TZ).date() + timedelta(days=1)
     return datetime.combine(tomorrow, time(0, 5), tzinfo=QUOTA_TZ).astimezone(UTC)
 
@@ -54,7 +54,7 @@ class Job(BaseModel):
     outcome: Outcome | None
     created_at: datetime
     updated_at: datetime
-    candidates: list[str] | None = None  # None = job sin candidatos registrados
+    candidates: list[str] | None = None  # None = job with no recorded candidates
     destination: str | None = None
 
     @field_validator("candidates", mode="before")
@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS places_cache (
 
 
 class StateStore:
-    """Estado del servicio: jobs, resultados por etapa, publicaciones y contadores diarios."""
+    """Service state: jobs, per-stage results, publications and daily counters."""
 
     def __init__(self, path: Path, clock: Callable[[], datetime] = utcnow) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -123,7 +123,7 @@ class StateStore:
         return self._clock().astimezone(UTC).date().isoformat()
 
     def quota_day(self) -> str:
-        """Día de las cuotas (hora del Pacífico, como Google)."""
+        """Quota day (Pacific time, like Google)."""
         return self._clock().astimezone(QUOTA_TZ).date().isoformat()
 
     # --- jobs -------------------------------------------------------------
@@ -148,14 +148,14 @@ class StateStore:
         return cursor.rowcount == 1
 
     def add_candidates(self, bookmark_id: str, names: Sequence[str]) -> None:
-        """Une destinos candidatos sin duplicar y conservando el orden."""
+        """Merges candidate destinations without duplicates, preserving order."""
         row = self._db.execute("SELECT candidates FROM jobs WHERE bookmark_id = ?", (bookmark_id,)).fetchone()
         if row is None:
             return
         old = json.loads(row["candidates"]) if row["candidates"] else []
         merged = list(dict.fromkeys(old + list(names)))
         if merged == old:
-            return  # nada nuevo: no se toca `updated_at`
+            return  # nothing new: `updated_at` is left untouched
         self._db.execute(
             "UPDATE jobs SET candidates = ?, updated_at = ? WHERE bookmark_id = ?",
             (json.dumps(merged), self._now(), bookmark_id),
@@ -193,7 +193,7 @@ class StateStore:
         return [Job.model_validate(dict(row)) for row in rows]
 
     def error_job_ids(self) -> list[str]:
-        """Todos los jobs en error (sin límite), del más antiguo al más reciente."""
+        """All jobs in error (no limit), from oldest to newest."""
         rows = self._db.execute("SELECT bookmark_id FROM jobs WHERE status = 'error' ORDER BY updated_at, bookmark_id").fetchall()
         return [row["bookmark_id"] for row in rows]
 
@@ -219,7 +219,7 @@ class StateStore:
             (self._now(), bookmark_id),
         )
 
-    # --- resultados por etapa ------------------------------------------------
+    # --- stage results ------------------------------------------------
 
     def save_stage(self, bookmark_id: str, stage: str, result: BaseModel) -> None:
         self._db.execute(
@@ -243,13 +243,13 @@ class StateStore:
         if "publish" in names:
             self._db.execute("DELETE FROM published WHERE bookmark_id = ?", (bookmark_id,))
 
-    # --- limpieza (nunca toca `jobs` ni `published`) ----------------------------
+    # --- cleanup (never touches `jobs` or `published`) ----------------------------
 
     def delete_stage(self, bookmark_id: str, stage: str) -> None:
         self._db.execute("DELETE FROM stage_results WHERE bookmark_id = ? AND stage = ?", (bookmark_id, stage))
 
     def mark_fetch_purged(self, bookmark_id: str) -> None:
-        """Marca el resultado de fetch con `files_purged` (sus ficheros se borraron); conserva el resto. Sin fetch, no hace nada."""
+        """Flags the fetch result with `files_purged` (its files were deleted); keeps the rest. Without fetch, does nothing."""
         self._db.execute(
             "UPDATE stage_results SET data = json_set(data, '$.files_purged', json('true'))"
             " WHERE bookmark_id = ? AND stage = 'fetch'",
@@ -257,12 +257,12 @@ class StateStore:
         )
 
     def delete_stages(self, bookmark_id: str) -> None:
-        """Todos los resultados de etapa del job."""
+        """All the job's stage results."""
         self._db.execute("DELETE FROM stage_results WHERE bookmark_id = ?", (bookmark_id,))
 
     def purge_stage_results(self, older_than: datetime) -> list[str]:
-        """Borra los resultados de etapa de los jobs `done` terminados antes de `older_than`; devuelve sus ids."""
-        # Una sola sentencia: un `reprocess` concurrente (pasa el job a pending) no puede colarse entre medias.
+        """Deletes the stage results of `done` jobs finished before `older_than`; returns their ids."""
+        # A single statement: a concurrent `reprocess` (which sets the job to pending) cannot slip in between.
         rows = self._db.execute(
             "DELETE FROM stage_results WHERE bookmark_id IN"
             " (SELECT bookmark_id FROM jobs WHERE status = 'done' AND updated_at < ?)"
@@ -275,7 +275,7 @@ class StateStore:
         rows = self._db.execute("SELECT bookmark_id FROM jobs WHERE status = 'done'").fetchall()
         return {row["bookmark_id"] for row in rows}
 
-    # --- publicaciones (idempotencia de publish) ------------------------------
+    # --- publications (publish idempotence) ------------------------------
 
     def record_publish(self, bookmark_id: str, note: PublishedNote) -> None:
         self._db.execute(
@@ -289,7 +289,7 @@ class StateStore:
         return {note.key: note for note in notes}
 
     def review_reasons_for_note(self, note_id: str, exclude: tuple[str, str] | None = None) -> list[str]:
-        """Motivos de revisión vigentes de todas las fuentes publicadas en `note_id` (salvo `exclude`)."""
+        """Current review reasons of all the sources published in `note_id` (except `exclude`)."""
         rows = self._db.execute(
             "SELECT bookmark_id, item_key, data FROM published WHERE json_extract(data, '$.note_id') = ?", (note_id,)
         ).fetchall()
@@ -300,7 +300,7 @@ class StateStore:
             reasons += PublishedNote.model_validate_json(row["data"]).review_reasons
         return list(dict.fromkeys(reasons))
 
-    # --- contadores diarios -------------------------------------------------
+    # --- daily counters -------------------------------------------------
 
     def add_counter(self, key: str, amount: float) -> float:
         self._db.execute(
@@ -314,7 +314,7 @@ class StateStore:
         row = self._db.execute("SELECT value FROM counters WHERE day = ? AND key = ?", (self.quota_day(), key)).fetchone()
         return float(row["value"]) if row else 0.0
 
-    # --- caché de Google Places -------------------------------------------
+    # --- Google Places cache -------------------------------------------
 
     def get_places_cache(self, query: str, max_age: timedelta) -> list[dict] | None:
         row = self._db.execute("SELECT data, created_at FROM places_cache WHERE query = ?", (_cache_key(query),)).fetchone()
@@ -328,7 +328,7 @@ class StateStore:
             (_cache_key(query), json.dumps(results, ensure_ascii=False), self._now()),
         )
 
-    # --- informes -----------------------------------------------------------
+    # --- reports -----------------------------------------------------------
 
     def status_counts(self) -> dict[str, int]:
         rows = self._db.execute("SELECT status, outcome, COUNT(*) AS n FROM jobs GROUP BY status, outcome").fetchall()

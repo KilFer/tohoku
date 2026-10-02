@@ -36,7 +36,7 @@ def state(tmp_path, clock):
 
 
 def _job(state, data_dir, bid, outcome=Outcome.PROCESADO, with_dir=True):
-    """Job con resultados de etapa, una publicación y (opcional) su directorio con ficheros."""
+    """Job with stage results, a publication and (optionally) its directory with files."""
     state.add_job(bid, f"https://youtu.be/{bid}", Platform.YOUTUBE, ContentHint.VIDEO)
     state.save_stage(bid, "fetch", make_fetch())
     for stage in STAGES[1:]:
@@ -57,7 +57,7 @@ def _stages(state, bid):
 
 
 def _assert_fetch_purged(state, bid):
-    """El resultado de fetch sigue (metadatos para publish) marcado con files_purged."""
+    """The fetch result remains (metadata for publish) marked with files_purged."""
     fetch = state.load_stage(bid, "fetch", FetchResult)
     assert fetch is not None and fetch.files_purged is True
     assert fetch.meta == make_fetch().meta
@@ -170,7 +170,7 @@ def _finished_at(state, clock, data_dir, bid, when, outcome=Outcome.PROCESADO, w
 
 
 def test_purge_by_retention_only_touches_old_done_jobs(tmp_path, state, clock):
-    """Review Focus 5: ni PENDING (reprocesándose) ni ERROR se purgan aunque sean antiguos."""
+    """Review Focus 5: neither PENDING (being reprocessed) nor ERROR are purged even if old."""
     data_dir = tmp_path / "data"
     _finished_at(state, clock, data_dir, "viejo", NOW - timedelta(days=31))
     _finished_at(state, clock, data_dir, "reciente", NOW - timedelta(days=5))
@@ -219,7 +219,7 @@ def test_purge_deletes_leftover_dirs_of_done_jobs_only(tmp_path, state, clock):
     assert (error / "video.mp4").is_file()
     assert (unknown / "keep.txt").is_file()
     assert stray.is_file()
-    # Sin ficheros, el resultado de fetch se conserva marcado con files_purged; los demás, intactos.
+    # Without files, the fetch result is kept marked with files_purged; the others are untouched.
     assert _stages(state, "hecho") == set(STAGES)
     _assert_fetch_purged(state, "hecho")
     assert _stages(state, "pendiente") == set(STAGES) and _stages(state, "roto") == set(STAGES)

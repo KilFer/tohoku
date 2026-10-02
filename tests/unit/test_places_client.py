@@ -40,7 +40,7 @@ def test_field_mask_only_pro_fields():
     )
 
 
-# Formato real devuelto por Google con regionCode=JP: la dirección omite el país.
+# Real format returned by Google with regionCode=JP: the address omits the country.
 REAL_PLACE = {
     "id": "SAMPLE_PLACE_ID_FUSHIMI",
     "displayName": {"text": "Fushimi Inari-taisha", "languageCode": "es"},
@@ -67,7 +67,7 @@ def test_postal_address_gives_country_and_area():
     assert legacy.country_code is None and legacy.area == ""
 
 
-# Formato real de un área (barrio, ciudad, isla): sin postalAddress, país solo en addressComponents.
+# Real format of an area (neighborhood, city, island): no postalAddress, country only in addressComponents.
 REAL_AREA = {
     "id": "ChIJkabukicho",
     "displayName": {"text": "Kabukichō", "languageCode": "es"},

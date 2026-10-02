@@ -38,7 +38,7 @@ def test_ingest_registers_unsupported_without_platform(state):
 
     report = ingest(karakeep, state, "L1", candidates=["japon"])
 
-    # Final review minor d: un bookmark que no es un enlace (nota, imagen suelta) se ignora.
+    # Final review minor d: a bookmark that is not a link (note, standalone image) is ignored.
     assert report.unsupported == ["b1"]
     assert state.get_job("b1").platform is None
 
@@ -54,7 +54,7 @@ def test_ingest_ignores_bookmarks_that_are_not_links(state):
 
 
 def test_ingest_skips_bookmarks_already_tagged_when_state_was_lost(state):
-    """Review Focus 5: state.db recreado no reprocesa lo ya marcado."""
+    """Review Focus 5: a recreated state.db does not reprocess what is already marked."""
     karakeep = FakeKarakeep([
         Bookmark(id="b1", url="https://youtu.be/a", tags=["jr:procesado"], archived=True),
         Bookmark(id="b2", url="https://youtu.be/b", tags=["jr:error"]),

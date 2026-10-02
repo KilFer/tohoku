@@ -26,12 +26,12 @@ class ImportReport:
     total: int = 0
     created: int = 0
     existing: int = 0
-    pending: int = 0  # nuevos que quedan para próximas tandas (por --limit)
+    pending: int = 0  # new ones left for later batches (because of --limit)
     by_collection: dict[str, int] = field(default_factory=dict)
 
 
 def _fix_text(text: str | None) -> str | None:
-    """Deshace el mojibake de las exportaciones de Instagram (UTF-8 guardado como Latin-1)."""
+    """Undoes the mojibake of Instagram exports (UTF-8 stored as Latin-1)."""
     if not text:
         return text
     try:
@@ -41,7 +41,7 @@ def _fix_text(text: str | None) -> str | None:
 
 
 def _is_collection_block(entry: dict) -> bool:
-    """Formato 2026: cada entrada es una colección con sus posts anidados en `label_values[].dict`."""
+    """2026 format: each entry is a collection with its posts nested in `label_values[].dict`."""
     return any(isinstance(value, dict) and "dict" in value for value in entry.get("label_values") or [])
 
 
@@ -95,13 +95,13 @@ def _collection_name(entry: dict) -> str | None:
 
 
 def parse_export(path: Path) -> list[ExportedItem]:
-    """Lee la exportación oficial de Instagram (carpeta, .zip o JSON suelto).
+    """Reads the official Instagram export (folder, .zip or loose JSON).
 
-    Formatos de `saved_collections.json`:
-    - clásico: cada colección empieza con una entrada sin URL (su nombre) seguida de sus posts;
-    - 2026: lista de colecciones, cada una con su nombre en `label_values` y sus posts anidados.
-    Un post guardado en una colección y también en `saved_posts.json` se queda con la colección.
-    Devuelve los enlaces en el orden del fichero (Instagram lista primero lo más reciente).
+    Formats of `saved_collections.json`:
+    - classic: each collection starts with an entry without URL (its name) followed by its posts;
+    - 2026: list of collections, each with its name in `label_values` and its posts nested.
+    A post saved in a collection and also in `saved_posts.json` keeps the collection.
+    Returns the links in file order (Instagram lists the most recent first).
     """
     by_url: dict[str, ExportedItem] = {}
     for name, data in _load_files(path):
@@ -135,10 +135,10 @@ def import_items(
     dry_run: bool = False,
     limit: int | None = None,
 ) -> ImportReport:
-    """Importa del más antiguo al más reciente (orden inverso del fichero).
+    """Imports from oldest to newest (reverse of file order).
 
-    `limit` cuenta solo los enlaces nuevos: relanzar el mismo comando importa la siguiente tanda.
-    En simulación se consulta Karakeep (solo lectura) para decir qué se crearía, sin escribir nada.
+    `limit` counts only new links: rerunning the same command imports the next batch.
+    In dry-run mode Karakeep is queried (read-only) to say what would be created, writing nothing.
     """
     report = ImportReport(total=len(items), by_collection=dict(Counter(i.collection or NO_COLLECTION for i in items)))
     for item in reversed(items):

@@ -14,7 +14,7 @@ SHIBUYA = make_geo("P1", "Ichiran Shibuya", "Jinnan, Shibuya, Tokio 150-0041, Ja
 OSAKA = make_geo("P2", "Ichiran Dotonbori", "Chuo Ward, Osaka, 542-0084, Japón", lat=34.66, lng=135.50)
 OTHER_TOKYO = make_geo("P3", "Ramen Nagi", "Shinjuku, Tokio, Japón")
 PARIS = make_geo("P4", "Ichiran Paris", "Rue X, 75001 Paris, Francia", lat=48.85, lng=2.35)
-# Formato real con regionCode=JP: sin país en la dirección, país y prefectura en postalAddress.
+# Real format with regionCode=JP: no country in the address, country and prefecture in postalAddress.
 FUSHIMI_REAL = make_geo(
     "F1", "Fushimi Inari-taisha", "68 Fukakusa Yabunouchichō, Fushimi Ward, Kyoto, 612-0882", lat=34.97, lng=135.78,
     country_code="JP", area="Prefectura de Kioto 68 Fukakusa Yabunouchicho Fushimi-ku, Kioto",
@@ -124,7 +124,7 @@ def test_country_code_outside_japan_is_rejected_even_inside_bbox(tmp_path, state
     assert outcome.review_reason == "geocodificacion-fallida"
 
 
-# Caso real (Short "This Hidden Gem in Japan has CRAZY Ramen"): el local correcto sale en tercera posición.
+# Real case (Short "This Hidden Gem in Japan has CRAZY Ramen"): the right venue comes third.
 JINSEI = make_geo("J1", "Ramen Jinsei JET", "7-chōme-12-2 Fukushima, Fukushima Ward, Osaka, 553-0003", lat=34.69, lng=135.49, country_code="JP", area="Osaka")
 JINSEI_600 = make_geo("J2", "Ramen Jinsei JET 600", "1-chōme-3-2 Higashiobase, Higashinari Ward, Osaka, 537-0024", lat=34.67, lng=135.54, country_code="JP", area="Osaka")
 MIKI_JET = make_geo("M1", "Miki Jet", "4-chōme-1-5 Nadaminamidōri, Nada Ward, Kobe, Hyogo 657-0841", lat=34.71, lng=135.22, country_code="JP", area="Hyogo Kobe")
@@ -139,7 +139,7 @@ def test_best_name_match_wins_over_first_result(tmp_path, state):
 
 
 def test_equally_good_name_matches_are_ambiguous(tmp_path, state):
-    # Dos sucursales de verdad, a ~3 km: sigue siendo ambiguo.
+    # Two genuine branches, ~3 km apart: still ambiguous.
     shinjuku = make_geo("P5", "Ichiran Shinjuku", "Shinjuku, Tokio", lat=35.69, lng=139.70, country_code="JP", area="Tokio")
     places = FakePlaces({"Ichiran Tokyo": [SHIBUYA, shinjuku]})
     lugar = make_lugar("Ichiran", consulta_busqueda="Ichiran Tokyo")
@@ -148,7 +148,7 @@ def test_equally_good_name_matches_are_ambiguous(tmp_path, state):
     assert outcome.review_reason == "geocodificacion-ambigua"
 
 
-# Caso real: barrio sin postalAddress; el país y la ciudad vienen de addressComponents.
+# Real case: neighbourhood without postalAddress; country and city come from addressComponents.
 KABUKICHO = make_geo("A1", "Kabukichō", "Kabukichō, Shinjuku, Tokio 160-0021", lat=35.6955, lng=139.7031, country_code="JP", area="Kabukichō Shinjuku Tokio")
 KYOTO_CITY = make_geo("A2", "Kioto", "Kioto, Prefectura de Kioto", lat=35.01, lng=135.77, country_code="JP", area="Kioto Prefectura de Kioto")
 
@@ -163,7 +163,7 @@ def test_areas_are_geocoded_like_any_place(tmp_path, state):
     assert [(o.match.place_id, o.review_reason) for o in outcomes] == [("A1", None), ("A2", None)]
 
 
-# Casos reales (tanda 4): empates entre resultados que son el mismo sitio.
+# Real cases (batch 4): ties between results that are the same place.
 DOTONBORI_SPOT = make_geo("D1", "Dōtonbori", "1 Chome Dotonbori, Chūō-ku, Osaka", lat=34.66868, lng=135.50128, country_code="JP", area="Prefectura de Osaka")
 DOTONBORI_AREA = make_geo("D2", "Dotonbori", "Dotonbori, Chūō-ku, Osaka", lat=34.66890, lng=135.49950, country_code="JP", area="Prefectura de Osaka")
 
@@ -247,7 +247,7 @@ NZ = ViajeParams(
     pais="NZ", nombres_pais=["new zealand", "nueva zelanda"], latitud=(-48.0, -34.0), longitud=(166.0, 179.0),
     categorias_lugar=["naturaleza", "otro"], categorias_cosa={"otros": "Otros"}, alias_ciudad={"auckland": ["tamaki makaurau"]},
 )
-# La dirección usa el nombre maorí de la ciudad: solo casa con "Auckland" gracias a los alias del destino.
+# The address uses the Maori name of the city: it only matches "Auckland" thanks to the destination's aliases.
 SKY_TOWER = make_geo("NZ1", "Sky Tower", "Victoria St W, Tāmaki Makaurau 1010, Nueva Zelanda", lat=-36.85, lng=174.76,
                      country_code="NZ", area="")
 
@@ -280,8 +280,8 @@ def test_places_cache_is_per_country(tmp_path, state):
     _run(tmp_path, state, jp, [make_lugar()])
     _run_nz(tmp_path, state, nz, make_lugar())
 
-    assert jp.queries == []  # Japón reutiliza su entrada
-    assert nz.queries == ["Ichiran Shibuya Tokyo"]  # Nueva Zelanda no la comparte
+    assert jp.queries == []  # Japan reuses its entry
+    assert nz.queries == ["Ichiran Shibuya Tokyo"]  # New Zealand does not share it
 
 
 def test_every_country_stores_its_searches_with_the_country_prefix(tmp_path, state):
@@ -299,4 +299,4 @@ def test_in_country_uses_code_bounds_and_names():
 
 def test_city_aliases_come_from_the_destination():
     assert city_matches(SKY_TOWER, "Auckland", NZ.alias_ciudad)
-    assert not city_matches(SKY_TOWER, "Auckland")  # sin alias no casa
+    assert not city_matches(SKY_TOWER, "Auckland")  # without an alias it does not match

@@ -58,7 +58,7 @@ def _run(tmp_path, state, replies, candidates=("japon", "cocina"), destination=N
     ctx.results["transcribe"] = Transcript(text=text, origin="whisper")
     fake = FakeClassifier(replies)
     quota = DailyQuota(state, "openrouter_usd", limit)
-    # Por defecto el mismo falso hace de clasificador de texto y de imágenes.
+    # By default the same fake acts as both the text and the image classifier.
     stage = ClassifyStage(_config(), fake, quota, vision_classifier=fake if vision == "same" else vision)
     return stage, ctx, fake, quota
 
@@ -159,7 +159,7 @@ def test_sin_clasificador_es_config_error(tmp_path, state):
 
 
 def test_stale_candidates_are_dropped_before_deciding(tmp_path, state):
-    """Un candidato borrado de destinos.yaml no cuenta: queda uno solo y no se llama al LLM."""
+    """A candidate removed from destinos.yaml does not count: only one is left and the LLM is not called."""
     config = _config()
     config = dataclasses.replace(config, destinos={"japon": config.destinos["japon"]})
     ctx = make_ctx(tmp_path, make_job(candidates=["japon", "borrado"]))
@@ -178,13 +178,13 @@ def test_all_candidates_stale_falls_back_to_destino_por_defecto(tmp_path, state)
 
 
 def test_forced_destination_missing_from_config_passes_through(tmp_path, state):
-    """El pipeline se encarga de él (PermanentError solo para ese job)."""
+    """The pipeline handles it (PermanentError only for that job)."""
     ctx = make_ctx(tmp_path, make_job(candidates=["japon"], destination="borrado"))
     result = ClassifyStage(_config(), FakeClassifier([]), DailyQuota(state, "openrouter_usd", 10.0)).run(ctx)
     assert result.destino == "borrado" and result.omitido
 
 
-# --- I3: con imágenes, el clasificador multimodal ---------------------------------
+# --- I3: with images, the multimodal classifier ---------------------------------
 
 
 def test_images_go_to_the_vision_classifier(tmp_path, state):
@@ -209,19 +209,19 @@ def test_without_vision_classifier_no_images_are_sent(tmp_path, state):
     assert fake.calls[0]["images"] == []
 
 
-# --- C1: la etapa solo necesita los ficheros si va a mandar imágenes ------------------
+# --- C1: the stage only needs the files if it will send images ------------------
 
 
 @pytest.mark.parametrize(
     ("kwargs", "expected"),
     [
-        ({}, False),  # hay texto
-        ({"caption": "", "text": ""}, True),  # sin texto: manda imágenes
-        ({"caption": "", "text": "", "vision": None}, False),  # sin clasificador multimodal no manda imágenes
-        ({"caption": "", "text": "", "candidates": ("cocina",)}, False),  # un solo candidato
-        ({"caption": "", "text": "", "candidates": ("cocina", "borrado")}, False),  # queda uno tras quitar el borrado
-        ({"caption": "", "text": "", "candidates": None}, False),  # job sin candidatos → destino de reserva
-        ({"caption": "", "text": "", "destination": "cocina"}, False),  # destino forzado
+        ({}, False),  # there is text
+        ({"caption": "", "text": ""}, True),  # no text: sends images
+        ({"caption": "", "text": "", "vision": None}, False),  # without a multimodal classifier it does not send images
+        ({"caption": "", "text": "", "candidates": ("cocina",)}, False),  # a single candidate
+        ({"caption": "", "text": "", "candidates": ("cocina", "borrado")}, False),  # one is left after removing the deleted one
+        ({"caption": "", "text": "", "candidates": None}, False),  # job without candidates → fallback destination
+        ({"caption": "", "text": "", "destination": "cocina"}, False),  # forced destination
     ],
 )
 def test_needs_files_only_when_images_will_be_sent(tmp_path, state, kwargs, expected):

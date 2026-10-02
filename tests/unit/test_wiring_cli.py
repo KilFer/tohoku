@@ -99,7 +99,7 @@ def _info(model, modalities=("text", "image"), params=("response_format",)):
 
 
 def test_preflight_requires_existing_text_model(settings, trilium):
-    """Final review 4: un modelo mal escrito pausa el servicio en vez de llenar la cola de jr:error."""
+    """Final review 4: a misspelled model pauses the service instead of filling the queue with jr:error."""
     init_layout(trilium)
     llm = FakeLLM([], models={"vision/model": _info("vision/model")})
     with pytest.raises(ConfigError, match="OPENROUTER_TEXT_MODEL=text/model no existe"):
@@ -152,7 +152,7 @@ def test_cli_reprocess_all_errors(fake_app):
 
     assert result.exit_code == 0, result.output
     assert all(fake_app.state.get_job(f"e{i}").status == JobStatus.PENDING for i in range(12))
-    assert fake_app.state.load_stage("e0", "fetch", SimpleModel) is None  # --from fetch por defecto
+    assert fake_app.state.load_stage("e0", "fetch", SimpleModel) is None  # --from fetch by default
     assert fake_app.state.get_job("ok").status == JobStatus.DONE
     assert "12" in result.output
 
@@ -171,12 +171,12 @@ def test_state_error_job_ids(tmp_path):
 
 
 def test_single_instance_lock(tmp_path):
-    """Final review minor b: un solo proceso `run`/`run-once` a la vez por DATA_DIR."""
+    """Final review minor b: a single `run`/`run-once` process at a time per DATA_DIR."""
     with single_instance(tmp_path / "data"):
         with pytest.raises(AlreadyRunning):
             with single_instance(tmp_path / "data"):
                 pass
-    with single_instance(tmp_path / "data"):  # liberado al salir
+    with single_instance(tmp_path / "data"):  # released on exit
         pass
     assert (tmp_path / "data" / "tohoku.lock").exists()
 
@@ -208,7 +208,7 @@ def test_build_app_uses_the_destination_from_config(settings):
 
 
 def _several_destinations(settings, tmp_path, shared_list=False):
-    """La fixture de destinos más `nz` (con `destino_por_defecto: japon`); con `shared_list`, L1 lleva los dos."""
+    """The destinations fixture plus `nz` (with `destino_por_defecto: japon`); with `shared_list`, L1 carries both."""
     text = (Path(__file__).parents[1] / "fixtures" / "destinos.yaml").read_text(encoding="utf-8")
     text = text.replace("../../config", str(Path(__file__).parents[2] / "config"))
     text += "  nz:\n    flujo: viaje\n    raiz: jrRootNZ\n    descripcion: NZ\n    prompt: " + str(Path(__file__).parents[2] / "config/prompts/japon.md") + "\n    pais: NZ\n    nombres_pais: [new zealand]\n    latitud: [-48.0, -34.0]\n    longitud: [166.0, 179.0]\n    categorias_lugar: [otro]\n    categorias_cosa: {otros: Otros}\n"
@@ -341,7 +341,7 @@ def test_cli_import_uses_the_only_configured_list(monkeypatch, settings, tmp_pat
 
 
 def test_build_app_builds_the_classifier_when_lists_point_to_different_destinations(settings, tmp_path):
-    """L1: [japon] y L2: [nz]: un bookmark en las dos tiene dos candidatos (I1)."""
+    """L1: [japon] y L2: [nz]: a bookmark in both has two candidates (I1)."""
     split = _several_destinations(settings, tmp_path)
     path = split.destinos_file
     path.write_text(path.read_text(encoding="utf-8").replace("L1: [japon]", "L1: [japon]\n  L2: [nz]"), encoding="utf-8")
@@ -351,7 +351,7 @@ def test_build_app_builds_the_classifier_when_lists_point_to_different_destinati
 
 
 def test_build_app_builds_a_vision_classifier_with_the_multimodal_model(settings, tmp_path):
-    """Las imágenes van a OPENROUTER_MODEL (multimodal comprobado en preflight), no al modelo de texto (I3)."""
+    """Images go to OPENROUTER_MODEL (multimodal verified in preflight), not to the text model (I3)."""
     app = build_app(_several_destinations(settings, tmp_path, shared_list=True))
     classify = next(s for s in app.stages if s.name == "classify")
     assert app.classifier._model == "text/model"
@@ -367,5 +367,5 @@ def test_build_app_applies_the_configured_generic_words(settings):
     from tohoku.text import normalize_name
 
     assert normalize_name("Verano en Japón") == "verano en japon"
-    build_app(settings)  # la fixture de destinos declara palabras_genericas: [japan, japon]
+    build_app(settings)  # the destinations fixture declares palabras_genericas: [japan, japon]
     assert normalize_name("Verano en Japón") == "verano en"

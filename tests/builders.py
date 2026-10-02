@@ -8,8 +8,8 @@ from tohoku.sources import ContentHint, Platform
 from tohoku.state import Job, JobStatus
 
 
-# Parámetros del destino de referencia (Japón), tal y como los declara config/destinos.example.yaml.
-# Ya no hay valores por defecto en el código: cada destino de viaje los declara explícitamente.
+# Parameters of the reference destination (Japan), as declared in config/destinos.example.yaml.
+# The code no longer has defaults: each travel destination declares them explicitly.
 JAPAN_PARAMS = ViajeParams(
     pais="JP",
     nombres_pais=["japon", "japan", "日本"],

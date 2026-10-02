@@ -19,12 +19,12 @@ log = logging.getLogger(__name__)
 
 COVER_TITLE = "portada.jpg"
 RECETA_ICON = "bx bx-bowl-rice"
-# Campos de la extracción que el servicio escribe como etiquetas (si además están promovidos y no son del usuario).
+# Extraction fields the service writes as labels (if they are also promoted and not user-owned).
 WRITABLE_FIELDS = ("tipo_plato", "cocina", "tiempo_min", "raciones", "dificultad")
 
 
 class RecetaPublishStage:
-    """Crea o actualiza la nota de la receta en Trilium y manda lo dudoso a la Bandeja."""
+    """Creates or updates the recipe note in Trilium and sends doubtful ones to the Bandeja (review inbox)."""
 
     name = "publish"
     result_model = PublishResult
@@ -85,7 +85,7 @@ class RecetaPublishStage:
         )
 
     def labels_for(self, data: RecetaData) -> dict[str, str]:
-        """Atributos que gestiona el servicio. Nunca los de `atributos_usuario` (probada, valoracion…)."""
+        """Attributes managed by the service. Never those in `atributos_usuario` (probada, valoracion…)."""
         labels = {"jrTipo": "receta", "jrNombreNorm": name_key(data.titulo), "fuentes": str(len(data.fuentes)), "iconClass": RECETA_ICON}
         for name in WRITABLE_FIELDS:
             if name in self._params.atributos and name not in self._params.atributos_usuario:
@@ -95,18 +95,18 @@ class RecetaPublishStage:
         return labels
 
     def _create_or_update(self, ctx: JobContext, layout: RecetaLayout) -> str:
-        """Crea (o retoma tras un fallo a medias, o reprocesa) la nota. Idempotente vía `#jrItem`."""
+        """Creates the note (or resumes after a partial failure, or reprocesses). Idempotent via `#jrItem`."""
         data = self._build_data(ctx)
         item_id = f"{ctx.job.bookmark_id}:receta:{name_key(data.titulo)}"
         found = self._find_existing(ctx.job.bookmark_id, item_id, layout)
         attachments: list[TAttachment] | None = None
         old_data: RecetaData | None = None
         if found:
-            # Un enlace = una receta: si el título cambió al reprocesar, se reutiliza la nota y se actualiza su identidad.
+            # One link = one recipe: if the title changed on reprocessing, the note is reused and its identity updated.
             note, existing_content = found, self._t.get_content(found.note_id)
             attachments = self._t.list_attachments(note.note_id)
             old_data = self._old_data(attachments)
-            # El título solo se renombra si sigue siendo el que generó el servicio la vez anterior (si no, lo cambió el usuario).
+            # The title is only renamed if it is still the one the service generated last time (otherwise the user changed it).
             if note.title != data.titulo and old_data is not None and note.title == old_data.titulo:
                 self._t.set_title(note.note_id, data.titulo)
             current = note.label("jrItem")
@@ -135,7 +135,7 @@ class RecetaPublishStage:
         return note.note_id
 
     def _find_existing(self, bookmark_id: str, item_id: str, layout: RecetaLayout):
-        """Nota de la receta de este enlace: la de la identidad exacta o, si no, cualquiera con el prefijo del enlace."""
+        """Recipe note for this link: the one with the exact identity or, failing that, any with the link's prefix."""
         recipes = self._t.search("#jrTipo=receta", ancestor=layout.root)
         exact = [n for n in recipes if n.label("jrItem") == item_id]
         if exact:
@@ -143,7 +143,7 @@ class RecetaPublishStage:
         prefixed = [n for n in recipes if (n.label("jrItem") or "").startswith(f"{bookmark_id}:receta:")]
         if prefixed:
             return prefixed[0]
-        # Creación cortada antes de escribir `jrTipo`: solo existe `#jrItem`.
+        # Creation cut short before writing `jrTipo`: only `#jrItem` exists.
         return next(iter(self._t.search(f'#jrItem="{item_id}"', ancestor=layout.root)), None)
 
     def _old_data(self, attachments: list[TAttachment]) -> RecetaData | None:
@@ -160,8 +160,8 @@ class RecetaPublishStage:
         return (ctx.workdir / path.path).read_bytes()
 
     def _upload_cover(self, note_id: str, attachments: list[TAttachment], image: bytes | None) -> str | None:
-        """Sube `portada.jpg`; si ya hay un adjunto con ese título se reutiliza y se vuelve a subir su binario
-        (un fallo entre el POST y la subida deja un adjunto vacío). Sin portada nueva se conserva la anterior."""
+        """Uploads `portada.jpg`; if an attachment with that title already exists it is reused and its binary re-uploaded
+        (a failure between the POST and the upload leaves an empty attachment). Without a new cover the previous one is kept."""
         existing = next((a for a in attachments if a.title == COVER_TITLE), None)
         if image is None:
             return existing.attachment_id if existing else None

@@ -7,12 +7,12 @@ LOCK_NAME = "tohoku.lock"
 
 
 class AlreadyRunning(Exception):
-    """Otro proceso `run`/`run-once` ya tiene el candado de DATA_DIR."""
+    """Another `run`/`run-once` process already holds the DATA_DIR lock."""
 
 
 @contextmanager
 def single_instance(data_dir: Path) -> Iterator[None]:
-    """Candado exclusivo no bloqueante (`fcntl.flock`) en `DATA_DIR/tohoku.lock`."""
+    """Exclusive non-blocking lock (`fcntl.flock`) on `DATA_DIR/tohoku.lock`."""
     data_dir.mkdir(parents=True, exist_ok=True)
     path = data_dir / LOCK_NAME
     with open(path, "a") as handle:

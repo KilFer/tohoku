@@ -41,9 +41,9 @@ def resolve_receta_layout(trilium: TriliumClient, root_label: str) -> RecetaLayo
 
 
 def init_receta_layout(trilium: TriliumClient, root_label: str, params: RecetaParams) -> RecetaLayout:
-    """Crea bajo la raíz lo que falte. Idempotente.
+    """Creates whatever is missing under the root. Idempotent.
 
-    La plantilla `Receta` no se asigna al Recetario: `publish` la pone (`~template`) a cada nota al crearla.
+    The `Receta` template is not assigned to the Recetario: `publish` sets it (`~template`) on each note when creating it.
     """
     root = root_note(trilium, root_label).note_id
 

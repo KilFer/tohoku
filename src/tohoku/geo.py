@@ -6,11 +6,11 @@ from tohoku.models import GeoMatch, Lugar
 from tohoku.text import fold, normalize_name, similarity
 
 NAME_SIMILARITY = 0.6
-# Resultados empatados a menos de esta distancia son el mismo sitio (la zona y su punto de
-# interés, el edificio y la torre...). Medido en casos reales: 4-165 m.
+# Tied results closer than this distance are the same place (the area and its point of
+# interest, the building and the tower...). Measured on real cases: 4-165 m.
 SAME_PLACE_RADIUS_M = 300
-# Solo para comparar nombres (no para las claves de deduplicación): Google devuelve el nombre
-# en español y el LLM a menudo en inglés o romaji ("Santuario Meiji" / "Meiji Shrine").
+# Only for comparing names (not for dedup keys): Google returns the name
+# in Spanish and the LLM often in English or romaji ("Santuario Meiji" / "Meiji Shrine").
 _NAME_EQUIVALENTS = {
     "shrine": ("santuario", "jinja", "jingu"),
     "temple": ("templo",),
@@ -35,14 +35,14 @@ _NAME_STOPWORDS = {"de", "del", "la", "el", "los", "las", "of"}
 
 
 def in_country(match: GeoMatch, code: str, names: Sequence[str], lat: tuple[float, float], lng: tuple[float, float]) -> bool:
-    """El resultado está en el país del destino: dentro de sus límites y con su código (o su nombre en la dirección)."""
+    """The result is in the destination's country: within its bounds and with its code (or its name in the address)."""
     inside = lat[0] <= match.lat <= lat[1] and lng[0] <= match.lng <= lng[1]
     if not inside:
         return False
     if match.country_code:
         return match.country_code.upper() == code.upper()
-    # Sin postalAddress: el país tiene que aparecer en la dirección.
-    # fold y no normalize_name: normalize_name elimina palabras genéricas y podría quitar una parte del nombre del país.
+    # Without postalAddress: the country has to appear in the address.
+    # fold and not normalize_name: normalize_name removes generic words and could strip part of the country name.
     address = fold(match.address)
     return any(fold(word) in address for word in names)
 
@@ -66,9 +66,9 @@ def _name_words(text: str, canonical: Mapping[str, str]) -> list[str]:
 
 
 def name_score(match: GeoMatch, lugar: Lugar, aliases: Mapping[str, Sequence[str]] = MappingProxyType({})) -> float:
-    """Parecido entre el nombre de Google y el extraído: 2 = igual, 1 = uno contiene al otro, si no la similitud.
+    """Similarity between Google's name and the extracted one: 2 = equal, 1 = one contains the other, otherwise the similarity ratio.
 
-    "Igual" admite otro orden y palabras traducidas o alias de ciudad ("Torre de Kioto" = "Kyoto Tower").
+    "Equal" allows a different word order and translated words or city aliases ("Torre de Kioto" = "Kyoto Tower").
     """
     canonical = _canonical_words(aliases)
     found_words = _name_words(match.name, canonical)
@@ -94,14 +94,14 @@ def _haversine_m(lat_a: float, lng_a: float, lat_b: float, lng_b: float) -> floa
 
 
 def distance_m(a: GeoMatch, b: GeoMatch) -> float:
-    """Distancia en metros (haversine)."""
+    """Distance in meters (haversine)."""
     return _haversine_m(a.lat, a.lng, b.lat, b.lng)
 
 
 def near_notes(notes: list, match: GeoMatch) -> list:
-    """Notas (con etiqueta `geolocation="lat,lng"`) a menos de SAME_PLACE_RADIUS_M de `match`.
+    """Notes (with label `geolocation="lat,lng"`) within SAME_PLACE_RADIUS_M of `match`.
 
-    Google a veces tiene dos fichas para el mismo sitio (Omoide Yokocho: dos placeId a 45 m).
+    Google sometimes has two listings for the same place (Omoide Yokocho: two placeIds 45 m apart).
     """
     near = []
     for note in notes:

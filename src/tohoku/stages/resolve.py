@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 
 
 class ResolveStage:
-    """Etapa 6: decide qué se crea, qué se fusiona con notas existentes y qué va a revisión."""
+    """Stage 6: decides what is created, what is merged with existing notes and what goes to review."""
 
     name = "resolve"
     result_model = ResolveResult
@@ -79,7 +79,7 @@ class ResolveStage:
             key = f"lugar:{i}"
             outcome = outcomes.get(i) or GeoOutcome(lugar_index=i, review_reason="geocodificacion-fallida")
             match = outcome.match
-            # Sin ficha de Google, la clave es el nombre normalizado: no se repite la nota en cada fuente.
+            # Without a Google record, the key is the normalised name: the note is not repeated for each source.
             natural = match.place_id if match else f"n:{name_key(lugar.nombre)}"
             if natural in seen:
                 items.append(PlannedItem(key=key, kind=ItemKind.LUGAR, index=i, action="alias", alias_of=seen[natural]))

@@ -133,7 +133,7 @@ def test_category_outside_the_destination_is_retried(tmp_path, settings, state):
 
 
 def test_japan_category_not_in_the_list_is_still_retried(tmp_path, settings, state):
-    """Antes lo rechazaba el Literal de Pydantic; ahora la comprobación del destino."""
+    """Previously rejected by Pydantic's Literal; now by the destination check."""
     bad = json.loads(VALID)
     bad["lugares"][0]["categoria"] = "playa"
     llm = FakeLLM([json.dumps(bad), VALID])

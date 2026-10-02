@@ -56,7 +56,7 @@ def test_same_place_twice_in_one_source_is_aliased(tmp_path, env):
 
 
 def test_same_name_nearby_note_with_other_place_id_is_merged(tmp_path, env):
-    """Google tiene dos fichas para el mismo sitio (caso real: Omoide Yokocho, a 45 m)."""
+    """Google has two listings for the same place (real case: Omoide Yokocho, 45 m apart)."""
     trilium, layout = env
     near = trilium.add_note(layout.mapa, "Omoide Yokocho", labels={"jrTipo": "lugar", "jrNombreNorm": "omoide yokocho", "googlePlaceId": "OLD", "geolocation": "35.6930,139.6995"})
     trilium.add_note(layout.mapa, "Omoide Yokocho", labels={"jrTipo": "lugar", "jrNombreNorm": "omoide yokocho", "googlePlaceId": "FAR", "geolocation": "34.6930,135.5000"})

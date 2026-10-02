@@ -148,7 +148,7 @@ def test_inbox_keeps_note_while_another_source_has_reasons(env):
 def test_note_dismissed_by_user_is_not_sent_back_by_a_clean_source(env):
     extraction = make_extraction(lugares=[make_lugar()])
     note_id = _stage(env).run(_ctx(env, "b1", extraction, GEO, [_item(reasons=["baja-confianza"])])).notes[0].note_id
-    env.trilium.remove_from_parent(note_id, env.layout.revision)  # el usuario la revisa y la saca
+    env.trilium.remove_from_parent(note_id, env.layout.revision)  # the user reviews it and takes it out
 
     _stage(env, FakeLLM([MERGED])).run(_ctx(env, "b2", extraction, GEO, [_item(action="merge", existing=note_id)]))
 
@@ -213,7 +213,7 @@ def test_synthetic_summary_note_and_alias(env):
 
 
 class _FlakyAttachmentTrilium(FakeTrilium):
-    """Falla la primera vez que se intenta crear el adjunto `tohoku.json`."""
+    """Fails the first time creating the `tohoku.json` attachment is attempted."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -227,7 +227,7 @@ class _FlakyAttachmentTrilium(FakeTrilium):
 
 
 class _MissingNoteTrilium(FakeTrilium):
-    """`get_note` devuelve 404 para una nota que el usuario borró."""
+    """`get_note` returns 404 for a note the user deleted."""
 
     def get_note(self, note_id):
         if note_id == "gone":
@@ -278,7 +278,7 @@ def test_merge_target_deleted_falls_back_to_create(tmp_path, settings):
 
 
 def test_recreating_after_state_reset_reuses_jritem_note_via_merge(env):
-    """Review Focus (fix round 2): reprocesar tras `clear_stages_from` no debe borrar "Mis notas"."""
+    """Review Focus (fix round 2): reprocessing after `clear_stages_from` must not delete "Mis notas"."""
     extraction = make_extraction(lugares=[make_lugar()])
     note_id = _stage(env).run(_ctx(env, "b1", extraction, GEO, [_item()])).notes[0].note_id
     content = env.trilium.get_content(note_id)
@@ -297,7 +297,7 @@ def test_recreating_after_state_reset_reuses_jritem_note_via_merge(env):
 
 
 def test_reordered_reextraction_keeps_each_place_in_its_own_note(env):
-    """Final review 1: la identidad `#jrItem` es por contenido, no por posición."""
+    """Final review 1: the `#jrItem` identity is by content, not by position."""
     ichiran = make_lugar()
     run1 = _stage(env).run(_ctx(env, "b1", make_extraction(lugares=[ichiran]), GEO, [_item()]))
     ichiran_id = run1.notes[0].note_id
@@ -320,7 +320,7 @@ def test_reordered_reextraction_keeps_each_place_in_its_own_note(env):
 
 
 def test_reprocess_single_source_note_refreshes_text_without_llm(env):
-    """Final review 1: reprocesar una nota con una sola fuente regenera su texto."""
+    """Final review 1: reprocessing a note with a single source regenerates its text."""
     note_id = _stage(env).run(_ctx(env, "b1", make_extraction(lugares=[make_lugar()]), GEO, [_item()])).notes[0].note_id
     content = env.trilium.get_content(note_id)
     env.trilium.set_content(note_id, content.replace("<h2>Mis notas</h2><p></p>", "<h2>Mis notas</h2><p>Reservar el martes</p>"))
@@ -351,13 +351,13 @@ def test_reprocess_multi_source_note_only_replaces_its_source(env):
     _stage(env, llm).run(_ctx(env, "b2", changed, GEO, [_item(action="merge", existing=note_id)]))
 
     content = env.trilium.get_content(note_id)
-    assert "Resumen fusionado" in content and "Otro texto" in content  # aporte de la fuente b2
+    assert "Resumen fusionado" in content and "Otro texto" in content  # contribution from source b2
     assert env.trilium.labels(note_id)["fuentes"] == "2"
     assert llm.calls == []
 
 
 def test_create_merges_into_existing_note_with_same_natural_key(env):
-    """Plan de resolve obsoleto: dice `create` pero ya hay una nota con el mismo googlePlaceId."""
+    """Stale resolve plan: says `create` but a note with the same googlePlaceId already exists."""
     extraction = make_extraction(lugares=[make_lugar()])
     note_id = _stage(env).run(_ctx(env, "b1", extraction, GEO, [_item()])).notes[0].note_id
 
@@ -380,7 +380,7 @@ def test_create_ungeocoded_lugar_merges_into_existing_note_with_same_name(env):
 
 
 def test_create_merges_into_same_name_note_nearby_with_other_place_id(env):
-    """Plan obsoleto: otra fuente creó la misma nota con otra ficha de Google a pocos metros."""
+    """Stale plan: another source created the same note with a different Google listing a few meters away."""
     extraction = make_extraction(lugares=[make_lugar("Omoide Yokocho")])
     first = [GeoOutcome(lugar_index=0, match=make_geo("OLD", "Omoide Yokocho", lat=35.6930, lng=139.6995))]
     note_id = _stage(env).run(_ctx(env, "b1", extraction, first, [_item()])).notes[0].note_id
@@ -406,7 +406,7 @@ def test_create_cosa_merges_into_existing_note_with_same_name(env):
 
 
 def test_merge_keeps_user_corrected_managed_labels(env):
-    """Final review 2: no se deshacen las correcciones del usuario en atributos gestionados."""
+    """Final review 2: the user's corrections to managed attributes are not undone."""
     extraction = make_extraction(lugares=[make_lugar()])
     note_id = _stage(env).run(_ctx(env, "b1", extraction, GEO, [_item()])).notes[0].note_id
     geo_attr = env.trilium.get_note(note_id).attr("label", "geolocation")
@@ -419,7 +419,7 @@ def test_merge_keeps_user_corrected_managed_labels(env):
     labels = env.trilium.labels(note_id)
     assert labels["geolocation"] == "35.0,135.0"
     assert labels["fuentes"] == "2"
-    assert labels["iconClass"] == "bx bx-bowl-hot"  # ausente → se vuelve a escribir
+    assert labels["iconClass"] == "bx bx-bowl-hot"  # absent → written again
     assert labels["googlePlaceId"] == "P1"
 
 

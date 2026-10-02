@@ -15,7 +15,7 @@ class Transcriber(Protocol):
 
 
 class WhisperTranscriber:
-    """faster-whisper en CPU. El modelo se carga la primera vez que se usa."""
+    """faster-whisper on CPU. The model is loaded the first time it is used."""
 
     def __init__(self, model_name: str, compute_type: str, download_root: Path, threads: int) -> None:
         self._name = model_name
@@ -45,10 +45,10 @@ class WhisperTranscriber:
 
 
 class TranscribeStage:
-    """Etapa 3: texto del audio (subtítulos manuales o Whisper). Borra el audio al terminar."""
+    """Stage 3: text from the audio (manual subtitles or Whisper). Deletes the audio when done."""
 
     name = "transcribe"
-    needs_files = True  # usa los ficheros del job: si la limpieza los borró, el pipeline vuelve a descargar
+    needs_files = True  # uses the job's files: if cleanup deleted them, the pipeline downloads again
     result_model = Transcript
 
     def __init__(self, transcriber: Transcriber) -> None:

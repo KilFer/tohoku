@@ -81,7 +81,7 @@ def test_custom_attributes_reach_the_template_and_publish(settings, tmp_path):
     assert publish._params == dest.params
 
 
-# --- Review Focus 5: YAML con japon y recetas --------------------------------------------
+# --- Review Focus 5: YAML with japon and recetas --------------------------------------------
 
 
 def _japon_y_recetas(settings, tmp_path):
@@ -101,7 +101,7 @@ def test_build_app_with_japon_and_recetas_uses_each_flow(settings, tmp_path):
     assert [s.name for s in app.runtimes["recetas"].stages] == ["extract", "cover", "resolve", "publish"]
     assert "receta" in next(s for s in app.runtimes["recetas"].stages if s.name == "extract").system_prompt.lower()
     assert app.destinations.needs_classifier()
-    assert app.classifier is not None and app.classifier._model == "text/model"  # el que comprueba el preflight
+    assert app.classifier is not None and app.classifier._model == "text/model"  # the one the preflight checks
 
 
 def test_single_candidate_jobs_skip_the_classifier(settings, tmp_path):
@@ -114,11 +114,11 @@ def test_single_candidate_jobs_skip_the_classifier(settings, tmp_path):
     assert job.candidates == ["recetas"]
     classify = next(s for s in app.stages if s.name == "classify")
     ctx = make_ctx(tmp_path, job=job, fetch=make_fetch(), transcribe=Transcript(text="", origin="whisper"))
-    result = classify.run(ctx)  # un solo candidato: no llama al LLM (el FakeLLM de la app no tiene respuestas)
+    result = classify.run(ctx)  # a single candidate: does not call the LLM (the app's FakeLLM has no responses)
     assert result.destino == "recetas"
 
 
-# --- Review Focus 1: reprocess --from extract limpia cover ---------------------------------
+# --- Review Focus 1: reprocess --from extract clears cover ---------------------------------
 
 
 def test_reprocess_from_extract_reruns_cover(tmp_path):
@@ -139,7 +139,7 @@ def test_reprocess_from_extract_reruns_cover(tmp_path):
     pipeline.run_due()
 
     assert flow_steps["extract"].calls == 2 and flow_steps["cover"].calls == 2
-    assert steps["fetch"].calls == 1  # sin limpieza no se vuelve a descargar
+    assert steps["fetch"].calls == 1  # without cleanup it is not downloaded again
     assert state.get_job("b1").status == JobStatus.DONE
 
 
@@ -171,7 +171,7 @@ def test_reprocess_from_extract_after_cleanup_downloads_again(tmp_path):
     assert fetch.calls == 2 and extract.calls == 2 and cover.calls == 2
 
 
-# --- Review Focus 4: una receta que no lo es --------------------------------------------
+# --- Review Focus 4: a recipe that is not one --------------------------------------------
 
 
 def test_not_a_recipe_is_discarded_without_note_and_without_destination(settings, tmp_path):

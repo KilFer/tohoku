@@ -1,17 +1,17 @@
 class TohokuError(Exception):
-    """Base de los errores del servicio."""
+    """Base of the service's errors."""
 
 
 class TransientError(TohokuError):
-    """Fallo pasajero (timeout, 5xx, 429): se reintenta la etapa con espera creciente."""
+    """Transient failure (timeout, 5xx, 429): the stage is retried with increasing wait."""
 
 
 class PermanentError(TohokuError):
-    """La fuente no se puede procesar (borrada, privada, demasiado larga): jr:error."""
+    """The source cannot be processed (deleted, private, too long): jr:error."""
 
 
 class ApiError(PermanentError):
-    """Respuesta 4xx inesperada de un servicio externo."""
+    """Unexpected 4xx response from an external service."""
 
     def __init__(self, service: str, status: int, body: str) -> None:
         super().__init__(f"{service}: HTTP {status}: {body[:300]}")
@@ -20,11 +20,11 @@ class ApiError(PermanentError):
 
 
 class ConfigError(TohokuError):
-    """Configuración inválida: se detiene el procesamiento y se avisa. No consume reintentos."""
+    """Invalid configuration: processing stops and a notification is sent. Does not consume retries."""
 
 
 class QuotaExceeded(TohokuError):
-    """Límite diario alcanzado: el job espera al día siguiente sin consumir reintentos."""
+    """Daily limit reached: the job waits until the next day without consuming retries."""
 
     def __init__(self, key: str, message: str) -> None:
         super().__init__(message)

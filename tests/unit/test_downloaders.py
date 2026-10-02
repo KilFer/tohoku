@@ -68,8 +68,8 @@ INFO = {
     [
         ("ERROR: Private video", PermanentError),
         ("ERROR: This video is unavailable", PermanentError),
-        # Final review 3: los límites de ritmo de Instagram son transitorios aunque el mensaje
-        # contenga también marcadores permanentes ("not available", "login required").
+        # Final review 3: Instagram rate limits are transient even if the message
+        # also contains permanent markers ("not available", "login required").
         ("Requested content is not available, rate-limit reached or login required", TransientError),
         ("HTTP Error 429: Too Many Requests", TransientError),
         ("Please wait a few minutes before you try again.", TransientError),
@@ -79,9 +79,9 @@ INFO = {
         ("HTTP Error 503: Service Unavailable", TransientError),
         ("HttpError: '503 Service Unavailable' for 'https://x'", TransientError),
         ("HttpError: '429 Too Many Requests' for 'https://x'", TransientError),
-        # gallery-dl sin cookies ante un post de Instagram: reintentar no sirve de nada.
+        # gallery-dl without cookies on an Instagram post: retrying is pointless.
         ("[instagram][error] HTTP redirect to login page (https://www.instagram.com/accounts/login/)", PermanentError),
-        # Reel con restricción de audiencia (edad/país): sin sesión nunca se podrá ver.
+        # Reel with audience restriction (age/country): it can never be seen without a session.
         ("ERROR: [Instagram] C73RxLTy8qF: This content isn't available to everyone: It can't be seen by certain audiences.", PermanentError),
     ],
 )
@@ -119,7 +119,7 @@ def test_ytdlp_maps_errors(tmp_path):
 
 
 def test_cookies_file_is_never_written(tmp_path):
-    """Review Focus 4: el fichero original (montado solo lectura) no se modifica."""
+    """Review Focus 4: the original file (mounted read-only) is not modified."""
     original = tmp_path / "cookies.txt"
     original.write_text("# Netscape HTTP Cookie File\n")
     original.chmod(stat.S_IRUSR)
@@ -199,7 +199,7 @@ def test_gallery_uses_cookie_copy(tmp_path):
 
 
 def post_ydl_factory(info: dict, images: dict[str, bytes] | None = None, error: str | None = None):
-    """yt-dlp ante un post de Instagram: sin formatos en las imágenes, miniatura a tamaño original."""
+    """yt-dlp on an Instagram post: no formats for the images, thumbnail at original size."""
     created = []
 
     class FakeResponse:

@@ -19,25 +19,25 @@ SUBTITLE_LANGS = ("es", "en", "ja")
 _PERMANENT_MARKERS = (
     "private", "unavailable", "removed", "not available", "login required", "log in",
     "does not exist", "copyright", "sign in to confirm", "404",
-    # gallery-dl sin cookies ante un post de Instagram.
+    # gallery-dl without cookies facing an Instagram post.
     "redirect to login",
-    # Reels con restricción de audiencia (edad/país): "This content isn't available to everyone".
+    # Reels with audience restriction (age/country): "This content isn't available to everyone".
     "isn't available", "certain audiences",
 )
-# Límites de ritmo (sobre todo de Instagram): transitorios aunque el mensaje de yt-dlp incluya
-# marcadores permanentes ("Requested content is not available, rate-limit reached or login required").
+# Rate limits (mainly Instagram): transient even if the yt-dlp message includes
+# permanent markers ("Requested content is not available, rate-limit reached or login required").
 _RATE_LIMIT_MARKERS = ("rate-limit", "rate limit", "too many requests", "please wait")
 _HASHTAG = re.compile(r"#(\w+)")
-# HTTP 5xx / 429 son fallos transitorios del servidor aunque su frase de motivo
-# (p. ej. "503 Service Unavailable") contenga una palabra de la lista de
-# marcadores permanentes ("unavailable"); se comprueban antes que esos marcadores.
-# Cubre tanto el formato de yt-dlp ("HTTP Error 503: ...") como el de gallery-dl
+# HTTP 5xx / 429 are transient server failures even if their reason phrase
+# (e.g. "503 Service Unavailable") contains a word from the list of
+# permanent markers ("unavailable"); they are checked before those markers.
+# Covers both the yt-dlp format ("HTTP Error 503: ...") and the gallery-dl one
 # ("HttpError: '503 Service Unavailable' for '<url>'").
 _HTTP_STATUS = re.compile(r"http\s*error[:\s]*'?(\d{3})")
 
 
 class TooLongError(PermanentError):
-    """El vídeo supera MAX_VIDEO_DURATION_MIN: no tiene sentido buscar otra copia."""
+    """The video exceeds MAX_VIDEO_DURATION_MIN: there is no point looking for another copy."""
 
 
 class DownloadedMedia(BaseModel):
@@ -58,7 +58,7 @@ def classify_download_error(message: str) -> type[TohokuError]:
 
 
 def prepare_cookies(src: Path | None, dest_dir: Path) -> Path | None:
-    """Copia de trabajo de las cookies: yt-dlp y gallery-dl reescriben el fichero que usan."""
+    """Working copy of the cookies: yt-dlp and gallery-dl rewrite the file they use."""
     if src is None:
         return None
     if not src.exists():
@@ -102,7 +102,7 @@ def meta_from_gallerydl(data: dict, url: str, content_type: ContentType) -> Sour
 
 
 class YtDlpDownloader:
-    """Vídeos de YouTube e Instagram Reels."""
+    """YouTube videos and Instagram Reels."""
 
     def __init__(self, cookies_file: Path | None, max_duration_s: int, ydl_factory=yt_dlp.YoutubeDL) -> None:
         self._cookies = cookies_file
@@ -140,10 +140,10 @@ class YtDlpDownloader:
         return DownloadedMedia(meta=meta_from_ytdlp(info, url, platform), videos=videos[:1], subtitles=self._subtitles(dest))
 
     def download_post(self, url: str, dest: Path) -> DownloadedMedia:
-        """Post de Instagram (imagen o carrusel) sin sesión: plan B cuando gallery-dl exige login.
+        """Instagram post (image or carousel) without a session: plan B when gallery-dl requires login.
 
-        Las imágenes no tienen formatos para yt-dlp; se descarga su miniatura a tamaño original.
-        Los elementos de vídeo de un carrusel se descargan como vídeo.
+        Images have no formats for yt-dlp; their thumbnail is downloaded at original size.
+        Video items in a carousel are downloaded as video.
         """
         dest.mkdir(parents=True, exist_ok=True)
         cookies = prepare_cookies(self._cookies, dest)
@@ -198,7 +198,7 @@ class YtDlpDownloader:
 
 
 class GalleryDlDownloader:
-    """Posts de Instagram (imagen o carrusel; los elementos de vídeo se devuelven como vídeos)."""
+    """Instagram posts (image or carousel; video items are returned as videos)."""
 
     def __init__(self, cookies_file: Path | None, binary: str = "gallery-dl", runner=subprocess.run) -> None:
         self._cookies = cookies_file

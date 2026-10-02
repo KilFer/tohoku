@@ -13,7 +13,7 @@ COVER_NAME = "cover.jpg"
 
 
 class CoverStage:
-    """Elige la imagen de portada de la receta y la guarda redimensionada como `cover.jpg`."""
+    """Picks the recipe cover image and saves it resized as `cover.jpg`."""
 
     name = "cover"
     needs_files = True
@@ -27,11 +27,11 @@ class CoverStage:
         extraction = ctx.result("extract", RecetaExtractResult).extraction
         if extraction is None:
             return CoverResult()
-        candidates = fetch.images + fetch.keyframes  # mismo orden que se envió al LLM
+        candidates = fetch.images + fetch.keyframes  # same order as sent to the LLM
         index = extraction.portada
         if index is None:
-            # sin portada indicada: un post usa su primera imagen; un vídeo, su último fotograma
-            # (en los Reels de cocina suele ser el plato terminado)
+            # no cover given: a post uses its first image; a video, its last keyframe
+            # (in cooking Reels it is usually the finished dish)
             if fetch.meta.content_type != ContentType.VIDEO and fetch.images:
                 index = 0
             elif fetch.keyframes:

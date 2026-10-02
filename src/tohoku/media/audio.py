@@ -18,7 +18,7 @@ def probe_duration(path: Path) -> float | None:
 
 
 def extract_audio(video: Path, dest: Path) -> Path | None:
-    """Pista de audio en WAV mono 16 kHz (formato ideal para Whisper)."""
+    """Audio track as mono 16 kHz WAV (ideal format for Whisper)."""
     if not has_audio(video):
         return None
     dest.parent.mkdir(parents=True, exist_ok=True)

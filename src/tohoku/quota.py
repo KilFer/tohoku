@@ -3,7 +3,7 @@ from tohoku.state import StateStore
 
 
 class DailyQuota:
-    """Límite diario de gasto o llamadas guardado en `counters`."""
+    """Daily spend or call limit stored in `counters`."""
 
     def __init__(self, state: StateStore, key: str, limit: float) -> None:
         self._state = state

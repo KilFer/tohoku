@@ -57,7 +57,7 @@ def find_one(trilium: TriliumClient, query: str, ancestor: str | None = None, de
 
 
 def find_template(trilium: TriliumClient, plantillas: str, title: str) -> TNote | None:
-    # Las plantillas se buscan por título: sus atributos se heredan a las notas que las usan.
+    # Templates are looked up by title: their attributes are inherited by the notes that use them.
     return next((n for n in trilium.search("#template", ancestor=plantillas, ancestor_depth="eq1") if n.title == title), None)
 
 
@@ -70,7 +70,7 @@ def root_note(trilium: TriliumClient, root_label: str) -> TNote:
 
 
 
-# Las notas de estructura se buscan solo como hijas directas (eq1): así una raíz de otro destino anidada no choca.
+# Structure notes are searched only as direct children (eq1): that way a nested root of another destination does not clash.
 def resolve_layout(trilium: TriliumClient, root_label: str = "jrRoot", categorias: Mapping[str, str] = CATEGORIES) -> Layout:
     root = root_note(trilium, root_label)
     ids: dict[str, str] = {}
@@ -105,7 +105,7 @@ def resolve_layout(trilium: TriliumClient, root_label: str = "jrRoot", categoria
 
 
 def init_layout(trilium: TriliumClient, root_label: str = "jrRoot", categorias: Mapping[str, str] = CATEGORIES) -> Layout:
-    """Crea bajo la raíz lo que falte. Idempotente."""
+    """Creates whatever is missing under the root. Idempotent."""
     root = root_note(trilium, root_label).note_id
 
     def ensure(query: str, ancestor: str, parent: str, title: str, labels: dict[str, str], **kwargs) -> str:
@@ -136,7 +136,7 @@ def init_layout(trilium: TriliumClient, root_label: str = "jrRoot", categorias: 
 
 
 class LayoutCache:
-    """Resuelve la estructura una vez y la reutiliza; `refresh()` fuerza releerla."""
+    """Resolves the structure once and reuses it; `refresh()` forces a re-read."""
 
     def __init__(self, loader: Callable[[], Layout]) -> None:
         self._loader = loader

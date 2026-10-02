@@ -23,7 +23,7 @@ class ViajeRuntime:
 
 
 class ViajeFlow:
-    """Lugares al Geo Map, cosas a "Comprar y comer", el resto a "Cultura" (docs/trilium-model.md)."""
+    """Lugares go to the Geo Map, cosas to "Comprar y comer", the rest to "Cultura" (docs/trilium-model.md)."""
 
     name = "viaje"
     params_model = ViajeParams

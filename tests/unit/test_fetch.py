@@ -117,7 +117,7 @@ def test_job_without_platform_is_permanent_error(tmp_path, settings):
 
 
 def test_raw_dir_is_removed_even_when_download_fails(tmp_path, settings):
-    """Final review minor a: `raw/` puede contener la copia de las cookies."""
+    """Final review minor a: `raw/` may contain the copy of the cookies."""
 
     class Failing:
         def download(self, url, platform, dest):
@@ -153,7 +153,7 @@ class FakeClock:
 
 
 def test_instagram_downloads_are_spaced(tmp_path, settings):
-    """Final review 3: descargas de Instagram separadas al menos INSTAGRAM_MIN_INTERVAL_SECONDS."""
+    """Final review 3: Instagram downloads spaced at least INSTAGRAM_MIN_INTERVAL_SECONDS apart."""
     s = settings.model_copy(update={"instagram_min_interval_seconds": 20, "reel_keyframes_enabled": False})
     fake = FakeClock()
     stage = FetchStage(s, StubVideo(), StubPost(count=1), FakeKarakeep(), sleep=fake.sleep, clock=fake.clock)
@@ -163,7 +163,7 @@ def test_instagram_downloads_are_spaced(tmp_path, settings):
     fake.now += 5
     stage.run(make_ctx(tmp_path / "2", job=IG_REEL))
     assert fake.sleeps == [15]
-    stage.run(make_ctx(tmp_path / "3"))  # YouTube: sin espera
+    stage.run(make_ctx(tmp_path / "3"))  # YouTube: no wait
     assert fake.sleeps == [15]
     fake.now += 30
     stage.run(make_ctx(tmp_path / "4", job=IG_POST))

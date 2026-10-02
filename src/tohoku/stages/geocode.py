@@ -13,12 +13,12 @@ from tohoku.rules import destination_decision
 from tohoku.state import StateStore
 
 log = logging.getLogger(__name__)
-# Los mismos sitios aparecen en muchos vídeos ("dotonbori osaka" ×18): se reutiliza la búsqueda.
+# The same places appear in many videos ("dotonbori osaka" ×18): the search is reused.
 CACHE_MAX_AGE = timedelta(days=30)
 
 
 class GeocodeStage:
-    """Etapa 5: coordenadas y ficha de Google para cada lugar."""
+    """Stage 5: coordinates and Google place record for each lugar."""
 
     name = "geocode"
     result_model = GeocodeResult
@@ -30,7 +30,7 @@ class GeocodeStage:
         self._th = thresholds
         self._cache = cache
         self._params = params
-        # La caché de búsquedas es por país: una búsqueda de un destino nunca reutiliza la de otro.
+        # The search cache is per country: a search for one destination never reuses another's.
         self._cache_prefix = f"{self._params.pais}|"
 
     def _in_country(self, match: GeoMatch) -> bool:
@@ -57,8 +57,8 @@ class GeocodeStage:
             results = self._search(query)
             in_dest = [r for r in results if self._in_country(r)]
             valid = [r for r in in_dest if city_matches(r, lugar.ciudad, aliases)]
-            # Nombre exacto en el país del destino aunque la ciudad no cuadre: el LLM suele equivocar la ciudad
-            # de sitios de las afueras (Tokyo DisneySea está en Chiba), no el nombre.
+            # Exact name in the destination's country even if the city does not match: the LLM often gets the city
+            # wrong for places on the outskirts (Tokyo DisneySea is in Chiba), not the name.
             candidates = valid or [r for r in in_dest if name_score(r, lugar, aliases) >= 2]
             if candidates:
                 match, clear = _choose(candidates, lugar, aliases)
@@ -85,16 +85,16 @@ class GeocodeStage:
 
 
 def _choose(valid: list[GeoMatch], lugar: Lugar, aliases: Mapping[str, Sequence[str]]) -> tuple[GeoMatch, bool]:
-    """Elige el resultado cuyo nombre mejor coincide (no necesariamente el primero).
+    """Pick the result whose name matches best (not necessarily the first).
 
-    Es claro si solo hay uno, o si el mejor supera el umbral de nombre y no empata con otro
-    (o los empatados están a menos de SAME_PLACE_RADIUS_M: son el mismo sitio).
-    Si ninguno se parece, se devuelve el primero (el más relevante para Google) como ambiguo.
+    It is clear if there is only one, or if the best exceeds the name threshold and does not tie with another
+    (or the tied ones are within SAME_PLACE_RADIUS_M: they are the same place).
+    If none resembles it, the first (the most relevant for Google) is returned as ambiguous.
     """
     if len(valid) == 1:
         return valid[0], True
     scores = [name_score(r, lugar, aliases) for r in valid]
-    best = max(range(len(valid)), key=lambda i: scores[i])  # max devuelve el primero en caso de empate
+    best = max(range(len(valid)), key=lambda i: scores[i])  # max returns the first one on a tie
     if scores[best] < NAME_SIMILARITY:
         return valid[0], False
     tied = [r for r, sc in zip(valid, scores) if sc == scores[best]]
