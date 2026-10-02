@@ -1,6 +1,6 @@
 import pytest
 
-from builders import make_ctx, make_extraction, make_geo, make_lugar
+from builders import JAPAN_PARAMS, make_ctx, make_extraction, make_geo, make_lugar
 from tohoku.config import Thresholds
 from tohoku.errors import QuotaExceeded
 from tohoku.geo import name_score
@@ -40,7 +40,7 @@ def state(tmp_path):
 
 def _run(tmp_path, state, places, lugares, confianza=0.95, limit=150):
     ctx = make_ctx(tmp_path, extract=ExtractResult(extraction=make_extraction(confianza, lugares=lugares)))
-    return GeocodeStage(places, DailyQuota(state, "places_calls", limit), Thresholds(), cache=state).run(ctx)
+    return GeocodeStage(places, DailyQuota(state, "places_calls", limit), Thresholds(), cache=state, params=JAPAN_PARAMS).run(ctx)
 
 
 def test_direct_match(tmp_path, state):
@@ -207,7 +207,7 @@ def test_translated_generic_words_and_city_aliases_match(tmp_path, state):
     ],
 )
 def test_name_score_translations(google, extracted, expected):
-    assert name_score(make_geo(name=google), make_lugar(extracted)) == expected
+    assert name_score(make_geo(name=google), make_lugar(extracted), JAPAN_PARAMS.alias_ciudad) == expected
 
 
 def test_repeated_queries_use_the_cache(tmp_path, state):
@@ -244,7 +244,7 @@ from tohoku.geo import city_matches, in_country
 
 NZ = ViajeParams(
     pais="NZ", nombres_pais=["new zealand", "nueva zelanda"], latitud=(-48.0, -34.0), longitud=(166.0, 179.0),
-    categorias_lugar=["naturaleza", "otro"], alias_ciudad={"auckland": ["tamaki makaurau"]},
+    categorias_lugar=["naturaleza", "otro"], categorias_cosa={"otros": "Otros"}, alias_ciudad={"auckland": ["tamaki makaurau"]},
 )
 # La dirección usa el nombre maorí de la ciudad: solo casa con "Auckland" gracias a los alias del destino.
 SKY_TOWER = make_geo("NZ1", "Sky Tower", "Victoria St W, Tāmaki Makaurau 1010, Nueva Zelanda", lat=-36.85, lng=174.76,
@@ -292,4 +292,4 @@ def test_in_country_uses_code_bounds_and_names():
 
 def test_city_aliases_come_from_the_destination():
     assert city_matches(SKY_TOWER, "Auckland", NZ.alias_ciudad)
-    assert not city_matches(SKY_TOWER, "Auckland")  # con los alias de Japón (por defecto) no casa
+    assert not city_matches(SKY_TOWER, "Auckland")  # sin alias no casa

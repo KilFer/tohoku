@@ -2,9 +2,30 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from tohoku.context import JobContext
+from tohoku.flows.viaje.params import ViajeParams
 from tohoku.models import ContentType, Cosa, Extraction, FetchResult, GeoMatch, Lugar, Otro, SourceMeta
 from tohoku.sources import ContentHint, Platform
 from tohoku.state import Job, JobStatus
+
+
+# Parámetros del destino de referencia (Japón), tal y como los declara config/destinos.example.yaml.
+# Ya no hay valores por defecto en el código: cada destino de viaje los declara explícitamente.
+JAPAN_PARAMS = ViajeParams(
+    pais="JP",
+    nombres_pais=["japon", "japan", "日本"],
+    latitud=(20.0, 46.0),
+    longitud=(122.0, 154.0),
+    categorias_lugar=[
+        "templo", "santuario", "comida", "cafe", "bar", "tienda", "mercado", "mirador",
+        "barrio", "museo", "parque", "onsen", "alojamiento", "transporte", "otro",
+    ],
+    categorias_cosa={"souvenirs": "Souvenirs", "comida": "Comida", "cadenas": "Cadenas", "cosmetica": "Cosmética", "otros": "Otros"},
+    alias_ciudad={
+        "tokio": ["tokyo", "東京"], "kioto": ["kyoto", "京都"], "osaka": ["大阪"], "nara": ["奈良"],
+        "hiroshima": ["広島"], "sapporo": ["札幌"], "fukuoka": ["福岡"], "kobe": ["神戸"], "yokohama": ["横浜"],
+        "nagoya": ["名古屋"], "kanazawa": ["金沢"], "hakone": ["箱根"], "nikko": ["日光"], "kamakura": ["鎌倉"],
+    },
+)
 
 
 def make_job(bookmark_id="b1", url="https://www.youtube.com/shorts/abc", platform=Platform.YOUTUBE, hint=ContentHint.VIDEO,

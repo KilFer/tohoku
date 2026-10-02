@@ -5,10 +5,9 @@ Las fixtures son una referencia congelada: estos tests no se regeneran, se cumpl
 import json
 from pathlib import Path
 
-from builders import make_ctx, make_fetch
+from builders import JAPAN_PARAMS, make_ctx, make_fetch
 from fakes import FakeLLM, FakeTrilium
 from tohoku.config import Thresholds
-from tohoku.flows.viaje.params import ViajeParams
 from tohoku.flows.viaje.prompt import extraction_schema, render_extract_prompt
 from tohoku.models import ExtractResult, GeocodeResult, Outcome, ResolveResult, Transcript
 from tohoku.notes import name_key
@@ -44,12 +43,12 @@ def _renamed(text: str) -> str:
 
 
 def test_japan_prompt_renders_as_baseline():
-    rendered = render_extract_prompt(_read(REPO / "config/prompts/japon.md"), ViajeParams())
+    rendered = render_extract_prompt(_read(REPO / "config/prompts/japon.md"), JAPAN_PARAMS)
     assert rendered == _renamed(_read(BASELINE / "extract_prompt.md"))
 
 
 def test_japan_extraction_schema_matches_baseline():
-    assert extraction_schema(ViajeParams()) == json.loads(_renamed(_read(BASELINE / "extraction_schema.json")))
+    assert extraction_schema(JAPAN_PARAMS) == json.loads(_renamed(_read(BASELINE / "extraction_schema.json")))
 
 
 def test_name_keys_match_baseline():

@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from builders import make_ctx, make_fetch, make_lugar
+from builders import JAPAN_PARAMS, make_ctx, make_fetch, make_lugar
 from fakes import FakeLLM
 from helpers import make_image
 from tohoku.errors import QuotaExceeded
@@ -39,7 +39,7 @@ def _ctx(tmp_path, images=0, frames=0):
 
 
 def _stage(settings, llm, state, limit=1.0):
-    return ExtractStage(settings, llm, DailyQuota(state, "openrouter_usd", limit), "prompt de prueba")
+    return ExtractStage(settings, llm, DailyQuota(state, "openrouter_usd", limit), "prompt de prueba", JAPAN_PARAMS)
 
 
 def test_valid_extraction_with_images_uses_vision_model(tmp_path, settings, state):
@@ -104,7 +104,7 @@ def test_build_user_text_mentions_everything():
 from tohoku.flows.viaje.params import ViajeParams
 from tohoku.flows.viaje.prompt import extraction_schema
 
-NZ_PARAMS = ViajeParams(pais="NZ", categorias_lugar=["naturaleza", "otro"], categorias_cosa={"artesania": "Artesanía"})
+NZ_PARAMS = ViajeParams(pais="NZ", nombres_pais=["new zealand"], latitud=(-48.0, -34.0), longitud=(166.0, 179.0), categorias_lugar=["naturaleza", "otro"], categorias_cosa={"artesania": "Artesanía"})
 
 
 def _nz_payload(categoria):

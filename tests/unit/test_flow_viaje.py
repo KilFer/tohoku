@@ -14,8 +14,12 @@ from tohoku.quota import DailyQuota
 from tohoku.state import StateStore
 
 
+_NZ = dict(pais="NZ", nombres_pais=["new zealand"], latitud=(-48.0, -34.0), longitud=(166.0, 179.0),
+           categorias_lugar=["otro"], categorias_cosa={"otros": "Otros"})
+
+
 def _dest(**params):
-    return Destination(nombre="nz", flujo="viaje", raiz="jrRootNZ", descripcion="NZ", prompt="PROMPT NZ", params=ViajeParams(**params))
+    return Destination(nombre="nz", flujo="viaje", raiz="jrRootNZ", descripcion="NZ", prompt="PROMPT NZ", params=ViajeParams(**{**_NZ, **params}))
 
 
 def _deps(settings, tmp_path, trilium):
@@ -63,6 +67,6 @@ def test_extract_stage_gets_the_destination_prompt(settings, tmp_path):
 def test_extract_prompt_is_rendered_with_destination_categories(settings, tmp_path):
     dest = Destination(nombre="nz", flujo="viaje", raiz="jrRootNZ", descripcion="NZ",
                        prompt="Lugar: {{categorias_lugar}} · Cosa: {{categorias_cosa}}",
-                       params=ViajeParams(categorias_lugar=["naturaleza", "otro"], categorias_cosa={"a": "A", "b": "B"}))
+                       params=ViajeParams(**{**_NZ, "categorias_lugar": ["naturaleza", "otro"], "categorias_cosa": {"a": "A", "b": "B"}}))
     extract = next(s for s in FLOWS["viaje"].build(dest, _deps(settings, tmp_path, FakeTrilium())).stages if s.name == "extract")
     assert extract.system_prompt == "Lugar: naturaleza, otro · Cosa: a | b"

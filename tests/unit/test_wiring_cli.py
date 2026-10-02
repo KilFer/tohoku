@@ -211,7 +211,7 @@ def _several_destinations(settings, tmp_path, shared_list=False):
     """La fixture de destinos más `nz` (con `destino_legado: japon`); con `shared_list`, L1 lleva los dos."""
     text = (Path(__file__).parents[1] / "fixtures" / "destinos.yaml").read_text(encoding="utf-8")
     text = text.replace("../../config", str(Path(__file__).parents[2] / "config"))
-    text += "  nz:\n    flujo: viaje\n    raiz: jrRootNZ\n    descripcion: NZ\n    prompt: " + str(Path(__file__).parents[2] / "config/prompts/japon.md") + "\n    pais: NZ\n"
+    text += "  nz:\n    flujo: viaje\n    raiz: jrRootNZ\n    descripcion: NZ\n    prompt: " + str(Path(__file__).parents[2] / "config/prompts/japon.md") + "\n    pais: NZ\n    nombres_pais: [new zealand]\n    latitud: [-48.0, -34.0]\n    longitud: [166.0, 179.0]\n    categorias_lugar: [otro]\n    categorias_cosa: {otros: Otros}\n"
     text += "destino_legado: japon\n"
     if shared_list:
         text = text.replace("L1: [japon]", "L1: [japon, nz]")

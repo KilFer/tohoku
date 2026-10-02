@@ -1,14 +1,15 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from builders import JAPAN_PARAMS
+from pydantic import ValidationError
 
 from tohoku.destinations import ClassifierConfig, CleanupConfig, load_destinations
 from tohoku.errors import ConfigError
 from tohoku.flows.viaje.params import ViajeParams
-from tohoku.geo import CITY_ALIASES
-from tohoku.models import LUGAR_CATEGORIAS
-from tohoku.trilium_layout import CATEGORIES
 
+REPO = Path(__file__).parents[2]
 FLOWS = {"viaje": SimpleNamespace(params_model=ViajeParams)}
 
 JAPON = """
@@ -20,6 +21,12 @@ destinos:
     raiz: jrRoot
     descripcion: "Viaje a Japón"
     prompt: prompts/japon.md
+    pais: JP
+    nombres_pais: [japon, japan, 日本]
+    latitud: [20.0, 46.0]
+    longitud: [122.0, 154.0]
+    categorias_lugar: [templo, otro]
+    categorias_cosa: {souvenirs: Souvenirs, otros: Otros}
 """
 
 
@@ -31,25 +38,52 @@ def _write(tmp_path, text=JAPON, prompt="PROMPT DE JAPÓN"):
     return path
 
 
-def test_minimal_japan_config(tmp_path):
+def test_minimal_config_with_explicit_country_data(tmp_path):
     config = load_destinations(_write(tmp_path), FLOWS)
 
     dest = config.destinos["japon"]
     assert (dest.nombre, dest.flujo, dest.raiz, dest.descripcion) == ("japon", "viaje", "jrRoot", "Viaje a Japón")
     assert dest.prompt == "PROMPT DE JAPÓN"
-    assert dest.params == ViajeParams()
+    assert dest.params.pais == "JP" and dest.params.categorias_lugar == ["templo", "otro"]
+    assert dest.params.alias_ciudad == {}
     assert config.candidates_for("L1") == ["japon"]
     assert config.candidates_for("otra") == []
 
 
-def test_viaje_defaults_are_the_japan_constants():
-    p = ViajeParams()
-    assert p.pais == "JP"
-    assert p.nombres_pais == ["japon", "japan", "日本"]
-    assert (p.latitud, p.longitud) == ((20.0, 46.0), (122.0, 154.0))
-    assert p.categorias_lugar == list(LUGAR_CATEGORIAS)
-    assert p.categorias_cosa == CATEGORIES
-    assert p.alias_ciudad == CITY_ALIASES
+def test_viaje_params_have_no_country_defaults():
+    # Sin valores por defecto: un destino que solo declara `pais` no hereda la caja ni los nombres de Japón.
+    with pytest.raises(ValidationError) as exc:
+        ViajeParams(pais="NZ")
+    missing = {e["loc"][0] for e in exc.value.errors() if e["type"] == "missing"}
+    assert missing == {"nombres_pais", "latitud", "longitud", "categorias_lugar", "categorias_cosa"}
+
+
+def test_viaje_alias_ciudad_is_optional_and_empty_by_default():
+    assert JAPAN_PARAMS.model_copy(update={"alias_ciudad": {}}).alias_ciudad == {}
+    p = ViajeParams(pais="NZ", nombres_pais=["new zealand"], latitud=(-48.0, -34.0), longitud=(166.0, 179.0),
+                    categorias_lugar=["otro"], categorias_cosa={"otros": "Otros"})
+    assert p.alias_ciudad == {}
+
+
+def test_viaje_destination_that_only_declares_the_country_is_a_config_error(tmp_path):
+    text = "destino_legado: japon\n" + JAPON + """
+  nz:
+    flujo: viaje
+    raiz: jrRootNZ
+    descripcion: "Viaje a Nueva Zelanda"
+    prompt: prompts/japon.md
+    pais: NZ
+"""
+    with pytest.raises(ConfigError) as exc:
+        load_destinations(_write(tmp_path, text), FLOWS)
+    message = str(exc.value)
+    assert "nz" in message and all(k in message for k in ("nombres_pais", "latitud", "longitud", "categorias_lugar", "categorias_cosa"))
+
+
+def test_example_config_japan_block_is_the_reference_japan_params():
+    # El destino de referencia vive en la configuración de ejemplo, no en el código.
+    config = load_destinations(REPO / "config" / "destinos.example.yaml", FLOWS)
+    assert config.destinos["japon"].params == JAPAN_PARAMS
 
 
 def test_new_zealand_params(tmp_path):
@@ -64,12 +98,14 @@ def test_new_zealand_params(tmp_path):
     latitud: [-48.0, -34.0]
     longitud: [166.0, 179.0]
     categorias_lugar: [naturaleza, pueblo, otro]
+    categorias_cosa: {souvenirs: Souvenirs}
 """
     config = load_destinations(_write(tmp_path, text), FLOWS)
 
     nz = config.destinos["nz"].params
     assert (nz.pais, nz.latitud, nz.categorias_lugar) == ("NZ", (-48.0, -34.0), ["naturaleza", "pueblo", "otro"])
-    assert nz.categorias_cosa == CATEGORIES  # lo no indicado toma el valor por defecto
+    assert nz.categorias_cosa == {"souvenirs": "Souvenirs"}
+    assert nz.alias_ciudad == {}  # único parámetro opcional
 
 
 def test_single_list_value_can_be_a_string(tmp_path):
@@ -110,7 +146,7 @@ def test_missing_file_mentions_the_setting(tmp_path):
 
 
 def test_empty_nombres_pais_entry_is_rejected(tmp_path):
-    text = JAPON.replace("    prompt: prompts/japon.md\n", '    prompt: prompts/japon.md\n    nombres_pais: [""]\n')
+    text = JAPON.replace("    nombres_pais: [japon, japan, 日本]\n", '    nombres_pais: [""]\n')
     with pytest.raises(ConfigError, match="nombres_pais"):
         load_destinations(_write(tmp_path, text), FLOWS)
 
@@ -121,6 +157,12 @@ TWO = JAPON.replace("  L1: [japon]\n", "  L1: [japon]\n  INBOX: [japon, recetas]
     raiz: jrRootRecetas
     descripcion: "Recetas"
     prompt: prompts/japon.md
+    pais: NZ
+    nombres_pais: [new zealand]
+    latitud: [-48.0, -34.0]
+    longitud: [166.0, 179.0]
+    categorias_lugar: [otro]
+    categorias_cosa: {otros: Otros}
 """
 
 
@@ -182,6 +224,12 @@ SPLIT = JAPON.replace("  L1: [japon]\n", "  L1: [japon]\n  L2: [recetas]\n") + "
     raiz: jrRootRecetas
     descripcion: "Recetas"
     prompt: prompts/japon.md
+    pais: NZ
+    nombres_pais: [new zealand]
+    latitud: [-48.0, -34.0]
+    longitud: [166.0, 179.0]
+    categorias_lugar: [otro]
+    categorias_cosa: {otros: Otros}
 destino_legado: japon
 """
 

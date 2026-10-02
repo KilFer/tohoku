@@ -42,13 +42,13 @@ class ExtractStage:
 
     def __init__(
         self, settings: Settings, llm: OpenRouterClient, budget: DailyQuota, system_prompt: str,
-        params: ViajeParams | None = None,
+        params: ViajeParams,
     ) -> None:
         self._settings = settings
         self._llm = llm
         self._budget = budget
         self.system_prompt = system_prompt
-        self._params = params or ViajeParams()
+        self._params = params
 
     def run(self, ctx: JobContext) -> ExtractResult:
         fetch = ctx.result("fetch", FetchResult)

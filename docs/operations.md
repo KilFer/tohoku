@@ -31,8 +31,12 @@ Which Karakeep lists are processed and how each one is published. A list can hav
         descripcion: "Trip to Japan: ..."
         prompt: prompts/japon.md          # relative to config/
         pais: JP                          # ISO 3166-1; Places regionCode
-        # optional (the defaults describe Japan): nombres_pais, latitud, longitud,
-        # categorias_lugar, categorias_cosa, alias_ciudad
+        nombres_pais: [japon, japan, 日本]  # country names (lowercase, no accents) for addresses without postalAddress
+        latitud: [20.0, 46.0]             # [min, max] of the country
+        longitud: [122.0, 154.0]
+        categorias_lugar: [templo, ..., otro]
+        categorias_cosa: {souvenirs: Souvenirs, ..., otros: Otros}
+        alias_ciudad: {tokio: [tokyo, 東京]}   # optional: city aliases
     clasificador:                         # optional
       modelo: ...                         # defaults to OPENROUTER_TEXT_MODEL
       modo: json_schema                   # or etiqueta
@@ -65,7 +69,7 @@ A new trip destination (New Zealand, Portugal…) is configuration only: nothing
 1. In Karakeep, create the destination's list and note its id.
 2. In Trilium, create the destination's root note and mark it with its label (`#jrRootNZ`; for tests, the `Test` variant).
 3. Write the prompt in `config/prompts/<destination>.md`: copy `config/prompts/japon.md` and adapt country, cities and regions; keep the fields and the markers `{{categorias_lugar}}` and `{{categorias_cosa}}`.
-4. In `config/destinos.yaml`: add the destination's block (`flujo: viaje`, `raiz`, `descripcion`, `prompt`, ISO-2 `pais`, `nombres_pais`, `latitud`/`longitud` [min, max] of the country, `categorias_lugar`, `categorias_cosa`, `alias_ciudad`), its list under `listas` and, if it is the second destination, `destino_legado: japon` (required with several destinations). The YAML is validated on load: an error shows with `docker compose exec tohoku tohoku init-trilium --destino <name>`.
+4. In `config/destinos.yaml`: add the destination's block (`flujo: viaje`, `raiz`, `descripcion`, `prompt`, ISO-2 `pais`, `nombres_pais`, `latitud`/`longitud` [min, max] of the country, `categorias_lugar`, `categorias_cosa`; `alias_ciudad` is optional: there are no per-country defaults, so every one of the other keys is required), its list under `listas` and, if it is the second destination, `destino_legado: japon` (required with several destinations). The YAML is validated on load: an error shows with `docker compose exec tohoku tohoku init-trilium --destino <name>`.
 5. `docker compose exec tohoku tohoku init-trilium --destino <name>` creates the map, "Comprar y comer", "Cultura y curiosidades" and the tray under the root (idempotent).
 6. `docker compose restart tohoku`. **Always after `init-trilium`**: if the service starts with a destination that has no structure, the preflight fails in `refresh()` and all queues are paused, with a configuration-error notification in ntfy.
 7. Try a few links (`import-instagram ... --lista <id> --limit 5`) and review the tray before importing more.

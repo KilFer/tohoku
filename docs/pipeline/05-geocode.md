@@ -9,7 +9,7 @@
 
 **Dependencies:** Google Places API (New) — Text Search Pro; daily `places_calls` counter in `state.db`.
 
-**Configuration:** `GOOGLE_PLACES_API_KEY`, `PLACES_DAILY_LIMIT` (150 by default). From the destination (`config/destinos.yaml`, `viaje` flow): `pais` (ISO code, `JP`; it is also the request's `regionCode`), `nombres_pais`, `latitud`/`longitud` (coordinate box) and `alias_ciudad`; if they are not given, Japan's apply. The examples on this page describe Japan.
+**Configuration:** `GOOGLE_PLACES_API_KEY`, `PLACES_DAILY_LIMIT` (150 by default). From the destination (`config/destinos.yaml`, `viaje` flow): `pais` (ISO code, `JP`; it is also the request's `regionCode`), `nombres_pais`, `latitud`/`longitud` (coordinate box) and `alias_ciudad`; all of them are required except `alias_ciudad` (there are no per-country defaults; see the `japon` block of `config/destinos.example.yaml`). The examples on this page describe Japan.
 
 **Request:** `POST places:searchText` with `regionCode=JP`, `languageCode=es`, `pageSize=5` and an `X-Goog-FieldMask` limited to Pro fields (`id, displayName, formattedAddress, location, googleMapsUri, types, postalAddress, addressComponents`). Opening hours and ratings (Enterprise) are not requested.
 

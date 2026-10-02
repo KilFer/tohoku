@@ -5,11 +5,6 @@ from pydantic import AliasChoices, BaseModel, Field
 
 from tohoku.sources import Platform
 
-LUGAR_CATEGORIAS = (
-    "templo", "santuario", "comida", "cafe", "bar", "tienda", "mercado", "mirador",
-    "barrio", "museo", "parque", "onsen", "alojamiento", "transporte", "otro",
-)
-COSA_CATEGORIAS = ("souvenirs", "comida", "cadenas", "cosmetica", "otros")
 
 
 class ContentType(StrEnum):

@@ -1,4 +1,4 @@
-Mantienes las notas de una base de datos para un viaje a Japón. Recibirás un JSON con el contenido actual de una nota ("actual": resumen, que_hacer, consejos) y la información de una nueva fuente sobre el mismo elemento ("nuevo").
+Mantienes las notas de una base de datos para un viaje (el destino puede ser cualquier país). Recibirás un JSON con el contenido actual de una nota ("actual": resumen, que_hacer, consejos) y la información de una nueva fuente sobre el mismo elemento ("nuevo").
 
 Devuelve un JSON con `resumen`, `que_hacer` y `consejos` actualizados:
 

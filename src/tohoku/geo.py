@@ -1,25 +1,10 @@
 import math
 from collections.abc import Mapping, Sequence
+from types import MappingProxyType
 
 from tohoku.models import GeoMatch, Lugar
 from tohoku.text import fold, normalize_name, similarity
 
-CITY_ALIASES: dict[str, list[str]] = {
-    "tokio": ["tokyo", "東京"],
-    "kioto": ["kyoto", "京都"],
-    "osaka": ["大阪"],
-    "nara": ["奈良"],
-    "hiroshima": ["広島"],
-    "sapporo": ["札幌"],
-    "fukuoka": ["福岡"],
-    "kobe": ["神戸"],
-    "yokohama": ["横浜"],
-    "nagoya": ["名古屋"],
-    "kanazawa": ["金沢"],
-    "hakone": ["箱根"],
-    "nikko": ["日光"],
-    "kamakura": ["鎌倉"],
-}
 NAME_SIMILARITY = 0.6
 # Resultados empatados a menos de esta distancia son el mismo sitio (la zona y su punto de
 # interés, el edificio y la torre...). Medido en casos reales: 4-165 m.
@@ -62,7 +47,7 @@ def in_country(match: GeoMatch, code: str, names: Sequence[str], lat: tuple[floa
     return any(fold(word) in address for word in names)
 
 
-def city_matches(match: GeoMatch, ciudad: str | None, aliases: Mapping[str, Sequence[str]] = CITY_ALIASES) -> bool:
+def city_matches(match: GeoMatch, ciudad: str | None, aliases: Mapping[str, Sequence[str]] = MappingProxyType({})) -> bool:
     if not ciudad:
         return True
     city = fold(ciudad).strip()
@@ -80,7 +65,7 @@ def _name_words(text: str, canonical: Mapping[str, str]) -> list[str]:
     return [canonical.get(w, w) for w in normalize_name(text).split() if w not in _NAME_STOPWORDS]
 
 
-def name_score(match: GeoMatch, lugar: Lugar, aliases: Mapping[str, Sequence[str]] = CITY_ALIASES) -> float:
+def name_score(match: GeoMatch, lugar: Lugar, aliases: Mapping[str, Sequence[str]] = MappingProxyType({})) -> float:
     """Parecido entre el nombre de Google y el extraído: 2 = igual, 1 = uno contiene al otro, si no la similitud.
 
     "Igual" admite otro orden y palabras traducidas o alias de ciudad ("Torre de Kioto" = "Kyoto Tower").
@@ -129,5 +114,5 @@ def near_notes(notes: list, match: GeoMatch) -> list:
     return near
 
 
-def name_matches(match: GeoMatch, lugar: Lugar, aliases: Mapping[str, Sequence[str]] = CITY_ALIASES) -> bool:
+def name_matches(match: GeoMatch, lugar: Lugar, aliases: Mapping[str, Sequence[str]] = MappingProxyType({})) -> bool:
     return name_score(match, lugar, aliases) >= NAME_SIMILARITY

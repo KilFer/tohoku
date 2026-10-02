@@ -24,12 +24,12 @@ class GeocodeStage:
     result_model = GeocodeResult
 
     def __init__(self, places: PlacesClient, quota: DailyQuota, thresholds: Thresholds, cache: StateStore | None = None,
-                 params: ViajeParams | None = None) -> None:
+                 *, params: ViajeParams) -> None:
         self._places = places
         self._quota = quota
         self._th = thresholds
         self._cache = cache
-        self._params = params or ViajeParams()
+        self._params = params
         # Japón (el destino de referencia) no lleva prefijo; el resto, sí, para no mezclar búsquedas de países distintos.
         self._cache_prefix = "" if self._params.pais == "JP" else f"{self._params.pais}|"
 
