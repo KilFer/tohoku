@@ -48,7 +48,7 @@ class DestinationsConfig:
     listas: dict[str, list[str]]
     destinos: dict[str, Destination]
     clasificador: ClassifierConfig
-    destino_legado: str  # destino de los jobs anteriores a la fase 3
+    destino_legado: str  # destino de reserva para los jobs sin candidatos
     limpieza: CleanupConfig = CleanupConfig()
 
     def candidates_for(self, list_id: str) -> list[str]:
@@ -129,7 +129,7 @@ def load_destinations(path: Path, flows: Mapping[str, HasParams]) -> Destination
     legado = raw.get("destino_legado")
     if legado is None:
         if len(destinos) != 1:
-            raise ConfigError(f"{path}: con varios destinos hay que indicar 'destino_legado' (el de los jobs anteriores a la fase 3)")
+            raise ConfigError(f"{path}: con varios destinos hay que indicar 'destino_legado' (el destino de reserva para los jobs sin candidatos)")
         legado = next(iter(destinos))
     elif not isinstance(legado, str) or legado not in destinos:
         raise ConfigError(f"{path}: 'destino_legado' apunta a un destino que no existe: {legado}")

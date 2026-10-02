@@ -54,7 +54,7 @@ class Job(BaseModel):
     outcome: Outcome | None
     created_at: datetime
     updated_at: datetime
-    candidates: list[str] | None = None  # None = job anterior a la fase 3
+    candidates: list[str] | None = None  # None = job sin candidatos registrados
     destination: str | None = None
 
     @field_validator("candidates", mode="before")
@@ -123,7 +123,7 @@ class StateStore:
         """
         columns = {row["name"] for row in self._db.execute("PRAGMA table_info(jobs)")}
         added = (
-            ("candidates", "ALTER TABLE jobs ADD COLUMN candidates TEXT"),  # JSON; NULL = anterior a la fase 3
+            ("candidates", "ALTER TABLE jobs ADD COLUMN candidates TEXT"),  # JSON; NULL = sin candidatos registrados
             ("destination", "ALTER TABLE jobs ADD COLUMN destination TEXT"),
         )
         for column, sql in added:
@@ -356,7 +356,7 @@ class StateStore:
             if row["status"] == JobStatus.PENDING:
                 key = "pendiente"
             else:
-                # "no-japon" (filas anteriores a la fase 3) se agrupa como "descartado".
+                # El valor antiguo "no-japon" se agrupa como "descartado".
                 key = Outcome(row["outcome"]).value if row["outcome"] else row["outcome"]
             counts[key] = counts.get(key, 0) + row["n"]
         return counts
@@ -369,7 +369,7 @@ class StateStore:
         ).fetchall()
         counts: dict[str, int] = {}
         for row in rows:
-            # "no-japon" (filas anteriores a la fase 3) se agrupa como "descartado", como en status_counts.
+            # El valor antiguo "no-japon" se agrupa como "descartado", como en status_counts.
             key = Outcome(row["outcome"]).value if row["outcome"] else row["outcome"]
             counts[key] = counts.get(key, 0) + row["n"]
         return counts

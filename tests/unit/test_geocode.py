@@ -273,7 +273,7 @@ def test_result_in_japan_is_rejected_for_a_new_zealand_destination(tmp_path, sta
 
 
 def test_places_cache_is_per_country_and_japan_keeps_its_entries(tmp_path, state):
-    state.put_places_cache("Ichiran Shibuya Tokyo", [SHIBUYA.model_dump()])  # entrada anterior al multidestino
+    state.put_places_cache("Ichiran Shibuya Tokyo", [SHIBUYA.model_dump()])  # entrada sin prefijo de país (Japón)
     jp, nz = FakePlaces({"Ichiran Shibuya Tokyo": [SHIBUYA]}), FakePlaces({})
 
     _run(tmp_path, state, jp, [make_lugar()])

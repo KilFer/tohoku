@@ -55,15 +55,11 @@ def find_one(trilium: TriliumClient, query: str, ancestor: str | None = None, de
     return found[0] if found else None
 
 
-_find_one = find_one  # alias privado: los imports antiguos siguen funcionando
-
 
 def find_template(trilium: TriliumClient, plantillas: str, title: str) -> TNote | None:
     # Las plantillas se buscan por título: sus atributos se heredan a las notas que las usan.
     return next((n for n in trilium.search("#template", ancestor=plantillas, ancestor_depth="eq1") if n.title == title), None)
 
-
-_find_template = find_template  # alias privado: los imports antiguos siguen funcionando
 
 
 def root_note(trilium: TriliumClient, root_label: str) -> TNote:
@@ -72,8 +68,6 @@ def root_note(trilium: TriliumClient, root_label: str) -> TNote:
         raise ConfigError(f"No se encuentra la nota raíz con #{root_label}. Añade esa etiqueta a la nota raíz del destino en Trilium.")
     return root
 
-
-_root = root_note  # alias privado: los imports antiguos siguen funcionando
 
 
 # Las notas de estructura se buscan solo como hijas directas (eq1): así una raíz de otro destino anidada no choca.

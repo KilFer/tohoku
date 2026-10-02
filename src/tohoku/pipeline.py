@@ -97,7 +97,7 @@ class Pipeline:
                 self._state.set_destination(job.bookmark_id, destination)
                 self._run_stages(ctx, self._flows[destination])
             outcome = ctx.result("publish", PublishResult).outcome
-            # Spec §6.4: DESCARTADO nunca lleva jr:destino:<d> (el flujo lo descartó: no es de ese destino).
+            # Un job DESCARTADO nunca lleva jr:destino:<d> (el flujo lo descartó: no es de ese destino).
             self._finish(job.bookmark_id, outcome, None if outcome == Outcome.DESCARTADO else destination)
         except ConfigError:
             raise

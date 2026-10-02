@@ -220,7 +220,7 @@ def test_without_vision_classifier_no_images_are_sent(tmp_path, state):
         ({"caption": "", "text": "", "vision": None}, False),  # sin clasificador multimodal no manda imágenes
         ({"caption": "", "text": "", "candidates": ("cocina",)}, False),  # un solo candidato
         ({"caption": "", "text": "", "candidates": ("cocina", "borrado")}, False),  # queda uno tras quitar el borrado
-        ({"caption": "", "text": "", "candidates": None}, False),  # job anterior a la fase 3 → legado
+        ({"caption": "", "text": "", "candidates": None}, False),  # job sin candidatos → destino de reserva
         ({"caption": "", "text": "", "destination": "cocina"}, False),  # destino forzado
     ],
 )

@@ -1,7 +1,7 @@
 # Destinos de Tohoku: qué listas de Karakeep se procesan, con qué flujo y dónde se publican.
-# Referencia: docs/superpowers/specs/2026-09-30-multi-destino-design.md §2 y docs/operations.md.
+# Referencia: docs/operations.md.
 # Con un único destino no hace falta 'clasificador' ni 'destino_legado' (se toma ese destino).
-# Con varios destinos, 'destino_legado' es obligatorio: el destino de los jobs anteriores a la fase 3.
+# Con varios destinos, 'destino_legado' es obligatorio: el destino de reserva para los jobs sin candidatos.
 # destino_legado: japon
 # Ajustes del clasificador (todos opcionales; estos son los valores por defecto):
 # clasificador:
@@ -26,7 +26,7 @@ destinos:
     descripcion: "Viaje a Japón: lugares, comida, compras y cultura de Japón"
     prompt: prompts/japon.md
     pais: JP                            # el resto de parámetros del flujo viaje toman sus valores por defecto (Japón)
-  # Recetas (fase 5, desplegado pero desactivado). Para activarlo: descomenta este bloque, la lista nueva de arriba
+  # Recetas (desactivado). Para activarlo: descomenta este bloque, la lista nueva de arriba
   # (en 'listas') y 'destino_legado: japon' (arriba, con varios destinos es obligatorio); crea la nota
   # raíz con #jrRootRecetas y ejecuta 'tohoku init-trilium --destino recetas'. Ver docs/flujos/receta.md.
   # recetas:

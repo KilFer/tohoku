@@ -191,7 +191,7 @@ def test_review_reasons_for_note_joins_other_sources(state):
 def test_legacy_no_japon_jobs_are_counted_as_descartado(state):
     state.add_job("b1", "u1", Platform.YOUTUBE, ContentHint.VIDEO)
     state.finish("b1", Outcome.DESCARTADO)
-    state._db.execute("UPDATE jobs SET outcome = 'no-japon' WHERE bookmark_id = 'b1'")  # fila de antes de la fase 3
+    state._db.execute("UPDATE jobs SET outcome = 'no-japon' WHERE bookmark_id = 'b1'")  # fila con el valor antiguo
     state.add_job("b2", "u2", Platform.YOUTUBE, ContentHint.VIDEO)
     state.finish("b2", Outcome.DESCARTADO)
 
@@ -233,7 +233,7 @@ def test_candidates_and_destination_roundtrip(state):
 def test_legacy_no_japon_jobs_finished_today_count_as_descartado(state):
     state.add_job("b1", "u1", Platform.YOUTUBE, ContentHint.VIDEO)
     state.finish("b1", Outcome.DESCARTADO)
-    state._db.execute("UPDATE jobs SET outcome = 'no-japon' WHERE bookmark_id = 'b1'")  # fila de antes de la fase 3
+    state._db.execute("UPDATE jobs SET outcome = 'no-japon' WHERE bookmark_id = 'b1'")  # fila con el valor antiguo
     state.add_job("b2", "u2", Platform.YOUTUBE, ContentHint.VIDEO)
     state.finish("b2", Outcome.DESCARTADO)
 

@@ -6,3 +6,9 @@ __pycache__/
 eval/.cache/
 secrets/
 .pytest_cache/
+
+.claude/
+.superpowers/
+.ruff_cache/
+.mypy_cache/
+*.db

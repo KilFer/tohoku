@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 @dataclass(frozen=True)
 class Thresholds:
-    """Umbrales de la red de seguridad (spec §7)."""
+    """Umbrales de la red de seguridad."""
 
     japan_min: float = 0.4
     japan_review: float = 0.7

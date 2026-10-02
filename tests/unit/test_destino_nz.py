@@ -1,4 +1,4 @@
-"""Nueva Zelanda es solo configuración: YAML + prompt, sin tocar `src/` (spec multi-destino, criterio de éxito 1)."""
+"""Nueva Zelanda es solo configuración: YAML + prompt, sin tocar `src/`."""
 from datetime import timedelta
 from pathlib import Path
 

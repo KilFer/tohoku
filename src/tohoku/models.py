@@ -148,7 +148,7 @@ class Outcome(StrEnum):
 
     @classmethod
     def _missing_(cls, value: object) -> "Outcome | None":
-        # Antes de la fase 3 el contenido ajeno al destino se guardaba como "no-japon".
+        # Valor guardado antes por el contenido ajeno al destino: se lee como descartado.
         return cls.DESCARTADO if value == "no-japon" else None
 
 

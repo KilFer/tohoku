@@ -6,7 +6,7 @@ from tohoku.trilium_layout import CATEGORIES
 
 
 class ViajeParams(BaseModel):
-    """Parámetros de un destino del flujo `viaje`. Por defecto, los de Japón (antes eran constantes)."""
+    """Parámetros de un destino del flujo `viaje`. Por defecto, los de Japón (el destino de referencia)."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 

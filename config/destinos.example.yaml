@@ -1,0 +1,53 @@
+# Tohoku destinations: which Karakeep lists are processed, with which flow, and where they are published.
+# Copy this file to config/destinos.yaml and adapt it. Reference: docs/operations.md.
+#
+# With a single destination 'clasificador' and 'destino_legado' are not needed (that destination is used).
+# With several destinations, 'destino_legado' is required: the fallback destination for jobs without candidates.
+# destino_legado: japon
+# Classifier settings (all optional; these are the defaults):
+# clasificador:
+#   modelo: null            # null = OPENROUTER_TEXT_MODEL
+#   modo: json_schema
+#   confianza_minima: 0.5
+#   margen_revision: 0.15
+# Cleanup (optional; this is the default). When a job finishes (except on error) its files
+# (data/jobs/<id>/) are always deleted; the fetch result is kept (metadata) marked files_purged, and it is only
+# downloaded again if a reprocess repeats a stage that needs the files. Stage results are kept
+# 'retencion_dias' days (0 = delete them all on completion). The jobs table and the publications are never deleted.
+# limpieza:
+#   retencion_dias: 30
+listas:
+  <karakeep-list-id>: [japon]            # the Karakeep list (its id is in the list's URL)
+  # <karakeep-recipes-list-id>: [recetas]   # uncomment together with the `recetas` block
+  # <karakeep-nz-list-id>: [nueva_zelanda]  # uncomment together with the `nueva_zelanda` block
+destinos:
+  japon:
+    flujo: viaje
+    raiz: jrRoot                        # label of the root note in Trilium (for example "Home › Trips › Japan ideas")
+    descripcion: "Trip to Japan: places, food, shopping and culture"
+    prompt: prompts/japon.md
+    pais: JP                            # the other `viaje` parameters take their defaults (Japan)
+  # Recipes (disabled). To enable it: uncomment this block, the new list above (in 'listas') and
+  # 'destino_legado: japon' (above; it is required with several destinations); create the root note
+  # with #jrRootRecetas and run 'tohoku init-trilium --destino recetas'. See docs/flujos/receta.md.
+  # recetas:
+  #   flujo: receta
+  #   raiz: jrRootRecetas                 # label of the recipe book's root note in Trilium
+  #   descripcion: "Cooking recipes: dishes and drinks with ingredients and steps"
+  #   prompt: prompts/recetas.md
+  #   vista: table                        # table | grid | list (recipe book view)
+  #   # atributos / atributos_usuario: optional (see docs/flujos/receta.md)
+  # New Zealand (example of a new destination with configuration only; disabled). To enable it, follow
+  # "Adding a destination" in docs/operations.md: uncomment this block, its list in 'listas' and 'destino_legado: japon'.
+  # nueva_zelanda:
+  #   flujo: viaje
+  #   raiz: jrRootNZ
+  #   descripcion: "Trip to New Zealand: nature, trails, towns, food and culture"
+  #   prompt: prompts/nueva_zelanda.md
+  #   pais: NZ
+  #   nombres_pais: [new zealand, nueva zelanda, aotearoa]
+  #   latitud: [-47.5, -34.0]
+  #   longitud: [166.0, 179.0]
+  #   categorias_lugar: [naturaleza, ruta, mirador, pueblo, playa, comida, cafe, bar, museo, alojamiento, transporte, otro]
+  #   categorias_cosa: {souvenirs: Souvenirs, comida: Comida, otros: Otros}
+  #   alias_ciudad: {auckland: [tamaki makaurau], wellington: [te whanganui-a-tara], christchurch: [otautahi]}

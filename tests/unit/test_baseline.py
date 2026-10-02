@@ -1,6 +1,6 @@
-"""Líneas base del comportamiento de Japón antes del multidestino (fase 2).
+"""Líneas base del comportamiento de Japón (destino de referencia).
 
-Las fixtures se generaron con el código anterior al refactor: estos tests no se regeneran, se cumplen.
+Las fixtures son una referencia congelada: estos tests no se regeneran, se cumplen.
 """
 import json
 from pathlib import Path

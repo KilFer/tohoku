@@ -320,7 +320,7 @@ class ByJobStep(Step):
         return self.results[ctx.job.bookmark_id]
 
 
-# --- limpieza (fase 4) -----------------------------------------------------------
+# --- limpieza -----------------------------------------------------------
 
 
 class RecordingCleaner:
@@ -430,7 +430,7 @@ def test_cleanup_failure_does_not_change_the_outcome(tmp_path, state, caplog):
     assert "permiso denegado" in caplog.text
 
 
-# --- Re-descarga solo si hace falta (Task 12) ----------------------------------------
+# --- Re-descarga solo si hace falta ----------------------------------------
 
 
 class LoggedStep(Step):
@@ -654,7 +654,7 @@ def _reprocess_from_geocode(tmp_path, state, candidates, caption, transcript_tex
     meta = make_fetch().meta.model_copy(update={"description": caption})
     state.save_stage("b1", "fetch", make_fetch(files_purged=True, meta=meta))
     state.save_stage("b1", "transcribe", Transcript(text=transcript_text, origin="whisper"))
-    state.save_stage("b1", "extract", Dummy())  # sin classify: job anterior a la fase 3 (o classify borrado)
+    state.save_stage("b1", "extract", Dummy())  # sin classify: job sin candidatos (o classify borrado)
     log = []
     fetch = LoggedStep("fetch", log, result=make_fetch(images=["images/00.jpg"], meta=meta))
     transcribe = LoggedStep("transcribe", log, result=Transcript(), needs_files=True)
@@ -696,7 +696,7 @@ def test_classify_with_text_is_not_redownloaded(tmp_path, state):
 
 
 def test_flow_descartado_is_marked_without_destination(tmp_path, state):
-    """El flujo viaje descarta contenido ajeno al destino: sin `jr:destino:<d>` (spec §6.4)."""
+    """El flujo viaje descarta contenido ajeno al destino: sin `jr:destino:<d>`."""
     _add(state)
     fetch = Step("fetch")
     classify = Step("classify", result=Classification(destino="japon"))
