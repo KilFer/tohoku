@@ -1,4 +1,5 @@
 FROM python:3.12-slim
+ARG TZ=UTC
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ffmpeg ca-certificates tzdata \
@@ -12,11 +13,12 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 COPY src ./src
 COPY config ./config
+COPY README.md LICENSE ./
 RUN uv sync --frozen --no-dev
 
 ENV PATH="/app/.venv/bin:$PATH" \
     DATA_DIR=/data \
     WHISPER_DOWNLOAD_ROOT=/models \
-    TZ=Europe/Madrid
+    TZ=${TZ}
 VOLUME ["/data", "/models"]
 CMD ["tohoku", "run"]

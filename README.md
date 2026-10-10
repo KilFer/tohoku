@@ -78,9 +78,9 @@ Measured with ~1,400 real links:
 1. Copy the example configuration and fill it in:
    ```
    cp .env.example .env
-   cp config/destinos.example.yaml config/destinos.yaml   # TODO: example file not created yet (see docs/publicacion.md)
+   cp config/destinos.example.yaml config/destinos.yaml
    ```
-2. **Docker network**: `docker-compose.yml` uses an external network to reach Karakeep and Trilium by container name. Set the network name, and `KARAKEEP_URL` / `TRILIUM_URL` in `.env`, to match your installation. <!-- TODO: make the network configurable -->
+2. **Docker network and timezone**: set `DOCKER_NETWORK` to an existing external network shared with Karakeep and Trilium, and `TZ` to an IANA timezone (UTC by default). Set `KARAKEEP_URL` / `TRILIUM_URL` in `.env` to match your installation.
 3. In `config/destinos.yaml`, assign each Karakeep list to its destinations and define each destination (flow, label of the root note in Trilium, prompt). See [Destinations](#destinations).
 4. In Trilium, add the root label (for example `#jrRoot`) to the note under which you want the destination's structure.
 5. Create the structure and start:

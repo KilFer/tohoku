@@ -2,7 +2,10 @@ name: tohoku
 
 services:
   tohoku:
-    build: .
+    build:
+      context: .
+      args:
+        TZ: ${TZ:-UTC}
     image: tohoku:local
     container_name: tohoku
     restart: unless-stopped
@@ -10,14 +13,14 @@ services:
     environment:
       DATA_DIR: /data
       WHISPER_DOWNLOAD_ROOT: /models
-      TZ: Europe/Madrid
+      TZ: ${TZ:-UTC}
     volumes:
       - ./data:/data
       - whisper-models:/models
       - ./secrets:/secrets:ro
       - ./config:/app/config:ro   # destinations and prompts editable without rebuilding (restart the container)
     networks:
-      - pangolin
+      - app-network
     deploy:
       resources:
         limits:
@@ -25,7 +28,8 @@ services:
           memory: 6g
 
 networks:
-  pangolin:
+  app-network:
+    name: ${DOCKER_NETWORK:-tohoku}
     external: true
 
 volumes:
