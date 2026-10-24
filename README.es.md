@@ -8,7 +8,7 @@ Cada lista de Karakeep se asigna a uno o varios **destinos** (un viaje, un recet
 
 Japón es el ejemplo de referencia en toda la documentación: el proyecto nació para planificar un viaje a Japón a partir de cientos de Reels guardados, y los valores por defecto (país, ciudades, categorías, prompt) describen Japón. Un destino de viaje nuevo (Nueva Zelanda, Portugal…) es solo configuración.
 
-<!-- CAPTURA: Geo Map de un viaje con los lugares (docs/img/geo-map.png) -->
+![Mapa Geo con los lugares del viaje](docs/img/geo-map.png)
 
 > **Nombre.** Antes se llamaba *japan-reader*. El prefijo `jr` de etiquetas (`jr:*` en Karakeep) y atributos (`#jr*` en Trilium) se mantiene a propósito: son las siglas de *Japan Reader* y de **JR**, la compañía de la Tohoku Shinkansen.
 
@@ -21,8 +21,8 @@ Japón es el ejemplo de referencia en toda la documentación: el proyecto nació
 - **Comprar y comer**: productos, platos y cadenas, agrupados por categoría.
 - **Cultura y curiosidades**: lo que no es ni un lugar ni una compra.
 
-<!-- CAPTURA: nota de un lugar con sus fuentes (docs/img/lugar.png) -->
-<!-- CAPTURA: sección "Comprar y comer" (docs/img/comprar.png) -->
+![Nota de un lugar con sus atributos](docs/img/lugar.png)
+![Lista de comida en Trilium](docs/img/comprar.png)
 
 **Flujo `receta`**:
 - **Recetario** en vista Tabla con columnas para tipo de plato, cocina, tiempo, raciones, dificultad, y `probada`/`valoracion` para ti.
@@ -38,7 +38,7 @@ Japón es el ejemplo de referencia en toda la documentación: el proyecto nació
 - **Clasificador**: si una lista alimenta varios destinos, un LLM decide a cuál va cada enlace (o lo descarta).
 - **Avisos** opcionales por [ntfy](https://ntfy.sh).
 
-<!-- CAPTURA: Bandeja de revisión (docs/img/bandeja.png) -->
+![Bandeja de revisión en Trilium](docs/img/bandeja.png)
 
 ## Cómo funciona
 

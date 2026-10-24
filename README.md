@@ -8,7 +8,7 @@ Each Karakeep list is assigned to one or more **destinations** (a trip, a recipe
 
 Japan is the reference example throughout this documentation: the project was built to plan a trip to Japan from hundreds of saved Reels, and the default settings (country, cities, categories, prompt) describe Japan. A new trip destination (New Zealand, Portugal…) is just configuration.
 
-<!-- CAPTURE: Geo Map of a trip with its places (docs/img/geo-map.png) -->
+![Geo Map showing the places in a trip](docs/img/geo-map.png)
 
 > **Name.** The project used to be called *japan-reader*. The `jr` prefix of labels (`jr:*` in Karakeep) and attributes (`#jr*` in Trilium) is kept on purpose: it stands for *Japan Reader* and for **JR**, the company that runs the Tohoku Shinkansen.
 
@@ -21,8 +21,8 @@ Japan is the reference example throughout this documentation: the project was bu
 - **Comprar y comer** (things to buy and eat): products, dishes and chains, grouped by category.
 - **Cultura y curiosidades** (culture and curiosities): whatever is neither a place nor a purchase.
 
-<!-- CAPTURE: a place note with its sources (docs/img/lugar.png) -->
-<!-- CAPTURE: the "Comprar y comer" section (docs/img/comprar.png) -->
+![Place note with its attributes](docs/img/lugar.png)
+![Food list in Trilium](docs/img/comprar.png)
 
 **`receta` flow**:
 - A **recipe book** in Table view with columns for dish type, cuisine, time, servings, difficulty, and `probada` (tried) / `valoracion` (rating) for you.
@@ -38,7 +38,7 @@ Japan is the reference example throughout this documentation: the project was bu
 - **Classifier**: if a list feeds several destinations, an LLM decides where each link goes (or discards it).
 - Optional notifications through [ntfy](https://ntfy.sh).
 
-<!-- CAPTURE: review tray (docs/img/bandeja.png) -->
+![Review tray in Trilium](docs/img/bandeja.png)
 
 ## How it works
 
